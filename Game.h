@@ -13,6 +13,9 @@
 #define ADDR_BALLS_PER_GAME 0x0001
 #define ADDR_SPECIAL_LIMIT  0x0002
 #define ADDR_HIGH_SCORE     0x0005
+#define ADDR_MAX_CREDITS_17 0x0011
+#define ADDR_MAX_CREDITS_18 0x0012
+#define ADDR_MAX_CREDITS_19 0x0013
 
 // Define Game States
 enum GameState {
