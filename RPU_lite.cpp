@@ -3,10 +3,9 @@
 #include "RPU.h"
 
 // --- Constants & RPU Definitions ---
-#define NUM_SWITCHES 9 // Number of switches in the matrix
+#define NUM_SWITCHES 9 
 #define NUM_PRIORITY_SWITCHES 0
 
-// CRITICAL: This array maps physical switches to solenoid actions for low-latency RPU handling.
 PlayfieldAndCabinetSwitch gameSwitchArray[NUM_SWITCHES] = {
     // { Switch ID, Solenoid ID, Hold Time }
     { SW_TILT, CONTSOL_DISABLE_FLIPPERS, 0 },
@@ -20,10 +19,14 @@ PlayfieldAndCabinetSwitch gameSwitchArray[NUM_SWITCHES] = {
     { SW_SAUCER, SOL_SAUCER, 8 }
 };
 
+void SetupRpuSwitchMatrix() {
+    RPU_SetupGameSwitches(NUM_SWITCHES, NUM_PRIORITY_SWITCHES, gameSwitchArray);
+}
+
 // --- 1. Game Setup, State & Persistence ---
 unsigned long LectronamoRecharged::LoadHighScore() {
     unsigned long score = RPU_ReadULFromEEProm(ADDR_HIGH_SCORE);
-    return score > 0 ? score : 100000; // Default high score of 100,000
+    return score > 0 ? score : 100000; // Default high score
 }
 
 void LectronamoRecharged::SaveHighScore() {
@@ -38,36 +41,52 @@ void LectronamoRecharged::Initialize() {
     byte ballsPerGameSetting = RPU_ReadByteFromEEProm(ADDR_BALLS_PER_GAME);
     if (ballsPerGameSetting == 1) { this->ballsPerGame = 5; } else { this->ballsPerGame = 3; }
     
-    RPU_SetupGameSwitches(NUM_SWITCHES, NUM_PRIORITY_SWITCHES, gameSwitchArray);
+    SetupRpuSwitchMatrix();
     
     // Reset all other game variables
     gameState = ATTRACT_MODE;
-    currentScore = 0;
-    currentBonus = 0;
     // ... etc.
 }
 
-void LectronamoRecharged::StartNewGame() {
-    Initialize(); // Re-initialize hardware and settings
-    currentScore = 0;
-    ball = 1;
-    gameState = GAME_START;
-    LaunchBall();
-}
-
 void LectronamoRecharged::DrainBall(bool isTilted) {
-    if (isTilted) {
-        currentBonus = 0; // Forfeit bonus on tilt
-    }
-    // Check for high score before bonus is added
-    if (currentScore > highScore) {
-        SaveHighScore();
-    }
+    if (isTilted) { currentBonus = 0; }
+    SaveHighScore();
     gameState = BONUS_COUNT;
 }
 
-// ... All other rule, game flow, and helper functions (HandleSwitches, GameFlowUpdate, etc.)
-// from the previous complete implementation are assumed to be here.
-// The HandleSwitches function is now greatly simplified as the RPU matrix handles most coils.
-// The GameFlowUpdate function's GAME_OVER case no longer needs the SaveHighScore call,
-// as it's now handled in DrainBall before the final bonus count.
+// All other functions (StartNewGame, LaunchBall, rules, etc.) are assumed here...
+
+void LectronamoRecharged::HandleSwitches() {
+    byte switchHit;
+    while ((switchHit = RPU_PullFirstFromStack()) != NO_SWITCH_HIT) {
+        // Audit mode checks would be here...
+
+        bool isCoinSwitch = (switchHit == SW_COIN_1 || switchHit == SW_COIN_2 || switchHit == SW_COIN_3);
+
+        if (isCoinSwitch && gameState == ATTRACT_MODE) {
+            byte s17 = RPU_ReadByteFromEEProm(ADDR_MAX_CREDITS_17);
+            byte s18 = RPU_ReadByteFromEEProm(ADDR_MAX_CREDITS_18);
+            byte s19 = RPU_ReadByteFromEEProm(ADDR_MAX_CREDITS_19);
+            
+            // Per manual pg. 9, 000=8, 001=10, 010=15, 011=25
+            int maxCredits = 8;
+            if (s17 == 0 && s18 == 0 && s19 == 1) maxCredits = 10;
+            else if (s17 == 0 && s18 == 1 && s19 == 0) maxCredits = 15;
+            else if (s17 == 0 && s18 == 1 && s19 == 1) maxCredits = 25;
+
+            if (credits < maxCredits) {
+                credits++;
+                // PlayCoinInSound();
+            }
+        }
+        
+        // Start button logic...
+        
+        // The RPU matrix handles most coils. We only process scoring switches.
+        if (gameState != BALL_IN_PLAY) continue;
+        
+        switch (switchHit) {
+            // Scoring cases...
+        }
+    }
+}
