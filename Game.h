@@ -12,6 +12,7 @@
 
 #define ADDR_BALLS_PER_GAME 0x0001
 #define ADDR_SPECIAL_LIMIT  0x0002
+#define ADDR_HIGH_SCORE     0x0005
 
 // Define Game States
 enum GameState {
@@ -48,6 +49,14 @@ public:
     void AuditButtonCheck(int switchHit);
     void ProcessAuditModeSwitches(int switchHit);
 
+    // --- Sound Functions ---
+    void PlayGameStartMusic();
+    void PlayCoinInSound();
+
+    // --- Persistence Functions ---
+    void SaveHighScore();
+    unsigned long LoadHighScore();
+
 private:
     GameState gameState;
     long currentScore;          
@@ -77,6 +86,8 @@ private:
     int ballsPerGame;
     bool thumperScoreIs1000;
     bool specialAwardedThisBall;
+    unsigned long highScore;
+    int credits;
 };
 
 extern LectronamoRecharged game;
