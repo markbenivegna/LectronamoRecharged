@@ -40,6 +40,9 @@
 #define MACHINE_STATE_TEST_CHUTE_1_COINS  -15
 #define MACHINE_STATE_TEST_CHUTE_3_COINS  -16
 #define MACHINE_STATE_TEST_BOOT           -17
+// --- Custom Lectronamo Adjustments Menu (Replaces DIP Switches) ---
+#define MACHINE_STATE_ADJUSTMENTS_MENU      -18
+
 #else
 #define MACHINE_STATE_TEST_SWITCHES       -1
 #define MACHINE_STATE_TEST_SOLENOIDS      -2
@@ -58,6 +61,9 @@
 #define MACHINE_STATE_TEST_CHUTE_2_COINS  -15
 #define MACHINE_STATE_TEST_CHUTE_1_COINS  -16
 #define MACHINE_STATE_TEST_CHUTE_3_COINS  -17
+
+// --- Custom Lectronamo Adjustments Menu (Replaces DIP Switches) ---
+#define MACHINE_STATE_ADJUSTMENTS_MENU      -18
 #endif 
 
 #ifndef RPU_OS_DISABLE_CPC_FOR_SPACE  
@@ -67,7 +73,7 @@
 // This define is set to the last test, so the extended settings will know when to take over
 #define MACHINE_STATE_TEST_DONE           -20
 #else
-#define MACHINE_STATE_TEST_DONE           -17
+#define MACHINE_STATE_TEST_DONE           -18
 #endif
 
 unsigned long GetLastSelfTestChangedTime();

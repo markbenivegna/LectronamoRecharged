@@ -62,6 +62,21 @@ PlayfieldAndCabinetSwitch gameSwitchArray[NUM_SWITCHES] = {
 // III. CORE RPU CALLBACKS & SETUP
 //================================================================
 
+void SaveHighScore() {
+    if (currentScore > highScore) {
+        highScore = currentScore;
+        RPU_WriteULToEEProm(ADDR_HIGH_SCORE, highScore);
+    }
+}
+
+void DrainBall(bool isTilted = false) {
+    if (isTilted) { 
+        currentBonus = 0; 
+    }
+    SaveHighScore();
+    gameState = BONUS_COUNT;
+}
+
 void RPU_Callback_GameLogic() {
     // This function is called repeatedly by RPU_loop()
     // It replaces the old HandleSwitches() and GameFlowUpdate() methods.
@@ -88,14 +103,23 @@ void RPU_Callback_GameLogic() {
             }
         }
 
-        // --- Playfield Switch Logic ---
-        if (gameState != BALL_IN_PLAY) continue;
+        // --- Start Button Logic ---
+        if (switchHit == SW_CREDIT_BUTTON && credits > 0 && (gameState == ATTRACT_MODE || gameState == GAME_OVER)) {
+            // Start a new game
+            credits--;
+            gameState = GAME_START;
+            // RPU_PlaySound(SND_GAME_START); // Example
+            return; // Exit to allow game start logic to run on the next loop
+        }
+
+        // --- In-Game Playfield Switch Logic ---
+        if (gameState != BALL_IN_PLAY) continue; // Ignore playfield switches if not in a game
         
         switch (switchHit) {
-            // Add scoring cases here, for example:
-            // case SW_SPIN_TARGET:
-            //     currentScore += 100;
-            //     break;
+            case SW_OUTHOLE:
+                DrainBall();
+                break;
+            // Add other scoring cases from your ruleset here...
         }
     }
     // Add main game flow logic (attract mode, game over sequences, etc.) here
@@ -104,17 +128,31 @@ void RPU_Callback_GameLogic() {
 void setup() {
   RPU_init(RPU_Callback_GameLogic);
 
-  // --- One-Time Game Initialization ---
-  highScore = RPU_ReadULFromEEProm(ADDR_HIGH_SCORE, 100000); // Load high score with a default
+  // --- One-Time Game Initialization (from LectronamoRecharged::Initialize) ---
+  highScore = RPU_ReadULFromEEProm(ADDR_HIGH_SCORE, 100000); // Load high score with a default of 100,000
   byte ballsPerGameSetting = RPU_ReadByteFromEEProm(ADDR_BALLS_PER_GAME);
   ballsPerGame = (ballsPerGameSetting == 1) ? 5 : 3;
   
   RPU_SetupGameSwitches(NUM_SWITCHES, NUM_PRIORITY_SWITCHES, gameSwitchArray);
   
-  // Reset all other game variables
+  // Reset all game state variables
   gameState = ATTRACT_MODE;
   credits = 0;
-  // ... etc.
+  currentScore = 0;
+  currentBonus = 0;
+  bonusMultiplier = 1;
+  extraBallLit = false;
+  isBallSaveActive = false;
+  firstHitMade = false;
+  arcSurgeActive = false;
+  inAuditMode = false;
+  threeBankCompleteCount = 0;
+  fiveBankCompleteCount = 0;
+  spinnerHitCount = 0;
+  holdBonus = false;
+  extraBalls = 0;
+  thumperScoreIs1000 = false;
+  specialAwardedThisBall = false;
 }
 
 void loop() {

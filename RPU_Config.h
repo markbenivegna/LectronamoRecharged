@@ -6,7 +6,7 @@
 // Set the hardware revision of the RPU plug-in board. 
 // Hardware Rev 3 uses a MEGA 2560 Pro, and nothing else
 // Hardware Rev 4 uses a MEGA 2560 Pro (all the pins) on a larger board (display & WIFI)
-#define RPU_OS_HARDWARE_REV 4
+#define RPU_OS_HARDWARE_REV 3
 
 // Set the MPU architecture for the target machine.
 // 1 = -17, -35, 100, 200 compatible boards (includes Stern MPU-100)
@@ -23,13 +23,13 @@
 // #define RPU_OS_USE_DIP_SWITCHES
 // #define RPU_OS_USE_S_AND_T
 // #define RPU_OS_USE_DASH51
-// #define RPU_OS_USE_SB100
-// #define RPU_OS_USE_SB300
-// #define RPU_OS_USE_WAV_TRIGGER
-#define RPU_OS_USE_WAV_TRIGGER_1p3
+#define RPU_OS_USE_SB100
+// #define RPU_OS_USE_SB300 // For Bally's Squawk & Talk
+// #define RPU_OS_USE_WAV_TRIGGER // For modern sound boards
+// #define RPU_OS_USE_WAV_TRIGGER_1p3 // For modern sound boards
 // #define RPU_OS_DISABLE_CPC_FOR_SPACE
 // #define RPU_OS_USE_AUX_LAMPS
-#define RPU_OS_USE_7_DIGIT_DISPLAYS
+// #define RPU_OS_USE_7_DIGIT_DISPLAYS
 // #define RPU_USE_EXTENDED_SWITCHES_ON_PB4
 // #define RPU_USE_EXTENDED_SWITCHES_ON_PB7
 // #define RPU_OS_USE_WTYPE_1_SOUND

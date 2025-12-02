@@ -21,6 +21,7 @@
 #include <Arduino.h>
 #include "RPU_Config.h"
 #include "RPU.h"
+#include "Lectronamo.h" // Include for friendly names
 #include "SelfTestAndAudit.h"
 
 #define MACHINE_STATE_ATTRACT         0
@@ -37,6 +38,67 @@ byte CurSound = 0x01;
 byte SoundPlaying = 0;
 byte SoundToPlay = 0;
 boolean SolenoidCycle = true;
+
+// --- MPU Switch Adjustment Definitions (based on Lectronamo Manual) ---
+#define NUM_MPU_SWITCHES 32
+
+struct MpuSwitchSetting {
+    byte id;
+    byte eepromAddr;
+    const char* name;
+    const char* option0;
+    const char* option1;
+};
+
+MpuSwitchSetting mpuSwitches[NUM_MPU_SWITCHES] = {
+    // ID, EEPROM Addr, Name,                  Option 0 (Switch OFF), Option 1 (Switch ON)
+    { 1,  0x14, "S1: Chute 1 Coins", "1 Coin", "2 Coins" },
+    { 2,  0x15, "S2: Chute 1 Coins", "1 Coin", "3 Coins" },
+    { 3,  0x16, "S3: Chute 1 Coins", "1 Coin", "4 Coins" },
+    { 4,  0x17, "S4: Chute 1 Coins", "1 Coin", "5 Coins" },
+    { 5,  0x18, "S5: Chute 1 Coins", "1 Coin", "6 Coins" },
+    { 6,  0x19, "S6: HS Award", "Extra Ball", "Replay" },
+    { 7,  ADDR_BALLS_PER_GAME, "S7: Balls Per Game", "3 Balls", "5 Balls" }, // Corrected
+    { 8,  0x1B, "S8: Chute 1 Bonus", "No Bonus", "Bonus Credit" },
+    { 9,  0x1C, "S9: Chute 2 Coins", "1 Coin", "2 Coins" },
+    { 10, 0x1D, "S10: Chute 2 Memory", "No Memory", "Memory" },
+    { 11, 0x1E, "S11: Chute 2 Bonus", "No Bonus", "Bonus Credit" },
+    { 12, 0x1F, "S12: Not Used", "Off", "On" }, // Restored
+    { 13, 0x20, "S13: Not Used", "Off", "On" }, // Restored
+    { 14, 0x21, "S14: Not Used", "Off", "On" }, // Restored
+    { 15, 0x22, "S15: Not Used", "Off", "On" }, // Restored
+    { 16, 0x23, "S16: Not Used", "Off", "On" }, // Restored
+    { 17, ADDR_MAX_CREDITS_17, "S17-19: Max Credits", "See S18/19", "See S18/19" }, // Handled as a group
+    { 18, ADDR_MAX_CREDITS_18, "S17-19: Max Credits", "See S18/19", "See S18/19" }, // Handled as a group
+    { 19, ADDR_MAX_CREDITS_19, "S17-19: Max Credits", "See S18/19", "See S18/19" }, // Handled as a group
+    { 20, 0x24, "S20: Game Mode", "Normal", "Novelty" },
+    { 21, 0x25, "S21: Match Feature", "Off", "On" }, // Corrected
+    { 22, 0x26, "S22: Exceed Score", "No Award", "Replay" },
+    { 23, ADDR_SPECIAL_LIMIT, "S23: Special Award", "Extra Ball", "Credit" },
+    { 24, 0x27, "S24: Bonus Countdown", "Multiple Steps", "1,000 Steps" }, // Corrected
+    { 25, 0x28, "S25: Not Used", "Off", "On" }, // Restored
+    { 26, 0x29, "S26: Replay Scores", "Conservative", "Liberal" },
+    { 27, 0x2A, "S27: Not Used", "Off", "On" }, // Restored
+    { 28, 0x2B, "S28: Chute 1 Plays", "1 Play", "2 Plays" }, // Corrected
+    { 29, 0x2C, "S29: Chute 1 Plays", "1 Play", "3 Plays" }, // Corrected
+    { 30, 0x2D, "S30: Chute 1 Plays", "1 Play", "4 Plays" }, // Corrected
+    { 31, 0x2E, "S31-32: Special", "See S32", "See S32" }, // Handled as a group
+    { 32, 0x2F, "S31-32: Special", "See S32", "See S32" }  // Handled as a group
+};
+
+// Structure to hold friendly names for solenoids and switches
+struct NamedHardware {
+    byte id;
+    const char* name;
+};
+
+// Helper function to find a friendly name from an ID
+const char* findName(byte id, const NamedHardware* hardware, int size) {
+    for (int i = 0; i < size; ++i) {
+        if (hardware[i].id == id) return hardware[i].name;
+    }
+    return "???";
+}
 
 #ifndef RPU_OS_DISABLE_CPC_FOR_SPACE
 boolean CPCSelectionsHaveBeenRead = false;
@@ -237,11 +299,49 @@ int RunBaseSelfTest(int curState, boolean curStateChanged, unsigned long Current
       RPU_EnableSolenoidStack(); 
       RPU_SetDisableFlippers(false);
       //RPU_SetDisplayBlank(4, 0);
+      // --- Lectronamo Customization: Use friendly names ---
+      RPU_SetDisplayText(1, "SOLENOID", true);
       SolenoidCycle = true;
       SavedValue = 0;
       RPU_PushToSolenoidStack(SavedValue, 10);
     } 
     if (curSwitch==resetSwitch || resetDoubleClick) {
+      // --- Lectronamo Customization: Cycle through defined solenoids ---
+      if (RPU_GetUpDownSwitchState()) {
+        SavedValue++;
+        if (SavedValue > 19) SavedValue = 7; // Cycle from SOL_LEFT_THUMPER to SOL_COIN_LOCKOUT
+      } else {
+        if (SavedValue > 7) SavedValue--;
+        else SavedValue = 19;
+      }
+      // Skip unused solenoid numbers
+      if (SavedValue > 8 && SavedValue < 10) SavedValue = (RPU_GetUpDownSwitchState()) ? 10 : 8;
+
+      SolenoidCycle = false; // Disable auto-cycle when manually stepping
+      RPU_PushToSolenoidStack(SavedValue, 10);
+      RPU_SetDisplay(0, SavedValue, true);
+
+      // Display friendly name
+      const NamedHardware solenoidNames[] = {
+        {SOL_LEFT_THUMPER, "L THUMP"}, {SOL_RIGHT_THUMPER, "R THUMP"}, {SOL_CENTER_THUMPER, "C THUMP"},
+        {SOL_OUTHOLE, "OUTHOLE"}, {SOL_RIGHT_SLINGSHOT, "R SLING"}, {SOL_KICKER, "KICKER"},
+        {SOL_DROP_TARGET_3BANK_RESET, "3-BANK"}, {SOL_SAUCER, "SAUCER"}, {SOL_DROP_TARGET_5BANK_RESET, "5-BANK"},
+        {SOL_LEFT_SLINGSHOT, "L SLING"}, {SOL_KNOCKER, "KNOCKER"}, {SOL_FLIPPERS, "FLIPPERS"}, {SOL_COIN_LOCKOUT, "COIN LCK"}
+      };
+      RPU_SetDisplayText(1, (char*)findName(SavedValue, solenoidNames, sizeof(solenoidNames)/sizeof(NamedHardware)), true);
+
+    } else if (SolenoidCycle && (CurrentTime-LastSolTestTime)>1000) {
+        SavedValue += 1;
+#if (RPU_MPU_ARCHITECTURE<10)
+        if (SavedValue>14) SavedValue = 0;
+#else        
+        if (SavedValue>21) SavedValue = 0;
+#endif        
+      RPU_PushToSolenoidStack(SavedValue, 10);
+      RPU_SetDisplay(0, SavedValue, true);
+      LastSolTestTime = CurrentTime;
+    }
+    /* Original logic replaced by Lectronamo specific logic above
       SolenoidCycle = (SolenoidCycle) ? false : true;
     }
 
@@ -258,12 +358,14 @@ int RunBaseSelfTest(int curState, boolean curStateChanged, unsigned long Current
       RPU_SetDisplay(0, SavedValue, true);
       LastSolTestTime = CurrentTime;
     }
+    */
     
   } else if (curState==MACHINE_STATE_TEST_SWITCHES) {
     if (curStateChanged) {
       RPU_TurnOffAllLamps();
       RPU_DisableSolenoidStack(); 
       RPU_SetDisableFlippers(true);
+      RPU_SetDisplayText(1, "SWITCH", true); // Lectronamo Customization
     }
 
     byte displayOutput = 0;
@@ -271,6 +373,25 @@ int RunBaseSelfTest(int curState, boolean curStateChanged, unsigned long Current
       if (RPU_ReadSingleSwitchState(switchCount)) {
         RPU_SetDisplay(displayOutput, switchCount, true);
         displayOutput += 1;
+
+        // --- Lectronamo Customization: Display first closed switch name ---
+        if (displayOutput == 1) {
+            const NamedHardware switchNames[] = {
+                {SW_TILT, "TILT"}, {SW_SLAM_TILT, "SLAM"}, {SW_OUTHOLE, "OUTHOLE"},
+                {SW_RIGHT_SLINGSHOT, "R SLING"}, {SW_LEFT_SLINGSHOT, "L SLING"},
+                {SW_THUMPER_CENTER, "C THUMP"}, {SW_THUMPER_RIGHT, "R THUMP"}, {SW_THUMPER_LEFT, "L THUMP"},
+                {SW_SAUCER, "SAUCER"}, {SW_CREDIT_BUTTON, "START"}, {SW_COIN_1, "COIN 1"},
+                {SW_COIN_2, "COIN 2"}, {SW_COIN_3, "COIN 3"}, {SW_SPIN_TARGET, "SPINNER"},
+                {SW_TARGET_1_3BANK, "3BANK 1"}, {SW_TARGET_2_3BANK, "3BANK 2"}, {SW_TARGET_3_3BANK, "3BANK 3"},
+                {SW_TARGET_1_5BANK, "5BANK 1"}, {SW_TARGET_2_5BANK, "5BANK 2"}, {SW_TARGET_3_5BANK, "5BANK 3"},
+                {SW_TARGET_4_5BANK, "5BANK 4"}, {SW_TARGET_5_5BANK, "5BANK 5"}
+            };
+            RPU_SetDisplayText(1, (char*)findName(switchCount, switchNames, sizeof(switchNames)/sizeof(NamedHardware)), true);
+        }
+      }
+      // If no switches are closed, clear the name display
+      if (displayOutput == 0) {
+        RPU_SetDisplayText(1, "SWITCH", true);
       }
     }
 
@@ -387,6 +508,63 @@ int RunBaseSelfTest(int curState, boolean curStateChanged, unsigned long Current
     cpcSelectorStartByte = RPU_CPC_CHUTE_2_SELECTION_BYTE;
   } else if (curState==MACHINE_STATE_ADJUST_CPC_CHUTE_3) {
     cpcSelectorStartByte = RPU_CPC_CHUTE_3_SELECTION_BYTE;
+#endif
+  // --- Lectronamo Custom Adjustments Menu ---
+  } else if (curState == MACHINE_STATE_ADJUSTMENTS_MENU) {
+    if (curStateChanged) {
+      CurValue = 0; // Index of the current MPU switch setting
+    }
+
+    if (curSwitch == resetSwitch || resetDoubleClick) {
+      // Credit button was pressed, change the value of the current setting
+      MpuSwitchSetting* setting = &mpuSwitches[CurValue];
+      if (setting->id >= 17 && setting->id <= 19) { // Special case for Max Credits
+          byte s17 = RPU_ReadByteFromEEProm(ADDR_MAX_CREDITS_17);
+          byte s18 = RPU_ReadByteFromEEProm(ADDR_MAX_CREDITS_18);
+          byte s19 = RPU_ReadByteFromEEProm(ADDR_MAX_CREDITS_19);
+          // Cycle 8 -> 10 -> 15 -> 25 -> 8
+          if (s17==0 && s18==0 && s19==0) { s19=1; } // 8 -> 10
+          else if (s17==0 && s18==0 && s19==1) { s18=1; s19=0; } // 10 -> 15
+          else if (s17==0 && s18==1 && s19==0) { s19=1; } // 15 -> 25
+          else { s17=0; s18=0; s19=0; } // 25 -> 8
+          RPU_WriteByteToEEProm(ADDR_MAX_CREDITS_17, s17);
+          RPU_WriteByteToEEProm(ADDR_MAX_CREDITS_18, s18);
+          RPU_WriteByteToEEProm(ADDR_MAX_CREDITS_19, s19);
+      } else {
+          byte currentValue = RPU_ReadByteFromEEProm(setting->eepromAddr);
+          RPU_WriteByteToEEProm(setting->eepromAddr, !currentValue); // Toggle 0 to 1 or 1 to 0
+      }
+    } else if (curSwitch == SW_SELF_TEST_SWITCH) {
+      // Self-test button was pressed, move to next/prev adjustment
+      if (RPU_GetUpDownSwitchState()) { // Down
+        CurValue++;
+        if (CurValue >= NUM_MPU_SWITCHES) CurValue = 0;
+      } else { // Up
+        if (CurValue == 0) CurValue = NUM_MPU_SWITCHES - 1;
+        else CurValue--;
+      }
+      if (mpuSwitches[CurValue].id >= 17 && mpuSwitches[CurValue].id <= 18) {
+        CurValue = (RPU_GetUpDownSwitchState()) ? 19 : 16; // Skip to S19 or S16
+      }
+    }
+
+    // Display the current adjustment
+    MpuSwitchSetting* setting = &mpuSwitches[CurValue];
+    RPU_SetDisplay(0, setting->id, true); // Show adjustment number (S1-S32)
+    RPU_SetDisplayText(1, setting->name, true);
+
+    if (setting->id >= 17 && setting->id <= 19) { // Special case for Max Credits
+        byte s17 = RPU_ReadByteFromEEProm(ADDR_MAX_CREDITS_17);
+        byte s18 = RPU_ReadByteFromEEProm(ADDR_MAX_CREDITS_18);
+        byte s19 = RPU_ReadByteFromEEProm(ADDR_MAX_CREDITS_19);
+        if (s17==0 && s18==0 && s19==0) RPU_SetDisplay(2, 8, true);
+        else if (s17==0 && s18==0 && s19==1) RPU_SetDisplay(2, 10, true);
+        else if (s17==0 && s18==1 && s19==0) RPU_SetDisplay(2, 15, true);
+        else RPU_SetDisplay(2, 25, true);
+    } else {
+        byte value = RPU_ReadByteFromEEProm(setting->eepromAddr);
+        RPU_SetDisplayText(2, (char*)(value ? setting->option1 : setting->option0), true);
+    }
 #endif    
   }
 
