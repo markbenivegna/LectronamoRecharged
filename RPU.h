@@ -1,81 +1,3 @@
-// === RPU.h (Header for Lectronamo Recharged) ===
-#ifndef RPU_H
-#define RPU_H
-
-
-#include "RPULite_Config.h"
-#include "HardwareMap.h"
-
-// Mode States
-enum Mode {
-  MODE_NONE,
-  MODE_SPINNER_RIPS,
-  MODE_POP_FRENZY,
-  MODE_DROP_ASSAULT,
-  MODE_MINI_WIZARD,
-  MODE_WIZARD
-};
-
-// Game State Flags
-extern bool skillShotActive;
-extern bool ballSaveActive;
-extern bool comboActive;
-extern bool modeReady;
-extern bool wizardReady;
-extern Mode currentMode;
-
-// Timer Variables
-extern unsigned long skillShotTimer;
-extern unsigned long ballSaveTimer;
-extern unsigned long comboTimer;
-extern unsigned long modeTimer;
-
-// Scoring + Tracking
-extern int bonusMultiplier; // 1x, 2x, 3x, 5x max
-extern int bonusPoints;
-extern int popHitCount;
-extern int drop3Hits;
-extern int drop5Hits;
-extern int comboSuccesses;
-
-// Function Prototypes
-void startSkillShot();
-void checkSkillShot();
-void startBallSave();
-void checkBallSave();
-void startCombo();
-void checkCombo();
-void triggerMysteryAward();
-void startMode(Mode newMode);
-void updateMode();
-void completeMode();
-void startMiniWizard();
-void startWizardMode();
-void resetGameState();
-void scorePoints(int pts);
-
-
-// Hardware control
-void InitializeHardware();
-void PulseSolenoid(int solenoid, int duration = 50);
-void SetLamp(int lamp, bool state);
-bool SwitchClosed(int switchId);
-void ResetSolenoids();
-void ResetSwitchStates();
-void ClearAllLamps();
-
-// Display + Game hooks
-void AddScore(int points);
-void UpdateScoreDisplay();
-void UpdateBallInPlayDisplay();
-void EndBall();
-void StartGameIfReady();
-
-// Delay/async helpers
-void DelayThenUnlock(bool* flag, int durationMs);
-
-#endif
-
 /**************************************************************************
  *     This file is part of the RPU for Arduino Project.
 
@@ -101,6 +23,10 @@ void DelayThenUnlock(bool* flag, int durationMs);
 
 #define RPU_OS_MAJOR_VERSION  5
 #define RPU_OS_MINOR_VERSION  8
+
+typedef void (*GameLogicCallback)();
+void RPU_init(GameLogicCallback callback);
+void RPU_loop();
 
 struct PlayfieldAndCabinetSwitch {
   byte switchNum;
