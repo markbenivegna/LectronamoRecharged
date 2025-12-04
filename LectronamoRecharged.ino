@@ -122,8 +122,9 @@ void AddToPlayerScore(long score) {
     currentScore += score;
 }
 
-void CollectBonus() {
-    // Placeholder for bonus collection logic
+void PlayStockSound(byte soundID) {
+    // For the SB-100, we use a dedicated RPU function that takes a bitmask.
+    RPU_PlaySB100(soundID);
 }
 
 void FireSolenoid(byte sol, int holdTime) {
@@ -131,7 +132,116 @@ void FireSolenoid(byte sol, int holdTime) {
 }
 
 void HandleSpinnerHit() {
-    // Placeholder for spinner scoring and feature logic
+    spinnerHitCount++;
+    PlayStockSound(SND_100_POINTS); // Play 100-point sound on every spinner hit
+    
+    long score = SCORE_SPINNER_BASE; 
+
+    // 1. Check if the Spinner is "Lit" (Bonus >= 10K)
+    if (currentBonus >= 10000) {
+        score = SCORE_SPINNER_LIT; // 1,000 points
+        RPU_SetLampState(LAMP_SPINNER, 1); // Turn ON Spinner Lit Lamp
+    } else {
+        RPU_SetLampState(LAMP_SPINNER, 0); // Turn OFF Spinner Lit Lamp
+    }
+    AddToPlayerScore(score); 
+
+    // 2. Bonus Advancement: Every 4th spin advances the bonus by 1,000.
+    if (spinnerHitCount % 4 == 0) {
+        currentBonus += 1000; 
+        if (currentBonus > 19000) {
+            currentBonus = 19000;
+        }
+    }
+
+    // 3. Custom: Momentarily display the spinner hit count
+    RPU_SetDisplay(0, spinnerHitCount, true); // Use Display 0 (Player 1) for status
+}
+
+//================================================================
+// CORE RULESET HANDLERS (Final Logic)
+//================================================================
+
+// --- Utility function to clear all 6 multiplier lamps ---
+void ClearAllMultiplierLamps() {
+    // Set 1 (Current Status - Bonus Ladder)
+    RPU_SetLampState(LAMP_BONUS_DOUBLE, 0, 0, 0);
+    RPU_SetLampState(LAMP_BONUS_TRIPLE, 0, 0, 0);
+    RPU_SetLampState(LAMP_BONUS_QUINTUPLE, 0, 0, 0);
+    // Set 2 (Next Target - 3-Bank Area)
+    RPU_SetLampState(LAMP_BONUS_2X_NEXT, 0, 0, 0);
+    RPU_SetLampState(LAMP_BONUS_3X_NEXT, 0, 0, 0);
+    RPU_SetLampState(LAMP_BONUS_5X_NEXT, 0, 0, 0);
+}
+
+// --- Handles 3-Bank Completion and Bonus Multiplier Logic ---
+void Handle3BankCompletion() {
+    // 1. Award base score (6,000 points) and reset targets.
+    AddToPlayerScore(SCORE_3BANK_COMPLETION); 
+    FireSolenoid(SOL_DROP_TARGET_3BANK_RESET, 100); 
+    
+    // 2. Advance completion count and clear tracking flags.
+    threeBankCompleteCount++;
+    for (int i = 0; i < 3; i++) { threeTargetsDown[i] = false; }
+
+    // 3. Set Multiplier Lamps (Dual Set Logic)
+    ClearAllMultiplierLamps();
+    
+    if (threeBankCompleteCount == 1) {
+        bonusMultiplier = 2;
+        RPU_SetLampState(LAMP_BONUS_DOUBLE, 1, 0, 0); 
+        RPU_SetLampState(LAMP_BONUS_3X_NEXT, 1, 0, 0);
+    } else if (threeBankCompleteCount == 2) {
+        bonusMultiplier = 3;
+        RPU_SetLampState(LAMP_BONUS_TRIPLE, 1, 0, 0); 
+        RPU_SetLampState(LAMP_BONUS_5X_NEXT, 1, 0, 0);
+    } else if (threeBankCompleteCount >= 3) {
+        bonusMultiplier = 5;
+        RPU_SetLampState(LAMP_BONUS_QUINTUPLE, 1, 0, 0); 
+    }
+}
+
+// --- Handles 5-Bank Completion and Extra Ball/Special Logic ---
+void Handle5BankCompletion() {
+    // 1. Award base score (10,000 points) and reset targets.
+    AddToPlayerScore(SCORE_5BANK_COMPLETION); 
+    FireSolenoid(SOL_DROP_TARGET_5BANK_RESET, 100); 
+    
+    // 2. Advance completion count and clear tracking flags.
+    fiveBankCompleteCount++;
+    for (int i = 0; i < 5; i++) { fiveTargetsDown[i] = false; }
+
+    // 3. Set Extra Ball and Special status.
+    if (fiveBankCompleteCount == 2) {
+        RPU_SetLampState(LAMP_EXTRA_BALL_LANE, 1, 0, 0); // Lite Extra Ball Lane (J3 Pin 18)
+        extraBallLit = true;
+    } else if (fiveBankCompleteCount >= 3) {
+        RPU_SetLampState(LAMP_BONUS_QUINTUPLE, 1, 0, 500); // Placeholder Flash for Special
+    }
+}
+
+// --- Handles Bonus Score Calculation and Display Countdown ---
+void CollectBonus() {
+    // 1. Award Knocker if Special or High Score Replay was earned.
+    // NOTE: In a complete game, award check logic would run here.
+    // If (Award Logic Here) { FireSolenoid(SOL_KNOCKER, 50); }
+
+    // 2. Calculate the final score to be awarded
+    long scoreAward = (long)currentBonus * bonusMultiplier;
+    
+    // 3. Determine the display countdown method (MPU Switch 24)
+    byte countdownMethod = RPU_ReadByteFromEEProm(ADDR_BONUS_COUNTDOWN_METHOD);
+    bool countdownBy1000Steps = (countdownMethod == 1); // 1,000 Steps is MPU SW 24 ON
+
+    // NOTE: The actual display countdown routine is complex. For now, we award instantly.
+    AddToPlayerScore(scoreAward);
+    
+    // 4. Reset Bonus state
+    currentBonus = 1000;
+    ClearAllMultiplierLamps(); // Turn off all 6 multiplier lamps
+    
+    // 5. Fire Outhole Kicker
+    FireSolenoid(SOL_OUTHOLE, 150); // Fire Outhole Kicker (Sol 10)
 }
 
 // --- Handles all switch closures and dispatches to specific handlers ---
@@ -152,19 +262,29 @@ void ProcessSwitches() {
                 break;
             
             // --- Drop Target Hits (Award base score, then check for completion) ---
-            case SW_TARGET_1_3BANK: threeTargetsDown[0] = true; AddToPlayerScore(SCORE_DROP_TARGET_BASE); break;
-            case SW_TARGET_2_3BANK: threeTargetsDown[1] = true; AddToPlayerScore(SCORE_DROP_TARGET_BASE); break;
-            case SW_TARGET_3_3BANK: threeTargetsDown[2] = true; AddToPlayerScore(SCORE_DROP_TARGET_BASE); break;
+            case SW_TARGET_1_3BANK: threeTargetsDown[0] = true; AddToPlayerScore(SCORE_DROP_TARGET_BASE); PlayStockSound(SND_100_POINTS); break;
+            case SW_TARGET_2_3BANK: threeTargetsDown[1] = true; AddToPlayerScore(SCORE_DROP_TARGET_BASE); PlayStockSound(SND_100_POINTS); break;
+            case SW_TARGET_3_3BANK: threeTargetsDown[2] = true; AddToPlayerScore(SCORE_DROP_TARGET_BASE); PlayStockSound(SND_100_POINTS); break;
 
-            case SW_TARGET_1_5BANK: fiveTargetsDown[0] = true; AddToPlayerScore(SCORE_DROP_TARGET_BASE); break;
-            case SW_TARGET_2_5BANK: fiveTargetsDown[1] = true; AddToPlayerScore(SCORE_DROP_TARGET_BASE); break;
-            case SW_TARGET_3_5BANK: fiveTargetsDown[2] = true; AddToPlayerScore(SCORE_DROP_TARGET_BASE); break;
-            case SW_TARGET_4_5BANK: fiveTargetsDown[3] = true; AddToPlayerScore(SCORE_DROP_TARGET_BASE); break;
-            case SW_TARGET_5_5BANK: fiveTargetsDown[4] = true; AddToPlayerScore(SCORE_DROP_TARGET_BASE); break;
+            case SW_TARGET_1_5BANK: fiveTargetsDown[0] = true; AddToPlayerScore(SCORE_DROP_TARGET_BASE); PlayStockSound(SND_100_POINTS); break;
+            case SW_TARGET_2_5BANK: fiveTargetsDown[1] = true; AddToPlayerScore(SCORE_DROP_TARGET_BASE); PlayStockSound(SND_100_POINTS); break;
+            case SW_TARGET_3_5BANK: fiveTargetsDown[2] = true; AddToPlayerScore(SCORE_DROP_TARGET_BASE); PlayStockSound(SND_100_POINTS); break;
+            case SW_TARGET_4_5BANK: fiveTargetsDown[3] = true; AddToPlayerScore(SCORE_DROP_TARGET_BASE); PlayStockSound(SND_100_POINTS); break;
+            case SW_TARGET_5_5BANK: fiveTargetsDown[4] = true; AddToPlayerScore(SCORE_DROP_TARGET_BASE); PlayStockSound(SND_100_POINTS); break;
 
             // --- Bonus Advance / Feature Triggers ---
             case SW_SPIN_TARGET:
                 HandleSpinnerHit();
+                break;
+
+            // --- Thumper-Bumpers (Pop Bumpers) ---
+            case SW_THUMPER_CENTER:
+            case SW_THUMPER_RIGHT:
+            case SW_THUMPER_LEFT:
+                // The solenoid firing is handled by the RPU's priority switch mapping in gameSwitchArray.
+                // We just need to add score and sound.
+                AddToPlayerScore(SCORE_POP_BUMPER);
+                PlayStockSound(SND_POP_BUMPER);
                 break;
 
             case SW_RIGHT_RETURN_LANE:
@@ -184,15 +304,18 @@ void ProcessSwitches() {
                 gGameFlags |= FLAG_SIDE_LANE_LIT; // Set flag for saucer interaction
                 AddToPlayerScore(5000L);
                 currentBonus += 1000;
+                PlayStockSound(SND_1000_POINTS); // 5000 pts likely uses the 1000 pt tone
                 break;
         }
     }
 
     // --- Post-Switch Completion Checks ---
-    // Check 3-Bank Status and call completion handler
-    // if (threeTargetsDown[0] && threeTargetsDown[1] && threeTargetsDown[2]) { Handle3BankCompletion(); }
-    // Check 5-Bank Status and call completion handler
-    // if (fiveTargetsDown[0] && fiveTargetsDown[1] && fiveTargetsDown[2] && fiveTargetsDown[3] && fiveTargetsDown[4]) { Handle5BankCompletion(); }
+    if (threeTargetsDown[0] && threeTargetsDown[1] && threeTargetsDown[2]) {
+        Handle3BankCompletion();
+    }
+    if (fiveTargetsDown[0] && fiveTargetsDown[1] && fiveTargetsDown[2] && fiveTargetsDown[3] && fiveTargetsDown[4]) {
+        Handle5BankCompletion();
+    }
 }
 
 //================================================================
