@@ -282,6 +282,7 @@ void ProcessSwitches() {
             case SW_KICKER: // Side Lane Kicker
                 CollectBonus();
                 FireSolenoid(SOL_KICKER, 10); 
+                FireSolenoid(SOL_KICKER, 50); // Fire Solenoid 12
                 break;
             
             // --- Drop Target Hits (Award base score, then check for completion) ---
@@ -360,20 +361,25 @@ void ProcessSwitches() {
             case SW_LEFT_OUTLANE:
                 AddToPlayerScore(SCORE_OUTLANE); // 3,000 points
                 currentBonus += 3000;            // 3 bonus advances
+                PlayStockSound(SND_1000_POINTS); // ADDED: High-value sound for outlane
                 break;
 
             // --- Rollover Button & Left Return Lane Logic ---
             case SW_ROLLOVER_BUTTON:
                 AddToPlayerScore(SCORE_SPINNER_BASE); // 100 points
                 gGameFlags |= FLAG_LEFT_RETURN_LANE_LIT; // Lite the Left Return Lane
+                PlayStockSound(SND_100_POINTS); // ADDED: Standard 100 pt sound
                 break;
 
             case SW_LEFT_RETURN_LANE:
                 if (gGameFlags & FLAG_LEFT_RETURN_LANE_LIT) {
                     AddToPlayerScore(9000L);
                     gGameFlags &= ~FLAG_LEFT_RETURN_LANE_LIT; // Turn off the light
+                    PlayStockSound(SND_10000_POINTS); // ADDED: Very high-value sound
                 } else {
+                    // Award base 100 points if unlit
                     AddToPlayerScore(SCORE_SPINNER_BASE); 
+                    PlayStockSound(SND_100_POINTS); // ADDED: Standard 100 pt sound
                 }
                 break;
         }
@@ -400,6 +406,7 @@ void HandleSkillShot(byte switchHit) {
         if (switchHit == SW_SAUCER) {
             AddToPlayerScore(SCORE_SKILL_SHOT);
             // Optionally play a sound effect here
+            PlayStockSound(SND_1000_POINTS); // Use 1000 pt sound for base skill shot
         }
         firstHitMade = true; // Prevents subsequent Skill Shots
     }
@@ -409,12 +416,17 @@ void HandleSkillShot(byte switchHit) {
         // Check if stationary target was hit (FLAG_SIDE_LANE_LIT flag is set by stationary target hit logic)
         // For POC simplicity, we award Super value if the flag is set:
         if (gGameFlags & FLAG_SIDE_LANE_LIT) {
+            // SUPER VALUE AWARD
             AddToPlayerScore(5000L); // 5,000 points
             currentBonus += 3000;    // 3 bonus advances
+            PlayStockSound(SND_10000_POINTS); // Use high-value sound
         } else {
             AddToPlayerScore(500L);  // 500 points
             currentBonus += 1000;    // 1 bonus advance
+            PlayStockSound(SND_1000_POINTS); // Base sound
         }
+        // Eject the ball from the saucer
+        FireSolenoid(SOL_SAUCER, 50); // Fire Solenoid 14 briefly
     }
 }
 
@@ -455,11 +467,17 @@ void HandleArcSurgeCombo(unsigned long CurrentTime) {
             if (RPU_ReadSingleSwitchState(SW_ADV_BONUS_1000)) { // Target 1 Hit
                 gGameFlags |= FLAG_ARC_SURGE_T1_HIT;
                 AddToPlayerScore(SCORE_ARC_SURGE_T1);
+                PlayStockSound(SND_1000_POINTS); 
             }
             if (RPU_ReadSingleSwitchState(SW_SAUCER) && (gGameFlags & FLAG_ARC_SURGE_T1_HIT)) { // Super Target Hit
                 AddToPlayerScore(SCORE_ARC_SURGE_SUPER);
+                PlayStockSound(SND_10000_POINTS); // Use high-value sound for combo completion
+                
+                // Combo success: turn off and reset
                 gGameFlags &= ~(FLAG_ARC_SURGE_ACTIVE | FLAG_ARC_SURGE_T1_HIT);
                 RPU_SetLampState(LAMP_SAUCER_EJECT, 0); 
+                // EJECT BALL AFTER SUCCESSFUL COMBO
+                FireSolenoid(SOL_SAUCER, 50); // Fire Solenoid 14
             }
         }
     }
