@@ -128,6 +128,27 @@ void PlayStockSound(byte soundID) {
     RPU_PlaySB100(soundID);
 }
 
+void RunBonusLadderChase(unsigned long CurrentTime) {
+    static unsigned long lastChaseTime = 0;
+    const unsigned long CHASE_INTERVAL = 50; // Fast visual update
+
+    if ((gGameFlags & FLAG_ARC_SURGE_ACTIVE) && CurrentTime > lastChaseTime + CHASE_INTERVAL) {
+        // Clear previous light
+        RPU_SetLampState(BonusLadderLamps[gChaserIndex], 0);
+
+        // Advance index and wrap around 0-9
+        gChaserIndex = (gChaserIndex + 1) % NUM_BONUS_LADDER_LAMPS;
+
+        // Set current light ON
+        RPU_SetLampState(BonusLadderLamps[gChaserIndex], 1);
+
+        lastChaseTime = CurrentTime;
+    } else if (!(gGameFlags & FLAG_ARC_SURGE_ACTIVE)) {
+        // Ensure all lights are off when the combo is not running
+        RPU_SetLampState(BonusLadderLamps[gChaserIndex], 0);
+    }
+}
+
 void FireSolenoid(byte sol, int holdTime) {
     RPU_PushToSolenoidStack(sol, holdTime);
 }
@@ -303,9 +324,51 @@ void ProcessSwitches() {
             // --- Simple Scoring ---
             case SW_STANDUP_TARGET: // 5000 pts and 1 bonus advance
                 gGameFlags |= FLAG_SIDE_LANE_LIT; // Set flag for saucer interaction
-                AddToPlayerScore(5000L);
+                AddToPlayerScore(5000L); 
                 currentBonus += 1000;
-                PlayStockSound(SND_1000_POINTS); // 5000 pts likely uses the 1000 pt tone
+                PlayStockSound(SND_1000_POINTS);
+                break;
+
+            // --- Slingshot Logic (100 points, NO bonus advance) ---
+            case SW_RIGHT_SLINGSHOT: // SW 38
+            case SW_LEFT_SLINGSHOT:  // SW 39
+                AddToPlayerScore(100L); // Corrected to 100 points
+                PlayStockSound(SND_100_POINTS); // Use the 100 pt sound
+                break;
+            
+            // --- Rebound Rubbers Logic (SW 18 - 300 points + 1 Bonus Advance) ---
+            case SW_ADV_BONUS_300: // SW 18 is the 300 Advance Bonus switch (Rebound Rubber)
+                AddToPlayerScore(300L); // 300 points
+                currentBonus += 1000;    // 1 bonus step advance
+                PlayStockSound(SND_100_POINTS); // Use the 100 pt sound (chirp)
+                break;
+
+            // --- 10 Point Switches ---
+            case SW_SCORE_10: // SW 19
+                AddToPlayerScore(10L);
+                PlayStockSound(SND_10_POINTS); // Use the 10 pt sound (Solenoid 1)
+                break;
+
+            // --- Outlane Logic (3,000 points + 3 Bonus Advances) ---
+            case SW_RIGHT_OUTLANE:
+            case SW_LEFT_OUTLANE:
+                AddToPlayerScore(SCORE_OUTLANE); // 3,000 points
+                currentBonus += 3000;            // 3 bonus advances
+                break;
+
+            // --- Rollover Button & Left Return Lane Logic ---
+            case SW_ROLLOVER_BUTTON:
+                AddToPlayerScore(SCORE_SPINNER_BASE); // 100 points
+                gGameFlags |= FLAG_LEFT_RETURN_LANE_LIT; // Lite the Left Return Lane
+                break;
+
+            case SW_LEFT_RETURN_LANE:
+                if (gGameFlags & FLAG_LEFT_RETURN_LANE_LIT) {
+                    AddToPlayerScore(9000L);
+                    gGameFlags &= ~FLAG_LEFT_RETURN_LANE_LIT; // Turn off the light
+                } else {
+                    AddToPlayerScore(SCORE_SPINNER_BASE); 
+                }
                 break;
         }
     }
@@ -411,7 +474,8 @@ void RPU_Callback_GameLogic() {
         // 2. Run continuous custom timers and logic
         RunBallSaveLogic(CurrentTime);
         HandleArcSurgeCombo(CurrentTime);
-        // 3. Update other feature lamps and timers
+        // 3. RUN THE FINAL ARC SURGE VISUAL LOGIC
+        RunBonusLadderChase(CurrentTime);
     }
 
     byte switchHit; // Use NO_SWITCH_HIT from RPU library if available, otherwise 0xFF
