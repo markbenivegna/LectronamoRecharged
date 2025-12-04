@@ -70,32 +70,51 @@
 
 //----------------------------
 // Lamp Definitions (LAMP_)
+// - Page 21 (Finalized Pinout)
 //----------------------------
-#define LAMP_COLLECT_3000 26
-#define LAMP_COLLECT_7000 25
-#define LAMP_ADV_BONUS_3 17
-#define LAMP_LEFT_RETURN_9000 21
-#define LAMP_5X 20
-#define LAMP_2X 22
-#define LAMP_COLLECT_4000 1
-#define LAMP_COLLECT_8000 12
-#define LAMP_ADV_BONUS_4 11
-#define LAMP_QUINTUPLE 10
-#define LAMP_EXTRA_BALL 18
-#define LAMP_3X 13
-#define LAMP_BALL_IN_PLAY 122
-#define LAMP_PLAYER_1 116
-#define LAMP_PLAYER_UP_1 114
-#define LAMP_MATCH 108
+// A. Bonus Multiplier Lamps (Dual Playfield Sets)
+// Multiplier SET A: CURRENT STATUS (Bonus Ladder Area)
+#define LAMP_BONUS_DOUBLE       22   // J3 Pin 22 (2X Status)
+#define LAMP_BONUS_TRIPLE       13   // J3 Pin 13 (3X Status)
+#define LAMP_BONUS_QUINTUPLE    10   // J3 Pin 10 (5X Status)
+// Multiplier SET B: NEXT TARGET (3-Bank Area)
+#define LAMP_BONUS_2X_NEXT      25   // J1 Pin 25 (Next target is 2X)
+#define LAMP_BONUS_3X_NEXT      11   // J1 Pin 11 (Next target is 3X)
+#define LAMP_BONUS_5X_NEXT      20   // J3 Pin 20 (Next target is 5X)
+
+// B. Arc Surge & High Value Indicators
+#define LAMP_SAUCER_EJECT       6    // J1 Pin 6 (Saucer/Arc Surge Targets - Single Pin Control)
+#define LAMP_ADVANCE_BONUS_3    17   // J3 Pin 17 (Advance Bonus #3 - Used in Attract Mode Chase)
+#define LAMP_EXTRA_BALL_LANE    18   // J3 Pin 18 (Extra Ball Lane - Used in Attract Mode & Gameplay)
+#define LAMP_SPINNER            28   // J1 Pin 28 (Spinner Scores 1000 When Lit)
+#define LAMP_SHOOT_AGAIN        27   // J1 Pin 27 (Shoot Again / Ball Save Indicator)
+
+// C. Bonus Ladder Lamps (Used for Chase Visuals)
+#define LAMP_BONUS_1000         18   // J1 Pin 18 
+#define LAMP_BONUS_2000         1    // J3 Pin 1
+#define LAMP_BONUS_3000         26   // J3 Pin 26
+#define LAMP_BONUS_4000         1    // J3 Pin 1 (Shared Pin - Must be handled carefully)
+#define LAMP_BONUS_5000         15   // J1 Pin 15
+#define LAMP_BONUS_6000         9    // J3 Pin 9
+#define LAMP_BONUS_7000         25   // J3 Pin 25
+#define LAMP_BONUS_8000         12   // J3 Pin 12
+#define LAMP_BONUS_9000         17   // J1 Pin 17
+#define LAMP_BONUS_10000        8    // J1 Pin 8 
+
+// D. Display and Miscellaneous Lamps (Retaining existing definitions)
+#define LAMP_BALL_IN_PLAY       122
+#define LAMP_PLAYER_1           116
+#define LAMP_PLAYER_UP_1        114
+#define LAMP_MATCH              108
 #define LAMP_HIGH_SCORE_TO_DATE 123
-#define LAMP_PLAYER_2 120
-#define LAMP_PLAYER_UP_2 115
-#define LAMP_GAME_OVER 111
-#define LAMP_PLAYER_3 106
-#define LAMP_PLAYER_UP_3 102
-#define LAMP_TILT 110
-#define LAMP_PLAYER_4 107
-#define LAMP_PLAYER_UP_4 101
+#define LAMP_PLAYER_2           120
+#define LAMP_PLAYER_UP_2        115
+#define LAMP_GAME_OVER          111
+#define LAMP_PLAYER_3           106
+#define LAMP_PLAYER_UP_3        102
+#define LAMP_TILT               110
+#define LAMP_PLAYER_4           107
+#define LAMP_PLAYER_UP_4        101
 
 //================================================================
 // II. GAME LOGIC & STATE DEFINITIONS
@@ -178,9 +197,44 @@ extern int extraBalls;
 extern int ball;
 extern int player;
 extern int ballsPerGame;
-extern bool thumperScoreIs1000;
 extern bool specialAwardedThisBall;
 extern unsigned long highScore;
 extern int credits;
 
+//================================================================
+// II. GAME LOGIC & STATE DEFINITIONS
+//================================================================
+
+//----------------------------
+// Scoring Constants (L for long to ensure compatibility)
+//----------------------------
+#define SCORE_DROP_TARGET_BASE      500L     // Base award for hitting ANY target
+#define SCORE_POP_BUMPER            100L     // Standard 5-ball game score
+#define SCORE_3BANK_COMPLETION      6000L
+#define SCORE_5BANK_COMPLETION      10000L
+#define SCORE_SPINNER_BASE          100L
+#define SCORE_SPINNER_LIT           1000L
+#define SCORE_SKILL_SHOT            15000L   // Custom Lite Rule
+#define SCORE_ARC_SURGE_T1          25000L   // Custom Lite Rule (Switch 25)
+#define SCORE_ARC_SURGE_SUPER       75000L   // Custom Lite Rule (Saucer 40)
+#define SCORE_OUTLANE               3000L
+
+//----------------------------
+// Attract Mode & Game State
+//----------------------------
+#define TIME_BALL_SAVE_DURATION_MS 20000L
+#define TIME_ARC_SURGE_COMBO_MS    8000L
+
+// Attract Mode Phases (Sub-states for Attract Mode)
+#define ATTRACT_PHASE_1_CLASSIC_FLOW    1
+#define ATTRACT_PHASE_2_ARC_SURGE       2
+#define ATTRACT_PHASE_3_WAVE            3
+
+// General Game Flags (Bitmasks for tracking state)
+#define FLAG_SKILL_SHOT_ACTIVE          (1 << 0)
+#define FLAG_ARC_SURGE_ACTIVE           (1 << 1)
+#define FLAG_ARC_SURGE_T1_HIT           (1 << 2)
+#define FLAG_EXTRA_BALL_COLLECTED       (1 << 3)
+#define FLAG_SIDE_LANE_LIT              (1 << 4) // Stationary Target made
+#define FLAG_LEFT_RETURN_LANE_LIT       (1 << 5) // Rollover Button made
 #endif // LECTRONAMO_H
