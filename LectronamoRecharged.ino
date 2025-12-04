@@ -78,20 +78,21 @@ void RunAttractModeLights(unsigned long CurrentTime);
 //================================================================
 // II. RPU HARDWARE MAPPING
 //================================================================
-#define NUM_SWITCHES 9
-#define NUM_PRIORITY_SWITCHES 0
+#define NUM_SWITCHES 40 // Total number of switches for the RPU to scan
+#define NUM_PRIORITY_SWITCHES 9 // Number of switches with immediate solenoid responses
 
-PlayfieldAndCabinetSwitch gameSwitchArray[NUM_SWITCHES] = {
+// This array defines priority switches that fire solenoids instantly in the RPU interrupt.
+PlayfieldAndCabinetSwitch gameSwitchArray[NUM_PRIORITY_SWITCHES] = {
     // { Switch ID, Solenoid ID, Hold Time }
-    { SW_TILT, CONTSOL_DISABLE_FLIPPERS, 0 },
-    { SW_SLAM_TILT, CONTSOL_DISABLE_FLIPPERS, 0 },
     { SW_RIGHT_SLINGSHOT, SOL_RIGHT_SLINGSHOT, 4 },
     { SW_LEFT_SLINGSHOT, SOL_LEFT_SLINGSHOT, 4 },
     { SW_THUMPER_CENTER, SOL_CENTER_THUMPER, 6 },
     { SW_THUMPER_RIGHT, SOL_RIGHT_THUMPER, 6 },
     { SW_THUMPER_LEFT, SOL_LEFT_THUMPER, 6 },
-    { SW_OUTHOLE, SOL_OUTHOLE, 8 },
-    { SW_SAUCER, SOL_SAUCER, 8 }
+    { SW_OUTHOLE, SOL_NONE, 0 }, // Scanned, but no immediate solenoid
+    { SW_SAUCER, SOL_NONE, 0 }, // Scanned, but no immediate solenoid
+    { SW_TILT, SOL_NONE, 0 },
+    { SW_SLAM_TILT, SOL_NONE, 0 }
 };
 
 //================================================================
