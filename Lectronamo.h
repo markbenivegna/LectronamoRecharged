@@ -69,7 +69,7 @@
 #define SOL_COIN_LOCKOUT 19
 
 //----------------------------
-// Sound Definitions (SND_) - For Stern SDB-100 Sound Board (Bitmask)
+// Sound Definitions (SND_) - For Stern SB-100 Sound Board (Bitmask)
 //----------------------------
 #define SND_10_POINTS       (1 << 0) // Bit 0 for 10 points sound
 #define SND_100_POINTS      (1 << 1) // Bit 1 for 100 points sound
@@ -167,6 +167,7 @@
 #define ADDR_MAX_CREDITS_18 0x0012
 #define ADDR_MAX_CREDITS_19 0x0013
 #define ADDR_BONUS_COUNTDOWN_METHOD 0x27 // MPU Switch 24
+#define ADDR_FREE_PLAY_ADJUSTMENT 0x28   // MPU Switch 25
 //----------------------------
 // Game State Definitions
 //----------------------------

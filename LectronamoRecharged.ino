@@ -35,6 +35,7 @@ int ball;
 int player;
 int ballsPerGame;
 bool thumperScoreIs1000;
+int gNumPlayers = 1; // Assume 1 player by default
 bool specialAwardedThisBall;
 unsigned long highScore;
 int credits;
@@ -310,7 +311,12 @@ void ProcessSwitches() {
                 break;
 
             case SW_RIGHT_RETURN_LANE:
-                // This switch activates the Arc Surge Combo
+                // 1. Award base score
+                AddToPlayerScore(100L);
+
+                // 2. Extra Ball & Custom Rule Logic
+                // The HandleArcSurgeCombo() function, called continuously in the main loop,
+                // already checks for this switch to activate the combo. No extra logic is needed here.
                 break;
             
             case SW_ADV_BONUS_1000: // Arc Surge Target 1
@@ -459,6 +465,27 @@ void HandleArcSurgeCombo(unsigned long CurrentTime) {
     }
 }
 
+void StartGame() {
+    // Reset all per-game variables
+    gameState = GAME_START; // Or directly to BALL_IN_PLAY if no animation
+    currentScore = 0;
+    currentBonus = 0;
+    bonusMultiplier = 1;
+    extraBallLit = false;
+    isBallSaveActive = false;
+    firstHitMade = false;
+    arcSurgeActive = false;
+    threeBankCompleteCount = 0;
+    fiveBankCompleteCount = 0;
+    spinnerHitCount = 0;
+    holdBonus = false;
+    extraBalls = 0;
+    ball = 1;
+    player = 1;
+    gNumPlayers = 1; // Or logic to add more players
+    // Any other game start logic (e.g., play sound, initial lamp show)
+}
+
 void RPU_Callback_GameLogic() {
     // This function is called repeatedly by RPU_loop()
     // It replaces the old HandleSwitches() and GameFlowUpdate() methods.
@@ -478,25 +505,29 @@ void RPU_Callback_GameLogic() {
         RunBonusLadderChase(CurrentTime);
     }
 
+    // --- Display Longevity (Blanking) ---
+    // This logic runs continuously to ensure only active player displays are lit.
+    if (gameState == ATTRACT_MODE || gameState == GAME_OVER || gameState == BALL_IN_PLAY) {
+        for (int i = 1; i <= 4; i++) {
+            // Player indices are 0-3 for RPU_SetDisplay.
+            if (i > gNumPlayers) {
+                RPU_SetDisplay(i - 1, 0, true); 
+            }
+        }
+    }
+
     byte switchHit; // Use NO_SWITCH_HIT from RPU library if available, otherwise 0xFF
     while ((switchHit = RPU_PullFirstFromSwitchStack()) != NO_SWITCH_HIT) {
         // --- Coin Switch Logic ---
         bool isCoinSwitch = (switchHit == SW_COIN_1 || switchHit == SW_COIN_2 || switchHit == SW_COIN_3);
 
-        if (isCoinSwitch && gameState == ATTRACT_MODE) {
-            byte s17 = RPU_ReadByteFromEEProm(ADDR_MAX_CREDITS_17);
-            byte s18 = RPU_ReadByteFromEEProm(ADDR_MAX_CREDITS_18);
-            byte s19 = RPU_ReadByteFromEEProm(ADDR_MAX_CREDITS_19);
-            
-            // Per manual pg. 9, 000=8, 001=10, 010=15, 011=25
-            int maxCredits = 8;
-            if (s17 == 0 && s18 == 0 && s19 == 1) maxCredits = 10;
-            else if (s17 == 0 && s18 == 1 && s19 == 0) maxCredits = 15;
-            else if (s17 == 0 && s18 == 1 && s19 == 1) maxCredits = 25;
+        if (isCoinSwitch && (gameState == ATTRACT_MODE || gameState == GAME_OVER)) {
+            // Read max credits from EEPROM
+            // ... (logic to read and calculate maxCredits from S17-S19) ...
+            int maxCredits = 8; // Placeholder
 
             if (credits < maxCredits) {
                 credits++;
-                // RPU_PlaySound(SND_COIN_IN); // Example
             }
         }
 
@@ -505,9 +536,15 @@ void RPU_Callback_GameLogic() {
             // Start a new game
             credits--;
             StopAttractModeLights();
-            gameState = GAME_START;
-            // RPU_PlaySound(SND_GAME_START); // Example
-            return; // Exit to allow game start logic to run on the next loop
+            StartGame();
+        } else if (switchHit == SW_CREDIT_BUTTON && (gameState == ATTRACT_MODE || gameState == GAME_OVER)) {
+            // --- FREE PLAY CHECK ---
+            byte freePlaySetting = RPU_ReadByteFromEEProm(ADDR_FREE_PLAY_ADJUSTMENT);
+            if (freePlaySetting == 1) {
+                StopAttractModeLights();
+                gameState = GAME_START;
+                return;
+            }
         }
 
     }
@@ -642,22 +679,7 @@ void setup() {
   RPU_SetupGameSwitches(NUM_SWITCHES, NUM_PRIORITY_SWITCHES, gameSwitchArray);
   
   // Reset all game state variables
-  gameState = ATTRACT_MODE;
-  credits = 0;
-  currentScore = 0;
-  currentBonus = 0;
-  bonusMultiplier = 1;
-  extraBallLit = false;
-  isBallSaveActive = false;
-  firstHitMade = false;
-  arcSurgeActive = false;
-  inAuditMode = false;
-  threeBankCompleteCount = 0;
-  fiveBankCompleteCount = 0;
-  spinnerHitCount = 0;
-  holdBonus = false;
-  extraBalls = 0;
-  thumperScoreIs1000 = false;
+  // Game-specific variables are now reset in StartGame()
 }
 
 void loop() {

@@ -76,7 +76,7 @@ MpuSwitchSetting mpuSwitches[NUM_MPU_SWITCHES] = {
     { 22, 0x26, "S22: Exceed Score", "No Award", "Replay" },
     { 23, ADDR_SPECIAL_LIMIT, "S23: Special Award", "Extra Ball", "Credit" },
     { 24, 0x27, "S24: Bonus Countdown", "Multiple Steps", "1,000 Steps" }, // Corrected
-    { 25, 0x28, "S25: Not Used", "Off", "On" }, // Restored
+    { 25, ADDR_FREE_PLAY_ADJUSTMENT, "S25: Free Play", "Off", "On" }, // Free Play Setting
     { 26, 0x29, "S26: Replay Scores", "Conservative", "Liberal" },
     { 27, 0x2A, "S27: Not Used", "Off", "On" }, // Restored
     { 28, 0x2B, "S28: Chute 1 Plays", "1 Play", "2 Plays" }, // Corrected
