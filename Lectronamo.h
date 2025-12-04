@@ -71,12 +71,12 @@
 //----------------------------
 // Sound Definitions (SND_) - For Stern SDB-100 Sound Board (Bitmask)
 //----------------------------
-#define SND_10_POINTS       (1 << 0) // 0x01
-#define SND_100_POINTS      (1 << 1) // 0x02
-#define SND_1000_POINTS     (1 << 2) // 0x04
-#define SND_10000_POINTS    (1 << 3) // 0x08
-#define SND_POP_BUMPER      (1 << 4) // 0x10
-#define SND_SPECIAL         (1 << 5) // 0x20
+#define SND_10_POINTS       (1 << 0) // Bit 0 for 10 points sound
+#define SND_100_POINTS      (1 << 1) // Bit 1 for 100 points sound
+#define SND_1000_POINTS     (1 << 2) // Bit 2 for 1000 points sound
+#define SND_10000_POINTS    (1 << 3) // Bit 3 for 10000 points sound
+#define SND_ADD_BONUS       (1 << 4) // Bit 4 for bonus advance sound
+#define SND_POP_BUMPER      (1 << 5) // Bit 5 for pop bumper sound
 
 //----------------------------
 // Lamp Definitions (LAMP_)
