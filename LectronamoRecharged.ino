@@ -2,13 +2,17 @@
 // Main Arduino Sketch for Lectronamo Recharged (RPU Format, Stern MPU-100 Compatible)
 
 #include "RPU.h"
+#include "RPU_Config.h"
+#include <Arduino.h>
+#include <math.h>
+#include <stdlib.h>
 #include "Lectronamo.h"
 
 //================================================================
 // I. GLOBAL GAME VARIABLES
 //================================================================
 GameState gameState;
-long currentScore;
+long playerScores[4];
 int currentBonus;
 int bonusMultiplier;
 bool extraBallLit;
@@ -39,6 +43,11 @@ bool specialAwardedThisBall;
 unsigned long highScore;
 int credits;
 uint8_t gGameFlags = 0;
+byte MaxTiltWarnings;
+byte NumTiltWarnings = 0;
+long ExtraBallScoreValue;
+long SpecialScoreValue;
+byte AwardHighscoreNumReplays;
 unsigned long lastSwitchHitTime = 0;
 unsigned long gAttractModeTimer = 0;
 int gSpinnerAdvancerCount = 0;
@@ -101,8 +110,8 @@ PlayfieldAndCabinetSwitch gameSwitchArray[NUM_PRIORITY_SWITCHES] = {
 //================================================================
 
 void SaveHighScore() {
-    if (currentScore > highScore) {
-        highScore = currentScore;
+    if (playerScores[player-1] > highScore) {
+        highScore = playerScores[player-1];
         RPU_WriteULToEEProm(ADDR_HIGH_SCORE, highScore);
     }
 }
@@ -145,11 +154,45 @@ void CheckAndResetSolenoids() {
 //================================================================
 
 void AddToPlayerScore(long score) {
-    currentScore += score;
+    if (player > 0) playerScores[player-1] += score;
 }
 
 void PlayStockSound(byte soundID) {
     RPU_PlaySB100(soundID);
+}
+
+void AwardReplay() {
+    credits++; // Increment credit
+    // Play Replay Sound
+    PlayStockSound(SND_10000_POINTS); 
+    // Fire Knocker
+    FireSolenoid(SOL_KNOCKER, 75); 
+}
+
+void CheckHighScores() {
+    AwardHighscoreNumReplays = RPU_ReadByteFromEEProm(ADDR_HIGHSCORE_REPLAY_AWARD);
+    if (AwardHighscoreNumReplays > 3) AwardHighscoreNumReplays = 0; // Clamp value
+
+    // Find the highest score from the game that just ended
+    long gameHighScore = 0;
+    for (int i = 0; i < gNumPlayers; i++) {
+        if (playerScores[i] > gameHighScore) {
+            gameHighScore = playerScores[i];
+        }
+    }
+
+    // Check if any player beat the global highScore
+    if (gameHighScore > highScore) {
+        highScore = gameHighScore;
+        SaveHighScore(); 
+        
+        if (AwardHighscoreNumReplays > 0) {
+            for (byte i = 0; i < AwardHighscoreNumReplays; i++) {
+                AwardReplay();
+                delay(300); // Space out the knocker fires
+            }
+        }
+    }
 }
 
 void PlayCreditAddMelody() {
@@ -189,6 +232,41 @@ void PlayExtraBallAward() {
     PlayStockSound(SND_POP_BUMPER);
     delay(100);
     PlayStockSound(SND_10000_POINTS);
+}
+
+void RunMatchMode(unsigned long CurrentTime) {
+    static unsigned long matchStartTime = 0;
+    static byte matchDigit = 0xFF; // Random digit 0-9
+
+    if (gameState != MATCH_MODE) {
+        matchStartTime = 0;
+        return;
+    }
+
+    if (matchStartTime == 0) {
+        matchStartTime = CurrentTime;
+        matchDigit = random(0, 10);
+        RPU_SetDisplayMatch(matchDigit, true);
+    }
+
+    // MATCH SEQUENCE COMPLETE: Check for Award
+    if (CurrentTime < matchStartTime + TIME_MATCH_SEQUENCE_MS) { 
+        // Animation would run here
+        return;
+    }
+
+    bool matchFound = false;
+    for (int p = 1; p <= gNumPlayers; p++) {
+        long lastTwoDigits = playerScores[p - 1] % 100;
+        byte playerMatchDigit = (byte)(lastTwoDigits / 10);
+        
+        if (playerMatchDigit == matchDigit) {
+            matchFound = true;
+            AwardReplay(); // Use centralized function for credit and knocker
+        }
+    }
+    
+    gameState = HIGH_SCORE_CHECK; // NEW TRANSITION
 }
 
 void RunBonusCountdown(unsigned long CurrentTime) {
@@ -281,7 +359,7 @@ void RunBonusLadderChase(unsigned long CurrentTime) {
 void RunBallSearch(unsigned long CurrentTime) {
     const unsigned long BALL_SEARCH_TIMEOUT_MS = 15000; 
 
-    if (gameState == BALL_IN_PLAY && firstHitMade) {
+    if (gameState == BALL_IN_PLAY) {
         if (CurrentTime > lastSwitchHitTime + BALL_SEARCH_TIMEOUT_MS) {
             FireSolenoid(SOL_SAUCER, 50); 
             FireSolenoid(SOL_KICKER, 50);  
@@ -372,21 +450,24 @@ void Handle5BankCompletion() {
         fiveTargetsDown[i] = false;
     }
 
-    // --- Action B: Extra Ball Check (SW 26) ---
     byte extraBallSetting = RPU_ReadByteFromEEProm(ADDR_EXTRA_BALL_BYPASS);
-    bool awardExtraBall = (extraBallSetting != 0); // If setting is not 0 (Bypass)
+    bool awardExtraBall = (extraBallSetting != 0); 
 
     if (fiveBankCompleteCount == 2) {
-        if (awardExtraBall) { // Check operator adjustment SW 26
-            RPU_SetLampState(LAMP_EXTRA_BALL_LANE, 1, 0, 0); // Lite Extra Ball Lane
+        if (awardExtraBall) { 
+            RPU_SetLampState(LAMP_EXTRA_BALL_LANE, 1, 0, 0); 
             extraBallLit = true;
+        } else {
+            AddToPlayerScore(ExtraBallScoreValue); // Award score instead of lighting EB
         }
     } else if (fiveBankCompleteCount >= 3) {
-        RPU_SetLampState(LAMP_BONUS_QUINTUPLE, 1, 0, 500); // Placeholder Flash for Special
+        AddToPlayerScore(SpecialScoreValue);
+        RPU_SetLampState(LAMP_BONUS_QUINTUPLE, 1, 0, 500); 
         PlayExtraBallAward(); // Play sound when Special condition is met
     }
 }
 
+// Handles bonus score calculation and display countdown.
 void CollectBonus() {
     // This function is now a placeholder. The logic has been moved to DrainBall and RunBonusCountdown.
     // The primary purpose is to set the state and let the main loop handle the countdown.
@@ -394,13 +475,12 @@ void CollectBonus() {
     ClearAllMultiplierLamps(); // Reset multiplier lamps for the next ball
     gameState = BONUS_COUNT; // Set the state to start the countdown
 }
+
+// Handles all switch closures and dispatches to specific handlers.
 void ProcessSwitches() {
     byte switchHit;
     while ((switchHit = RPU_PullFirstFromSwitchStack()) != NO_SWITCH_HIT) {
         // Update the Ball Search Timer on any switch activity
-        // --- Action A: Reset Ball Search Timer ---
-        unsigned long CurrentTime = millis();
-        lastSwitchHitTime = CurrentTime; // Update the Ball Search Timer
         lastSwitchHitTime = millis();
 
         switch (switchHit) {
@@ -529,15 +609,10 @@ void HandleSkillShot(byte switchHit) {
             PlayStockSound(SND_1000_POINTS); // Base sound
         }
         FireSolenoid(SOL_SAUCER, 50); // Fire Solenoid 14 briefly
-
-        // --- Action C: Saucer Light Persistence Check (SW 14) ---
-        byte persistenceSetting = RPU_ReadByteFromEEProm(ADDR_SAUCER_LIGHT_PERSISTENCE); 
-        if (persistenceSetting == 0) { // If setting is 'Goes OFF'
-            RPU_SetLampState(LAMP_SAUCER_EJECT, 0); // Turn off the lamp
-        }
     }
 }
 
+// Manages Ball Save timer and visual indicator.
 void RunBallSaveLogic(unsigned long CurrentTime) {
     if (isBallSaveActive) {
         RPU_SetLampState(LAMP_SHOOT_AGAIN, 1, 0, 500); // Visual cue (Pulse)
@@ -548,6 +623,8 @@ void RunBallSaveLogic(unsigned long CurrentTime) {
         }
     }
 }
+
+// Handles Arc Surge Combo activation and timer logic.
 void HandleArcSurgeCombo(unsigned long CurrentTime) {
     if (RPU_ReadSingleSwitchState(SW_RIGHT_RETURN_LANE) && !(gGameFlags & FLAG_ARC_SURGE_ACTIVE)) {
         gGameFlags |= FLAG_ARC_SURGE_ACTIVE;
@@ -579,7 +656,7 @@ void HandleArcSurgeCombo(unsigned long CurrentTime) {
 
 void StartGame(byte numPlayers) {
     gameState = BALL_IN_PLAY; 
-    currentScore = 0;
+    for(int i=0; i<4; i++) { playerScores[i] = 0; }
     currentBonus = 1000; // Start with 1000 bonus
     bonusMultiplier = 1; // Reset Multiplier
     extraBallLit = false;
@@ -605,72 +682,105 @@ void StartGame(byte numPlayers) {
 
 
 void RPU_Callback_GameLogic() {
+    // Define CurrentTime once at the start for all continuous timer checks
+    unsigned long CurrentTime = millis(); 
+    
+    // --- 1. Hard Reset Timer Logic ---
     static unsigned long startButtonHoldTime = 0;
-    const unsigned long HOLD_TIME_TO_RESET_MS = 2000; // Hold for 2 seconds
+    const unsigned long HOLD_TIME_TO_RESET_MS = 2000; 
 
-    if (gameState == BALL_IN_PLAY) {
-    if (gameState == BALL_IN_PLAY && ball > 1) {
-        if (RPU_ReadSingleSwitchState(SW_CREDIT_BUTTON)) {
-            if (startButtonHoldTime == 0) startButtonHoldTime = millis();
-            else if (millis() > startButtonHoldTime + HOLD_TIME_TO_RESET_MS) {
-                StartGame(1); // Restart the game
+    // Check for In-Game Reset (Only available after ball 1)
+    if (gameState == BALL_IN_PLAY && ball > 1) { 
+        if (RPU_ReadSingleSwitchState(SW_CREDIT_BUTTON)) { 
+            if (startButtonHoldTime == 0) startButtonHoldTime = CurrentTime; 
+            else if (CurrentTime > startButtonHoldTime + HOLD_TIME_TO_RESET_MS) {
+                StartGame(1); // Restart the game 
                 startButtonHoldTime = 0;
-                return; // Exit immediately
+                return; 
             }
         } else {
-            startButtonHoldTime = 0; // Reset timer if button is released
+            startButtonHoldTime = 0; 
         }
     }
     
+    // --- 2. State Handlers (Continuous Logic) ---
     if (gameState == ATTRACT_MODE) {
-        RunAttractModeLights(millis());
-    } else if (gameState == BALL_IN_PLAY || gameState == BONUS_COUNT) {
-        unsigned long CurrentTime = millis();
-        
+        RunAttractModeLights(CurrentTime);
+    }
+    else if (gameState == MATCH_MODE) { 
+        RunMatchMode(CurrentTime); 
+    }
+    else if (gameState == HIGH_SCORE_CHECK) {
+        CheckHighScores(); 
+        gameState = GAME_OVER; 
+    }
+    else if (gameState == BALL_IN_PLAY || gameState == BONUS_COUNT) {
+        // Continuous handlers run during active play or bonus count
         ProcessSwitches(); 
-        RunBallSaveLogic(CurrentTime);
+        RunBallSaveLogic(CurrentTime); 
         HandleArcSurgeCombo(CurrentTime);
-        RunBonusCountdown(CurrentTime);
-        RunBonusLadderChase(CurrentTime); 
-        RunBallSearch(CurrentTime);
+        RunBonusLadderChase(CurrentTime);
+        RunBonusCountdown(CurrentTime); 
+        RunBallSearch(CurrentTime); 
     }
 
+    // --- 3. Display Updates (Runs if game is active or waiting) ---
     if (gameState == ATTRACT_MODE || gameState == GAME_OVER || gameState == BALL_IN_PLAY) {
         for (int i = 1; i <= 4; i++) {
-            if (i > gNumPlayers) {
-                RPU_SetDisplay(i - 1, 0, true); 
-            }
+            if (i > gNumPlayers) {RPU_SetDisplay(i - 1, 0, true); }
         }
     }
-
-    byte switchHit; // Use NO_SWITCH_HIT from RPU library if available, otherwise 0xFF
+    
+    // --- 4. Switch Stack Processing (Input Handler) ---
+    byte switchHit; 
     while ((switchHit = RPU_PullFirstFromSwitchStack()) != NO_SWITCH_HIT) {
+        
+        // --- Action: Check for TILT and SLAM TILT (Added from Prompt Set 2) ---
+        if (switchHit == SW_TILT) {
+            if (NumTiltWarnings < MaxTiltWarnings) {
+                NumTiltWarnings++;
+                PlayStockSound(SND_1000_POINTS); 
+            } else {
+                DrainBall(true); 
+                return; 
+            }
+        }
+        
+        if (switchHit == SW_SLAM_TILT) {
+            DrainBall(true);
+            return;
+        }
+
+        // --- Coin and Start Button logic ---
         bool isCoinSwitch = (switchHit == SW_COIN_1 || switchHit == SW_COIN_2 || switchHit == SW_COIN_3);
-
         if (isCoinSwitch && (gameState == ATTRACT_MODE || gameState == GAME_OVER)) {
-            int maxCredits = 8; // Placeholder
-
+            int maxCredits = 8; // Placeholder 
             if (credits < maxCredits) {
                 credits++;
-                PlayCreditAddMelody();
+                PlayCreditAddMelody(); 
             }
-        }
-
-        if (switchHit == SW_CREDIT_BUTTON && credits > 0 && (gameState == ATTRACT_MODE || gameState == GAME_OVER)) {
-            credits--;
-            StopAttractModeLights();
-            StartGame(1); // Start a 1-player game
-        } else if (switchHit == SW_CREDIT_BUTTON && (gameState == ATTRACT_MODE || gameState == GAME_OVER)) {
-            byte freePlaySetting = RPU_ReadByteFromEEProm(ADDR_FREE_PLAY_ADJUSTMENT);
-            if (freePlaySetting == 1) {
+        } 
+        
+        // 1. Start game from Attract/Game Over (Normal Credit/Free Play Start)
+        if (switchHit == SW_CREDIT_BUTTON && (gameState == ATTRACT_MODE || gameState == GAME_OVER)) {
+             bool freePlay = RPU_ReadByteFromEEProm(ADDR_FREE_PLAY_ADJUSTMENT) == 1;
+             if (credits > 0 || freePlay) {
+                if (!freePlay) credits--;
+                if (gameState == ATTRACT_MODE) PlayGameStartMelody();
                 StopAttractModeLights();
-                StartGame(1);
+                StartGame(1); // Start a 1-player game
+                return;
+             }
+        } 
+        
+        // 2. Adding Players Logic (While game is active and not max players)
+        if (switchHit == SW_CREDIT_BUTTON && gNumPlayers < 4 && gameState == BALL_IN_PLAY) {
+            // Check if the button press was quick (not a reset hold)
+            if (startButtonHoldTime == 0) {
+                gNumPlayers++;
+                PlayGameStartMelody();
             }
-        } else if (switchHit == SW_CREDIT_BUTTON && gNumPlayers < 4 && gameState == BALL_IN_PLAY) {
-            gNumPlayers++;
-            PlayGameStartMelody();
         }
-
     }
 }
 
@@ -773,13 +883,20 @@ void setup() {
   highScore = RPU_ReadULFromEEProm(ADDR_HIGH_SCORE, 100000); // Load high score with a default of 100,000
   byte ballsPerGameSetting = RPU_ReadByteFromEEProm(ADDR_BALLS_PER_GAME);
   ballsPerGame = (ballsPerGameSetting == 1) ? 5 : 3;
+
+  MaxTiltWarnings = RPU_ReadByteFromEEProm(ADDR_MAX_TILT_WARNINGS);
+  if (MaxTiltWarnings > 2) MaxTiltWarnings = 2; // Clamp value (MPU standard)
+
+  ExtraBallScoreValue = RPU_ReadULFromEEProm(ADDR_EXTRA_BALL_SCORE, 25000L); 
+  SpecialScoreValue = RPU_ReadULFromEEProm(ADDR_SPECIAL_SCORE, 50000L); 
   
   RPU_SetupGameSwitches(NUM_SWITCHES, NUM_PRIORITY_SWITCHES, gameSwitchArray); 
   
-  gameState = ATTRACT_MODE; 
+  gameState = ATTRACT_MODE;
   credits = 0;
 
   CheckAndResetSolenoids(); // Perform conditional ejects and resets after RPU is ready
+  PlayGameStartMelody(); // Play melody on power-up
 }
 
 void loop() {

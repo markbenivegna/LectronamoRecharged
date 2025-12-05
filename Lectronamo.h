@@ -6,6 +6,7 @@
 //================================================================
 
 #include <stdint.h>
+#include <Arduino.h> // Defines byte for use in header file
 
 //----------------------------
 // Switch Definitions (SW_)
@@ -140,6 +141,10 @@
 #define ADDR_FREE_PLAY_ADJUSTMENT 0x28   // MPU Switch 25
 #define ADDR_EXTRA_BALL_BYPASS 0x29      // MPU Switch 26 (Placeholder)
 #define ADDR_SAUCER_LIGHT_PERSISTENCE 0x21 // MPU Switch 14 (Placeholder)
+#define ADDR_MAX_TILT_WARNINGS 0x2A      // MPU Switch 27 (Placeholder)
+#define ADDR_EXTRA_BALL_SCORE 0x2B       // Placeholder for score value
+#define ADDR_SPECIAL_SCORE 0x2F          // Placeholder for score value
+#define ADDR_HIGHSCORE_REPLAY_AWARD 0x30 // Placeholder for MPU Switches 15/16
 //----------------------------
 // Game State Definitions
 //----------------------------
@@ -149,6 +154,8 @@ enum GameState {
     BALL_IN_PLAY,
     BONUS_COUNT,
     GAME_OVER,
+    HIGH_SCORE_CHECK,
+    MATCH_MODE,
     AUDIT_MODE
 };
 
@@ -156,7 +163,7 @@ enum GameState {
 // Global Game Variables
 //----------------------------
 extern GameState gameState;
-extern long currentScore;
+extern long playerScores[4];
 extern int currentBonus;
 extern int bonusMultiplier;
 extern bool extraBallLit;
@@ -185,6 +192,11 @@ extern bool specialAwardedThisBall;
 extern unsigned long highScore;
 extern int credits;
 extern unsigned long lastSwitchHitTime;
+extern byte MaxTiltWarnings;
+extern byte NumTiltWarnings;
+extern long ExtraBallScoreValue;
+extern long SpecialScoreValue;
+extern byte AwardHighscoreNumReplays;
 
 //================================================================
 // II. GAME LOGIC & STATE DEFINITIONS
@@ -209,6 +221,7 @@ extern unsigned long lastSwitchHitTime;
 //----------------------------
 #define TIME_BALL_SAVE_DURATION_MS 20000L
 #define TIME_ARC_SURGE_COMBO_MS    8000L
+#define TIME_MATCH_SEQUENCE_MS     5000L
 
 // Attract Mode Phase Definitions
 #define ATTRACT_PHASE_1_CLASSIC_FLOW    1
