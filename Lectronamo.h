@@ -192,7 +192,6 @@ enum GameState {
     BONUS_COUNT,
     GAME_OVER,
     MATCH_MODE,
-    HIGH_SCORE_CHECK, // State for checking and awarding high scores
     AUDIT_MODE
 };
 extern GameState gameState;
@@ -230,14 +229,4 @@ extern byte NumTiltWarnings;
 extern long ExtraBallScoreValue;
 extern long SpecialScoreValue;
 extern byte AwardHighscoreNumReplays;
-
-//================================================================
-// V. GENERAL GAME FLAGS
-//================================================================
-#define FLAG_SKILL_SHOT_ACTIVE          (1 << 0)
-#define FLAG_ARC_SURGE_ACTIVE           (1 << 1)
-#define FLAG_ARC_SURGE_T1_HIT           (1 << 2)
-#define FLAG_EXTRA_BALL_COLLECTED       (1 << 3)
-#define FLAG_SIDE_LANE_LIT              (1 << 4)
-#define FLAG_LEFT_RETURN_LANE_LIT       (1 << 5)
 #endif // LECTRONAMO_H

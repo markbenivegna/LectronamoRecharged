@@ -138,30 +138,6 @@ void AwardReplay() {
     FireSolenoid(SOL_KNOCKER, 75); 
 }
 
-void CheckHighScores() {
-    byte AwardHighscoreNumReplays = RPU_ReadByteFromEEProm(ADDR_HIGHSCORE_REPLAY_AWARD);
-    if (AwardHighscoreNumReplays > 3) AwardHighscoreNumReplays = 0;
-
-    long gameHighScore = 0;
-    for (int i = 0; i < gNumPlayers; i++) {
-        if (playerScores[i] > gameHighScore) {
-            gameHighScore = playerScores[i];
-        }
-    }
-
-    if (gameHighScore > highScore) {
-        highScore = gameHighScore;
-        SaveHighScore(); 
-        
-        if (AwardHighscoreNumReplays > 0) {
-            for (byte i = 0; i < AwardHighscoreNumReplays; i++) {
-                AwardReplay();
-                delay(300); // Space out the knocker fires
-            }
-        }
-    }
-}
-
 void PlayCreditAddMelody() {
     PlayStockSound(SND_10000_POINTS); // Sol 4 (Lowest Pitch)
     delay(100); 
@@ -231,16 +207,6 @@ void CheckHighScores() {
         }
     }
 }
-
-void CheckHighScores() {
-    if (gameState == BALL_IN_PLAY) {
-        byte displayValue = (player * 10) + ball;
-        RPU_SetDisplay(3, displayValue, true); // Display 3 (Match/Ball in Play)
-    } else if (gameState == GAME_OVER || gameState == ATTRACT_MODE) {
-        RPU_SetDisplay(3, 0, true);
-    }
-}
-
 
 void RunMatchMode(unsigned long CurrentTime) {
     static unsigned long matchStartTime = 0;
@@ -656,8 +622,7 @@ void StartGame(byte numPlayers) {
     
 }
 
-void RPU_Callback_GameLogic() {
-{
+void RPU_Callback_GameLogic(){
     unsigned long CurrentTime = millis(); 
     
     // --- 1. Hard Reset Timer Logic ---
@@ -758,7 +723,6 @@ void RPU_Callback_GameLogic() {
             }
         }
     }
-}
 }
 
 void StopAttractModeLights() {
