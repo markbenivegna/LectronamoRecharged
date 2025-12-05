@@ -234,6 +234,20 @@ void PlayExtraBallAward() {
     PlayStockSound(SND_10000_POINTS);
 }
 
+void UpdatePlayerDisplay() {
+    // This updates the single combined Match/Ball in Play display (Display 3 or index 3)
+    if (gameState == BALL_IN_PLAY) {
+        // Display format: Ball in Play (e.g., 1-5) and Current Player (e.g., 1-4)
+        // Combine into a single 2-digit number for the display (Player * 10 + Ball)
+        byte displayValue = (player * 10) + ball;
+        RPU_SetDisplay(3, displayValue, true); // Display 3 (Match/Ball in Play)
+    } else if (gameState == GAME_OVER || gameState == ATTRACT_MODE) {
+        // Clear or show dashes/zeroes on Match display
+        RPU_SetDisplay(3, 0, true);
+    }
+}
+
+
 void RunMatchMode(unsigned long CurrentTime) {
     static unsigned long matchStartTime = 0;
     static byte matchDigit = 0xFF; // Random digit 0-9
@@ -682,7 +696,7 @@ void StartGame(byte numPlayers) {
 
 
 void RPU_Callback_GameLogic() {
-    // Define CurrentTime once at the start for all continuous timer checks
+ // Define CurrentTime once at the start for all continuous timer checks
     unsigned long CurrentTime = millis(); 
     
     // --- 1. Hard Reset Timer Logic ---
@@ -704,11 +718,14 @@ void RPU_Callback_GameLogic() {
     }
     
     // --- 2. State Handlers (Continuous Logic) ---
+
     if (gameState == ATTRACT_MODE) {
         RunAttractModeLights(CurrentTime);
+        UpdatePlayerDisplay(); // Update display during attract to show zeroes/dashes
     }
     else if (gameState == MATCH_MODE) { 
         RunMatchMode(CurrentTime); 
+        UpdatePlayerDisplay(); // Update display during match (if needed)
     }
     else if (gameState == HIGH_SCORE_CHECK) {
         CheckHighScores(); 
@@ -722,10 +739,13 @@ void RPU_Callback_GameLogic() {
         RunBonusLadderChase(CurrentTime);
         RunBonusCountdown(CurrentTime); 
         RunBallSearch(CurrentTime); 
+        UpdatePlayerDisplay(); // Update display constantly during play
     }
 
     // --- 3. Display Updates (Runs if game is active or waiting) ---
+    // This section is now largely handled by UpdatePlayerDisplay(), but we ensure unused displays are cleared.
     if (gameState == ATTRACT_MODE || gameState == GAME_OVER || gameState == BALL_IN_PLAY) {
+        // Clear unused player displays (players 3 and 4 if less than 3 players)
         for (int i = 1; i <= 4; i++) {
             if (i > gNumPlayers) {RPU_SetDisplay(i - 1, 0, true); }
         }
@@ -735,7 +755,7 @@ void RPU_Callback_GameLogic() {
     byte switchHit; 
     while ((switchHit = RPU_PullFirstFromSwitchStack()) != NO_SWITCH_HIT) {
         
-        // --- Action: Check for TILT and SLAM TILT (Added from Prompt Set 2) ---
+        // --- TILT Logic ---
         if (switchHit == SW_TILT) {
             if (NumTiltWarnings < MaxTiltWarnings) {
                 NumTiltWarnings++;
@@ -775,7 +795,6 @@ void RPU_Callback_GameLogic() {
         
         // 2. Adding Players Logic (While game is active and not max players)
         if (switchHit == SW_CREDIT_BUTTON && gNumPlayers < 4 && gameState == BALL_IN_PLAY) {
-            // Check if the button press was quick (not a reset hold)
             if (startButtonHoldTime == 0) {
                 gNumPlayers++;
                 PlayGameStartMelody();
