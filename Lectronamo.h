@@ -5,7 +5,6 @@
 // I. HARDWARE DEFINITIONS (SWITCHES, LAMPS, SOLENOIDS)
 //================================================================
 
-#include <stdint.h>
 #include <Arduino.h> // Defines byte for use in header file
 
 //----------------------------
@@ -125,6 +124,33 @@
 #define LAMP_PLAYER_UP_4        101
 
 //================================================================
+// II. CONSTANTS AND GAME FLOW DEFINITIONS
+//================================================================
+
+// Game Flow States
+#define HIGH_SCORE_CHECK 98 // State for checking and awarding high scores
+
+// Timings
+#define TIME_MATCH_SEQUENCE_MS 3000 // Match mode runs for 3 seconds
+#define TIME_BALL_SAVE_DURATION_MS 15000 // 15 seconds ball save (Example)
+#define TIME_ARC_SURGE_COMBO_MS 5000 // 5 seconds to complete Arc Surge Combo
+
+// Attract Mode Phases
+#define ATTRACT_PHASE_1_CLASSIC_FLOW 1
+#define ATTRACT_PHASE_2_ARC_SURGE 2
+#define ATTRACT_PHASE_3_WAVE 3
+
+//================================================================
+// III. EEPROM ADDRESSES (MPU ADJUSTMENTS)
+//================================================================
+#define ADDR_MAX_TILT_WARNINGS 10 // Max tilt warnings (2 is standard)
+#define ADDR_EXTRA_BALL_SCORE 11  // Score awarded if EB is bypassed
+#define ADDR_SPECIAL_SCORE 12     // Score awarded if Special is bypassed
+#define ADDR_HIGHSCORE_REPLAY_AWARD 13 // How many replays awarded for High Score (1-3)
+#define ADDR_SAUCER_LIGHT_PERSISTENCE 14 // SW 14 check
+#define ADDR_FREE_PLAY_ADJUSTMENT 15 // Check for Free Play Mode
+
+enum GameState {
     ATTRACT_MODE,
     GAME_START,
     BALL_IN_PLAY,
@@ -132,6 +158,7 @@
     GAME_OVER,
     MATCH_MODE,
     AUDIT_MODE
+};
 extern GameState gameState;
 extern long playerScores[4];
 extern int currentBonus;
@@ -168,30 +195,6 @@ extern long ExtraBallScoreValue;
 extern long SpecialScoreValue;
 extern byte AwardHighscoreNumReplays;
 
-//================================================================
-// II. CONSTANTS AND GAME FLOW DEFINITIONS
-//================================================================
-
-// Game Flow States
-#define HIGH_SCORE_CHECK 98 // State for checking and awarding high scores
-
-// Timings
-#define TIME_MATCH_SEQUENCE_MS 3000 // Match mode runs for 3 seconds
-#define TIME_BALL_SAVE_DURATION_MS 15000 // 15 seconds ball save
-#define TIME_ARC_SURGE_COMBO_MS 5000 // 5 seconds to complete Arc Surge Combo
-
-// Attract Mode Phases
-#define ATTRACT_PHASE_1_CLASSIC_FLOW 1
-#define ATTRACT_PHASE_2_ARC_SURGE 2
-#define ATTRACT_PHASE_3_WAVE 3
-
-// EEPROM Adjustment Addresses (Used in CheckHighScores and Tilt Logic)
-#define ADDR_MAX_TILT_WARNINGS 10 // Max tilt warnings
-#define ADDR_EXTRA_BALL_SCORE 11  // Score awarded if Extra Ball is bypassed
-#define ADDR_SPECIAL_SCORE 12     // Score awarded if Special is bypassed
-#define ADDR_HIGHSCORE_REPLAY_AWARD 13 // Number of replays for High Score
-#define ADDR_SAUCER_LIGHT_PERSISTENCE 14 // Saucer light persistence setting
-
 //----------------------------
 // EEPROM Memory Map (Standard RPU OS Addresses)
 //----------------------------
@@ -201,8 +204,6 @@ extern byte AwardHighscoreNumReplays;
 #define ADDR_MAX_CREDITS_17 0x0011
 #define ADDR_MAX_CREDITS_18 0x0012
 #define ADDR_MAX_CREDITS_19 0x0013
-#define ADDR_BONUS_COUNTDOWN_METHOD 0x27 // MPU Switch 24
-#define ADDR_FREE_PLAY_ADJUSTMENT 0x28   // MPU Switch 25
 #define ADDR_EXTRA_BALL_BYPASS 0x29      // MPU Switch 26
 
 //----------------------------

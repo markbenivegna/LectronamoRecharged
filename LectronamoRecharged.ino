@@ -202,6 +202,39 @@ void PlayExtraBallAward() {
 void UpdatePlayerDisplay() {
     if (gameState == BALL_IN_PLAY) {
         byte displayValue = (player * 10) + ball;
+        RPU_SetDisplay(3, displayValue, true); 
+    } else if (gameState == GAME_OVER || gameState == ATTRACT_MODE) {
+        RPU_SetDisplay(3, 0, true);
+    }
+}
+
+void CheckHighScores() {
+    byte AwardHighscoreNumReplays = RPU_ReadByteFromEEProm(ADDR_HIGHSCORE_REPLAY_AWARD);
+    if (AwardHighscoreNumReplays > 3) AwardHighscoreNumReplays = 0; 
+    
+    long gameHighScore = 0;
+    for (int i = 0; i < gNumPlayers; i++) {
+        if (playerScores[i] > gameHighScore) {
+            gameHighScore = playerScores[i];
+        }
+    }
+
+    if (gameHighScore > highScore) {
+        highScore = gameHighScore;
+        RPU_WriteULToEEProm(ADDR_HIGH_SCORE, highScore);
+        
+        if (AwardHighscoreNumReplays > 0) {
+            for (byte i = 0; i < AwardHighscoreNumReplays; i++) {
+                AwardReplay();
+                delay(300); 
+            }
+        }
+    }
+}
+
+void CheckHighScores() {
+    if (gameState == BALL_IN_PLAY) {
+        byte displayValue = (player * 10) + ball;
         RPU_SetDisplay(3, displayValue, true); // Display 3 (Match/Ball in Play)
     } else if (gameState == GAME_OVER || gameState == ATTRACT_MODE) {
         RPU_SetDisplay(3, 0, true);
@@ -624,8 +657,10 @@ void StartGame(byte numPlayers) {
 }
 
 void RPU_Callback_GameLogic() {
+{
     unsigned long CurrentTime = millis(); 
     
+    // --- 1. Hard Reset Timer Logic ---
     static unsigned long startButtonHoldTime = 0;
     const unsigned long HOLD_TIME_TO_RESET_MS = 2000; 
 
@@ -633,7 +668,7 @@ void RPU_Callback_GameLogic() {
         if (RPU_ReadSingleSwitchState(SW_CREDIT_BUTTON)) { 
             if (startButtonHoldTime == 0) startButtonHoldTime = CurrentTime; 
             else if (CurrentTime > startButtonHoldTime + HOLD_TIME_TO_RESET_MS) {
-                StartGame(1); // Restart the game 
+                StartGame(1); 
                 startButtonHoldTime = 0;
                 return; 
             }
@@ -643,12 +678,14 @@ void RPU_Callback_GameLogic() {
     }
     
     // --- 2. State Handlers (Continuous Logic) ---
+
     if (gameState == ATTRACT_MODE) {
         RunAttractModeLights(CurrentTime);
+        UpdatePlayerDisplay(); 
     }
     else if (gameState == MATCH_MODE) { 
         RunMatchMode(CurrentTime); 
-        UpdatePlayerDisplay(); // <-- ADDED
+        UpdatePlayerDisplay(); 
     }
     else if (gameState == HIGH_SCORE_CHECK) {
         CheckHighScores(); 
@@ -661,8 +698,8 @@ void RPU_Callback_GameLogic() {
         RunBonusLadderChase(CurrentTime);
         RunBonusCountdown(CurrentTime); 
         RunBallSearch(CurrentTime); 
+        UpdatePlayerDisplay(); 
     }
-    UpdatePlayerDisplay(); // <-- ADDED
 
     // --- 3. Display Updates (Runs if game is active or waiting) ---
     if (gameState == ATTRACT_MODE || gameState == GAME_OVER || gameState == BALL_IN_PLAY) {
@@ -675,7 +712,7 @@ void RPU_Callback_GameLogic() {
     byte switchHit; 
     while ((switchHit = RPU_PullFirstFromSwitchStack()) != NO_SWITCH_HIT) {
         
-        // --- Action: Check for TILT and SLAM TILT (Added from Prompt Set 2) ---
+        // --- TILT Logic ---
         if (switchHit == SW_TILT) {
             if (NumTiltWarnings < MaxTiltWarnings) {
                 NumTiltWarnings++;
@@ -691,26 +728,29 @@ void RPU_Callback_GameLogic() {
             return;
         }
 
+        // --- Coin and Start Button logic ---
         bool isCoinSwitch = (switchHit == SW_COIN_1 || switchHit == SW_COIN_2 || switchHit == SW_COIN_3);
         if (isCoinSwitch && (gameState == ATTRACT_MODE || gameState == GAME_OVER)) {
-            int maxCredits = 8; // Placeholder 
+            int maxCredits = 8;
             if (credits < maxCredits) {
                 credits++;
                 PlayCreditAddMelody(); 
             }
         } 
         
+        // 1. Start game from Attract/Game Over (Normal Credit/Free Play Start)
         if (switchHit == SW_CREDIT_BUTTON && (gameState == ATTRACT_MODE || gameState == GAME_OVER)) {
              bool freePlay = RPU_ReadByteFromEEProm(ADDR_FREE_PLAY_ADJUSTMENT) == 1;
              if (credits > 0 || freePlay) {
                 if (!freePlay) credits--;
                 if (gameState == ATTRACT_MODE) PlayGameStartMelody();
                 StopAttractModeLights();
-                StartGame(1); // Start a 1-player game
+                StartGame(1);
                 return;
              }
         } 
         
+        // 2. Adding Players Logic (While game is active and not max players)
         if (switchHit == SW_CREDIT_BUTTON && gNumPlayers < 4 && gameState == BALL_IN_PLAY) {
             if (startButtonHoldTime == 0) {
                 gNumPlayers++;
@@ -718,6 +758,7 @@ void RPU_Callback_GameLogic() {
             }
         }
     }
+}
 }
 
 void StopAttractModeLights() {
