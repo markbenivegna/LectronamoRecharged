@@ -281,7 +281,7 @@ void RunBonusLadderChase(unsigned long CurrentTime) {
 void RunBallSearch(unsigned long CurrentTime) {
     const unsigned long BALL_SEARCH_TIMEOUT_MS = 15000; 
 
-    if (gameState == BALL_IN_PLAY) {
+    if (gameState == BALL_IN_PLAY && firstHitMade) {
         if (CurrentTime > lastSwitchHitTime + BALL_SEARCH_TIMEOUT_MS) {
             FireSolenoid(SOL_SAUCER, 50); 
             FireSolenoid(SOL_KICKER, 50);  
