@@ -106,12 +106,21 @@ void SaveHighScore() {
         RPU_WriteULToEEProm(ADDR_HIGH_SCORE, highScore);
     }
 }
-
+/*
 void DrainBall(bool isTilted = false) {
     if (isTilted) { 
         currentBonus = 0; 
     }
     SaveHighScore();
+    gameState = BONUS_COUNT;
+}
+*/
+void DrainBall(bool isTilted = false) {
+    if (isTilted) {
+        currentBonus = 0;
+    }
+    SaveHighScore();
+    PlayBonusCollectSound();
     gameState = BONUS_COUNT;
 }
 
@@ -164,6 +173,94 @@ void PlayGameStartMelody() {
         PlayStockSound(SND_10000_POINTS); // Sol 4 (Lowest Pitch)
         delay(300); // Longer pause before repeat
     }
+}
+
+// Bonus countdown sound using standard solenoid 5 and a final tone.
+void PlayBonusCollectSound() {
+    PlayStockSound(SND_ADD_BONUS); // Solenoid 5 - Standard bonus chime
+    delay(500);
+    PlayStockSound(SND_10000_POINTS); // Solenoid 4 - Final chime tone
+}
+
+// Extra Ball Award Melody (Celebratory Sequence)
+void PlayExtraBallAward() {
+    PlayStockSound(SND_10000_POINTS);
+    delay(100);
+    PlayStockSound(SND_POP_BUMPER);
+    delay(100);
+    PlayStockSound(SND_10000_POINTS);
+}
+
+void RunBonusCountdown(unsigned long CurrentTime) {
+    // These static variables manage the state across multiple calls
+    static unsigned long lastBonusStepTime = 0;
+    static int bonusStepsRemaining = 0;
+    static long bonusToAward = 0;
+    static long bonusAwarded = 0;
+    static int currentBonusLampIndex = NUM_BONUS_LADDER_LAMPS - 1; // Start at 10k (index 9)
+    const unsigned long STEP_INTERVAL = 150; // 150ms per bonus step
+
+    if (gameState != BONUS_COUNT) {
+        // Reset state when leaving BONUS_COUNT
+        bonusStepsRemaining = 0;
+        return;
+    }
+
+    // Initialize state on first entry to BONUS_COUNT
+    if (bonusStepsRemaining == 0 && lastBonusStepTime == 0) {
+        // Calculate total bonus to award
+        bonusToAward = (long)currentBonus * bonusMultiplier;
+        // Calculate the maximum number of 1000-point steps to count down
+        bonusStepsRemaining = currentBonus / 1000; 
+        bonusAwarded = 0;
+        currentBonusLampIndex = (currentBonus / 1000) - 1; // Index 0 = 1k, Index 9 = 10k, Index 18 = 19k
+        
+        // Ensure the initial lamp state is correct (all lit up to the current bonus)
+        for (int i = 0; i <= currentBonusLampIndex && i < NUM_BONUS_LADDER_LAMPS; i++) {
+             RPU_SetLampState(BonusLadderLamps[i], 1);
+        }
+        
+        lastBonusStepTime = CurrentTime; 
+    }
+
+    if (CurrentTime < lastBonusStepTime + STEP_INTERVAL) {
+        return; // Wait for the next step interval
+    }
+    
+    // Check if the total score has been awarded
+    if (bonusStepsRemaining <= 0) {
+        // COUNTDOWN COMPLETE - Award any remainder and eject.
+        if (bonusAwarded < bonusToAward) {
+            AddToPlayerScore(bonusToAward - bonusAwarded);
+        }
+        gameState = BALL_IN_PLAY; 
+        FireSolenoid(SOL_OUTHOLE, 150); // Eject ball after countdown is finished
+        currentBonus = 1000; // Reset Bonus to 1000 for next ball
+        lastBonusStepTime = 0; // Reset timer for next countdown
+        return;
+    }
+
+    // 1. Visually turn off the corresponding lamp
+    if (currentBonusLampIndex >= 0 && currentBonusLampIndex < NUM_BONUS_LADDER_LAMPS) {
+         RPU_SetLampState(BonusLadderLamps[currentBonusLampIndex], 0);
+    }
+    
+    // 2. Award 1000 points (using the multiplier)
+    long scoreStep = 1000L * bonusMultiplier;
+    
+    if (bonusToAward - bonusAwarded < scoreStep) {
+        scoreStep = bonusToAward - bonusAwarded; 
+    }
+    
+    AddToPlayerScore(scoreStep); 
+    bonusAwarded += scoreStep;
+    PlayStockSound(SND_100_POINTS); // Play a scoring sound for the step
+    
+    // 3. Decrement counters and move to the next lamp
+    bonusStepsRemaining--;
+    currentBonusLampIndex--;
+    
+    lastBonusStepTime = CurrentTime;
 }
 
 void RunBonusLadderChase(unsigned long CurrentTime) {
@@ -267,45 +364,47 @@ void Handle3BankCompletion() {
 
 // Handles 5-Bank completion and Extra Ball/Special logic.
 void Handle5BankCompletion() {
-    AddToPlayerScore(SCORE_5BANK_COMPLETION); 
+    AddToPlayerScore(SCORE_5BANK_COMPLETION);
     FireSolenoid(SOL_DROP_TARGET_5BANK_RESET, 100); 
     
     fiveBankCompleteCount++;
-    for (int i = 0; i < 5; i++) { fiveTargetsDown[i] = false; }
+    for (int i = 0; i < 5; i++) {
+        fiveTargetsDown[i] = false;
+    }
+
+    // --- Action B: Extra Ball Check (SW 26) ---
+    byte extraBallSetting = RPU_ReadByteFromEEProm(ADDR_EXTRA_BALL_BYPASS);
+    bool awardExtraBall = (extraBallSetting != 0); // If setting is not 0 (Bypass)
 
     if (fiveBankCompleteCount == 2) {
-        RPU_SetLampState(LAMP_EXTRA_BALL_LANE, 1, 0, 0); // Lite Extra Ball Lane (J3 Pin 18)
-        extraBallLit = true;
+        if (awardExtraBall) { // Check operator adjustment SW 26
+            RPU_SetLampState(LAMP_EXTRA_BALL_LANE, 1, 0, 0); // Lite Extra Ball Lane
+            extraBallLit = true;
+        }
     } else if (fiveBankCompleteCount >= 3) {
         RPU_SetLampState(LAMP_BONUS_QUINTUPLE, 1, 0, 500); // Placeholder Flash for Special
+        PlayExtraBallAward(); // Play sound when Special condition is met
     }
 }
 
-// Handles bonus score calculation and display countdown.
 void CollectBonus() {
-    long scoreAward = (long)currentBonus * bonusMultiplier;
-    
-    byte countdownMethod = RPU_ReadByteFromEEProm(ADDR_BONUS_COUNTDOWN_METHOD);
-    bool countdownBy1000Steps = (countdownMethod == 1); // 1,000 Steps is MPU SW 24 ON
-
-    AddToPlayerScore(scoreAward);
-    
-    currentBonus = 1000;
-    ClearAllMultiplierLamps(); // Turn off all 6 multiplier lamps
-    
-    FireSolenoid(SOL_OUTHOLE, 150); // Fire Outhole Kicker (Sol 10)
+    // This function is now a placeholder. The logic has been moved to DrainBall and RunBonusCountdown.
+    // The primary purpose is to set the state and let the main loop handle the countdown.
+    PlayBonusCollectSound(); // Play the initial sound
+    ClearAllMultiplierLamps(); // Reset multiplier lamps for the next ball
+    gameState = BONUS_COUNT; // Set the state to start the countdown
 }
-
-// Handles all switch closures and dispatches to specific handlers.
 void ProcessSwitches() {
     byte switchHit;
     while ((switchHit = RPU_PullFirstFromSwitchStack()) != NO_SWITCH_HIT) {
         // Update the Ball Search Timer on any switch activity
+        // --- Action A: Reset Ball Search Timer ---
+        unsigned long CurrentTime = millis();
+        lastSwitchHitTime = CurrentTime; // Update the Ball Search Timer
         lastSwitchHitTime = millis();
 
         switch (switchHit) {
             case SW_OUTHOLE:
-                CollectBonus(); 
                 DrainBall();
                 break;
 
@@ -430,10 +529,15 @@ void HandleSkillShot(byte switchHit) {
             PlayStockSound(SND_1000_POINTS); // Base sound
         }
         FireSolenoid(SOL_SAUCER, 50); // Fire Solenoid 14 briefly
+
+        // --- Action C: Saucer Light Persistence Check (SW 14) ---
+        byte persistenceSetting = RPU_ReadByteFromEEProm(ADDR_SAUCER_LIGHT_PERSISTENCE); 
+        if (persistenceSetting == 0) { // If setting is 'Goes OFF'
+            RPU_SetLampState(LAMP_SAUCER_EJECT, 0); // Turn off the lamp
+        }
     }
 }
 
-// Manages Ball Save timer and visual indicator.
 void RunBallSaveLogic(unsigned long CurrentTime) {
     if (isBallSaveActive) {
         RPU_SetLampState(LAMP_SHOOT_AGAIN, 1, 0, 500); // Visual cue (Pulse)
@@ -444,8 +548,6 @@ void RunBallSaveLogic(unsigned long CurrentTime) {
         }
     }
 }
-
-// Handles Arc Surge Combo activation and timer logic.
 void HandleArcSurgeCombo(unsigned long CurrentTime) {
     if (RPU_ReadSingleSwitchState(SW_RIGHT_RETURN_LANE) && !(gGameFlags & FLAG_ARC_SURGE_ACTIVE)) {
         gGameFlags |= FLAG_ARC_SURGE_ACTIVE;
@@ -528,6 +630,7 @@ void RPU_Callback_GameLogic() {
         ProcessSwitches(); 
         RunBallSaveLogic(CurrentTime);
         HandleArcSurgeCombo(CurrentTime);
+        RunBonusCountdown(CurrentTime);
         RunBonusLadderChase(CurrentTime); 
         RunBallSearch(CurrentTime);
     }

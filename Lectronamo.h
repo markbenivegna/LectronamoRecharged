@@ -138,6 +138,8 @@
 #define ADDR_MAX_CREDITS_19 0x0013
 #define ADDR_BONUS_COUNTDOWN_METHOD 0x27 // MPU Switch 24
 #define ADDR_FREE_PLAY_ADJUSTMENT 0x28   // MPU Switch 25
+#define ADDR_EXTRA_BALL_BYPASS 0x29      // MPU Switch 26 (Placeholder)
+#define ADDR_SAUCER_LIGHT_PERSISTENCE 0x21 // MPU Switch 14 (Placeholder)
 //----------------------------
 // Game State Definitions
 //----------------------------
