@@ -70,7 +70,6 @@
 #define MACHINE_STATE_ADJUST_CPC_CHUTE_1        -18
 #define MACHINE_STATE_ADJUST_CPC_CHUTE_2        -19 
 #define MACHINE_STATE_ADJUST_CPC_CHUTE_3        -20
-// This define is set to the last test, so the extended settings will know when to take over
 #define MACHINE_STATE_TEST_DONE           -20
 #else
 #define MACHINE_STATE_TEST_DONE           -18

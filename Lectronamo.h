@@ -80,26 +80,23 @@
 
 //----------------------------
 // Lamp Definitions (LAMP_)
-// - Page 21 (Finalized Pinout)
 //----------------------------
-// A. Bonus Multiplier Lamps (Dual Playfield Sets)
-// Multiplier SET A: CURRENT STATUS (Bonus Ladder Area)
+// Bonus Multiplier Lamps (Status & Next Target)
 #define LAMP_BONUS_DOUBLE       22   // J3 Pin 22 (2X Status)
 #define LAMP_BONUS_TRIPLE       13   // J3 Pin 13 (3X Status)
 #define LAMP_BONUS_QUINTUPLE    10   // J3 Pin 10 (5X Status)
-// Multiplier SET B: NEXT TARGET (3-Bank Area)
 #define LAMP_BONUS_2X_NEXT      25   // J1 Pin 25 (Next target is 2X)
 #define LAMP_BONUS_3X_NEXT      11   // J1 Pin 11 (Next target is 3X)
 #define LAMP_BONUS_5X_NEXT      20   // J3 Pin 20 (Next target is 5X)
 
-// B. Arc Surge & High Value Indicators
+// Feature & High-Value Lamps
 #define LAMP_SAUCER_EJECT       6    // J1 Pin 6 (Saucer/Arc Surge Targets - Single Pin Control)
 #define LAMP_ADVANCE_BONUS_3    17   // J3 Pin 17 (Advance Bonus #3 - Used in Attract Mode Chase)
 #define LAMP_EXTRA_BALL_LANE    18   // J3 Pin 18 (Extra Ball Lane - Used in Attract Mode & Gameplay)
 #define LAMP_SPINNER            28   // J1 Pin 28 (Spinner Scores 1000 When Lit)
 #define LAMP_SHOOT_AGAIN        27   // J1 Pin 27 (Shoot Again / Ball Save Indicator)
 
-// C. Bonus Ladder Lamps (Used for Chase Visuals)
+// Bonus Ladder Lamps (Visual Chase)
 #define LAMP_BONUS_1000         18   // J1 Pin 18 
 #define LAMP_BONUS_2000         1    // J3 Pin 1
 #define LAMP_BONUS_3000         26   // J3 Pin 26
@@ -111,7 +108,7 @@
 #define LAMP_BONUS_9000         17   // J1 Pin 17
 #define LAMP_BONUS_10000        8    // J1 Pin 8 
 
-// D. Display and Miscellaneous Lamps (Retaining existing definitions)
+// Display & Cabinet Lamps
 #define LAMP_BALL_IN_PLAY       122
 #define LAMP_PLAYER_1           116
 #define LAMP_PLAYER_UP_1        114
@@ -129,33 +126,6 @@
 //================================================================
 // II. GAME LOGIC & STATE DEFINITIONS
 //================================================================
-
-//----------------------------
-// Operator Adjustments
-//----------------------------
-#define ADJ_SKILL_SHOT_ENABLED true
-#define ADJ_SKILL_SHOT_POINTS 5000
-#define ADJ_SKILL_SHOT_TIMEOUT_MS 0
-#define ADJ_BALL_SAVE_TIME_SEC 20
-#define ADJ_ARC_SURGE_COMBO_TIME_MS 5000
-#define ADJ_SPINNER_MODE_TIME_SEC 30
-#define ADJ_POP_MODE_TIME_SEC 30
-#define ADJ_DROP_MODE_TIME_SEC 60
-#define ADJ_HURRY_UP_TIME_SEC 15
-#define ADJ_MINI_WIZARD_RETRIES true
-#define ADJ_MINI_WIZARD_SCORE 100000
-#define ADJ_WIZARD_MODE_SCORE 500000
-#define ADJ_WIZARD_MODE_RETRIES true
-#define ODDS_LIGHT_EXTRA_BALL 5
-#define ODDS_ADVANCE_POPS 20
-#define ODDS_BIG_POINTS 5
-#define ODDS_PUNY_POINTS 40
-#define ODDS_ADVANCE_MULTIPLIER 10
-#define ODDS_HOLD_BONUS 15
-#define ODDS_TILT_ENDS_GAME 5
-#define ADJ_MAX_EXTRA_BALLS_PER_BALL 1
-#define ADJ_BONUS_CAP_POINTS 30000
-#define ADJ_BONUS_HOLD_ENABLED true
 
 //----------------------------
 // EEPROM Memory Map
@@ -212,6 +182,7 @@ extern int ballsPerGame;
 extern bool specialAwardedThisBall;
 extern unsigned long highScore;
 extern int credits;
+extern unsigned long lastSwitchHitTime;
 
 //================================================================
 // II. GAME LOGIC & STATE DEFINITIONS
@@ -237,12 +208,12 @@ extern int credits;
 #define TIME_BALL_SAVE_DURATION_MS 20000L
 #define TIME_ARC_SURGE_COMBO_MS    8000L
 
-// Attract Mode Phases (Sub-states for Attract Mode)
+// Attract Mode Phase Definitions
 #define ATTRACT_PHASE_1_CLASSIC_FLOW    1
 #define ATTRACT_PHASE_2_ARC_SURGE       2
 #define ATTRACT_PHASE_3_WAVE            3
 
-// General Game Flags (Bitmasks for tracking state)
+// General Game State Flags
 #define FLAG_SKILL_SHOT_ACTIVE          (1 << 0)
 #define FLAG_ARC_SURGE_ACTIVE           (1 << 1)
 #define FLAG_ARC_SURGE_T1_HIT           (1 << 2)
