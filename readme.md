@@ -28,27 +28,52 @@ This ruleset details the game logic implemented in the Lite Version firmware, st
 
 These features are the foundational, unaltered elements of the original Lectronamo ruleset:
 
-* **Pop Bumpers & Slingshots:** Score **100 points**[cite: 97].
-* **Rebound Rubber (SW 18):** Scores **300 points** and advances bonus one step[cite: 97, 153].
-* **Outlanes:** Score **3,000 points** and **3 bonus advances**[cite: 205].
-* **Turnaround Rollover (SW 17):** Scores **100 points**, then lights the **Left Return Lane**[cite: 193].
-* **Left Return Lane Value:** When lit, the **Left Return Lane** awards **9,000 points**[cite: 194].
-* **Spinner:** Scores **100 points** per spin. Lights at **10,000 bonus** accumulated. Every **4th spin** advances bonus by 1,000[cite: 189, 190, 152].
-* **Stationary Target (SW 12):** Scores **5,000 points** and advances bonus one step. Lites the Eject Pocket (Saucer) and Side Lane for extra bonus steps[cite: 196].
-* **Lit Saucer / Side Lane:** If the Stationary Target has been made, the **Eject Pocket (Saucer)** awards **5,000 points and three bonus advances**[cite: 198].
+* **Pop Bumpers & Slingshots:** Score **100 points**.
+* **Rebound Rubber:** Scores **300 points** and advances bonus one step.
+* **Outlanes:** Score **3,000 points** and **3 bonus advances**.
+* **Turnaround Rollover:** Scores **100 points**, then lights the **Left Return Lane**.
+* **Left Return Lane Value:** When lit, the **Left Return Lane** awards **9,000 points**.
+* **Spinner:** Scores **100 points** per spin. Lights at **10,000 bonus** accumulated. Every **4th spin** advances bonus by 1,000.
+* **Stationary Target (SW 12):** Scores **5,000 points** and advances bonus one step. Lites the Eject Pocket (Saucer) and Side Lane for extra bonus steps.
+* **Lit Saucer / Side Lane:** If the Stationary Target has been made, the **Eject Pocket (Saucer)** awards **5,000 points and three bonus advances**.
 * **Drop Targets:**
-    * **3-Bank Completion:** Awards **6,000 points** and advances the Bonus Multiplier (2X, 3X, 5X)[cite: 165].
-    * **5-Bank Completion:** Awards **10,000 points**[cite: 184]. Second completion lites **Extra Ball**, third completion lites **Special**.
+    * **3-Bank Completion:** Awards **6,000 points** and advances the Bonus Multiplier (2X, 3X, 5X).
+    * **5-Bank Completion:** Awards **10,000 points**. Second completion lites **Extra Ball**, third completion lites **Special**.
 * **Extra Ball / Special:** Awarded when lit and collected via lane/switch.
-* **Tilt:** Disqualifies the current ball only (adjustable warnings)[cite: 110].
+* **Tilt:** Disqualifies the current ball only (adjustable warnings).
 
 ### B. Recharged (Modernized) Rules
 
 These features represent the new, additive logic introduced in the Recharged firmware:
 
 * **Ball Save:** **15-second timer** begins after playfield validation. Pulsing "Shoot Again" lamp indicates active save.
-* **Skill Shot (Saucer - SW 40):** Awards **5,000 points** if hit on the initial plunge before any other switch.
+* **Skill Shot:** Awards **5,000 points** if hit on the initial plunge before any other switch.
 * **Spinner Lite Value:** When bonus is 10,000 or higher, the spinner awards **1,000 points** per spin count (additive scoring, overriding the 100 pt score).
-* **Arc Surge Combo (New Feature):** A timed combo started by the **Right Inlane (SW 2)**. Player has **5 seconds** to complete the sequence:
+* **Display Enhancement:** The current **Spinner Hit Count** is actively displayed on the Credit/Player Display (Display 0).
+* **Arc Surge Combo:** A timed combo started by the **Right Inlane (SW 2)**. Player has **8 seconds** to complete the sequence:
     * **Hit Target 1 (SW 25):** Scores a moderate bonus.
     * **Hit Saucer (SW 40):** Scores the **Super Value** (50,000 points) and awards **3 bonus advances**.
+
+---
+
+## ⚙️ Hardware Requirements (RPU - Retro Pin Upgrade)
+
+This firmware is designed to run exclusively on the **RPU (Retro Pin Upgrade)**, a custom open-source pinball controller built on the Arduino platform (typically a Teensy or similar microcontroller) compatible with classic Stern/Bally hardware interfaces.
+
+## 🛠️ Getting Started (Flashing and Setup)
+
+### Prerequisites
+
+1.  **Arduino IDE / VS Code PlatformIO:** Must be installed.
+2.  **RPU Library:** The core `RPU.h` library must be present in the project folder or installed in your library path.
+
+### Flashing the Firmware
+
+1.  Clone this repository to your local machine.
+2.  Open the project in your IDE (VS Code with PlatformIO recommended).
+3.  Ensure your RPU-compatible board is selected.
+4.  Upload the firmware to the microcontroller.
+
+### Initial Configuration (EEPROM)
+
+Upon first boot, the system will initialize default values in EEPROM. Critical adjustments (e.g., TILT warnings, Free Play, Balls Per Game) are controlled by the MPU Adjustments defined in **`Lectronamo.h`**.
