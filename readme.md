@@ -1,6 +1,6 @@
 # ⚡ Lectronamo Recharged (Modernized Pinball Control)
 
-This repository contains the complete firmware for **Lectronamo Recharged**, a project to modernize the game logic for the classic 1978 Stern Lectronamo pinball machine using the **RPU (Retro Pinball Unit) Microcontroller System**.
+This repository contains the complete firmware for **Lectronamo Recharged**, a project to modernize the game logic for the classic 1978 Stern Lectronamo pinball machine using the **RPU (Retro Pin Upgrade) Microcontroller System**.
 
 This firmware implements a complex, ruleset-driven logic on modern, reliable hardware, replacing the original MPU and Driver Boards.
 
@@ -22,42 +22,40 @@ The Lite Version firmware consists primarily of the following file types:
 
 ## 🕹️ Lite Version Ruleset (Feature List)
 
-This ruleset details the game logic implemented in the Lite Version firmware, differentiating between the original 1978 rules and the modernized "Recharged" additions.
+This ruleset details the game logic implemented in the Lite Version firmware, strictly adhering to the core Lectronamo rules while adding the modern 'Recharged' features.
 
 ### A. Core (1978) Rules
 
-These features are foundational elements of the original Lectronamo ruleset:
+These features are the foundational, unaltered elements of the original Lectronamo ruleset:
 
-* **Drop Targets (3-Bank & 5-Bank):** Base score of **500 points** per drop target.
-* **Pop Bumpers & Slingshots:** **100 points** per hit.
-* **Outlanes:** **3,000 points** plus **3 bonus advances**.
-* **Rebound Rubber (SW 18):** **300 points** plus **1 bonus advance**.
-* **Spinner:** **100 points** per rotation count.
-* **3-Bank Completion:** Awards **15,000 points** and resets the bank.
-    * **Bonus Multiplier:** Completing the 3-Bank advances the multiplier from 1X to **2X**, then to **3X**, and finally to **5X**.
-* **5-Bank Completion:** Awards **25,000 points** and resets the bank.
-    * **Extra Ball/Special:** Awards the **Extra Ball** or **Special** score (configurable via EEPROM) upon subsequent completions.
-* **Bonus Count:** Initiated on ball drain. Awards accumulated bonus at the current multiplier.
+* **Pop Bumpers & Slingshots:** Score **100 points**.
+* **Stationary Target (SW 12):** Lights the **Saucer** and **Side Lane**.
+* **Spinner:** Lights at **10,000 bonus** accumulated. Every **4th spin** advances bonus by 1,000.
+* **Turnaround Rollover (SW 17):** Scores **100 points**, then lights the **Left Return Lane** for a high score.
+* **Drop Targets:**
+    * **3-Bank Completion:** Awards **6,000 points** and advances the Bonus Multiplier (2X, 3X, 5X).
+    * **5-Bank Completion:** Awards **10,000 points**. Second completion lites **Extra Ball**, third completion lites **Special**.
+* **Extra Ball / Special:** Awarded when lit and collected via lane/switch.
+* **Tilt:** Disqualifies the current ball only (adjustable warnings).
 
 ### B. Recharged (Modernized) Rules
 
-These features represent the new, modernized logic introduced in the Recharged firmware:
+These features represent the new, additive logic introduced in the Recharged firmware:
 
-* **Skill Shot (Saucer on Plunge):** Awards **5,000 points** on the first hit of the ball.
-* **Spinner Lite Value:** If the accumulated bonus is 10,000 or higher, the spinner is lit for a high-value score of **1,000 points** per count.
-* **Side Lane / Saucer Combo:** Hitting the **Standup Target (SW 12)** lites the **Saucer** for **5,000 points** and **3 bonus advances**.
-* **Left Return Lane Value:** Hitting the **Rollover Button (SW 17)** lites the **Left Return Lane** for a high-value award of **9,000 points**.
-* **Arc Surge Combo (New Feature):** A timed combo started by the **Right Return Lane**.
-    * **T1 Hit (SW 25):** Awards **10,000 points**.
-    * **Saucer Hit (SW 40) within timer:** Awards **Super Score of 50,000 points** and ends the combo.
-* **Ball Save:** A modern feature active for the first **15 seconds** of a new ball.
-* **Game Utility:** Implements modern **High Score Check** with configurable Replay Awards and **Match Mode**.
+* **Ball Save:** **15-second timer** begins after playfield validation. Pulsing "Shoot Again" lamp indicates active save.
+* **Skill Shot (Saucer - SW 40):** Awards **5,000 points** if hit on the initial plunge before any other switch.
+* **Spinner Lite Value:** When bonus is 10,000 or higher, the spinner awards **1,000 points** per spin count.
+* **Side Lane / Saucer Combo:** When lit by the Stationary Target, the **Saucer** awards **5,000 points** and **3 bonus advances**.
+* **Left Return Lane Value:** When lit by the Turnaround Rollover, the **Left Return Lane** awards **9,000 points**.
+* **Arc Surge Combo (New Feature):** A timed combo started by the **Right Inlane (SW 2)**. Player has **5 seconds** to:
+    * **Hit Target 1 (SW 25):** Scores a moderate bonus.
+    * **Hit Saucer (SW 40):** Scores the **Super Value** (50,000 points).
 
 ---
 
-## ⚙️ Hardware Requirements (RPU System)
+## ⚙️ Hardware Requirements (RPU - Retro Pin Upgrade)
 
-This firmware is designed to run exclusively on the **RPU (Retro Pinball Unit)**, a custom open-source pinball controller built on the Arduino platform (typically a Teensy or similar microcontroller) compatible with classic Stern/Bally hardware interfaces.
+This firmware is designed to run exclusively on the **RPU (Retro Pin Upgrade)**, a custom open-source pinball controller built on the Arduino platform (typically a Teensy or similar microcontroller) compatible with classic Stern/Bally hardware interfaces.
 
 ## 🛠️ Getting Started (Flashing and Setup)
 
