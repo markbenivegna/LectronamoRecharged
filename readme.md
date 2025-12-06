@@ -49,7 +49,7 @@ These features represent the new, additive logic introduced in the Recharged fir
 * **Ball Save:** **15-second timer** begins after playfield validation. Pulsing "Shoot Again" lamp indicates active save.
 * **Skill Shot:** Awards **5,000 points** if hit on the initial plunge before any other switch.
 * **Spinner Lite Value:** When bonus is 10,000 or higher, the spinner awards **1,000 points** per spin count (additive scoring, overriding the 100 pt score).
-* **Display Enhancement:** The current **Spinner Hit Count** is actively displayed on the Credit/Player Display (Display 0).
+* **Display Enhancement:** The current **Spinner Hit Count** is actively displayed on the Credit/Player Display.
 * **Arc Surge Combo:** A timed combo started by the **Right Inlane**. Player has **8 seconds** to complete the sequence:
     * **Hit Target 1:** Scores a moderate bonus.
     * **Hit Saucer:** Scores the **Super Value** (50,000 points) and awards **3 bonus advances**.
