@@ -33,8 +33,8 @@ These features are the foundational, unaltered elements of the original Lectrona
 * **Outlanes:** Score **3,000 points** and **3 bonus advances**.
 * **Turnaround Rollover:** Scores **100 points**, then lights the **Left Return Lane**.
 * **Left Return Lane Value:** When lit, the **Left Return Lane** awards **9,000 points**.
-* **Spinner:** Scores **100 points** per spin. Lights at **10,000 bonus** accumulated. Every **4th spin** advances bonus by 1,000.
-* **Stationary Target (SW 12):** Scores **5,000 points** and advances bonus one step. Lites the Eject Pocket (Saucer) and Side Lane for extra bonus steps.
+* **Spinner:** Scores **100 points** per spin. **When bonus is 10,000 or higher, the spinner awards 1,000 points per spin count**. Every **4th spin** advances bonus by 1,000.
+* **Stationary Target:** Scores **5,000 points** and advances bonus one step. Lites the Eject Pocket (Saucer) and Side Lane for extra bonus steps.
 * **Lit Saucer / Side Lane:** If the Stationary Target has been made, the **Eject Pocket (Saucer)** awards **5,000 points and three bonus advances**.
 * **Drop Targets:**
     * **3-Bank Completion:** Awards **6,000 points** and advances the Bonus Multiplier (2X, 3X, 5X).
@@ -42,24 +42,23 @@ These features are the foundational, unaltered elements of the original Lectrona
 * **Extra Ball / Special:** Awarded when lit and collected via lane/switch.
 * **Tilt:** Disqualifies the current ball only (adjustable warnings).
 
-#### B. Recharged (Modernized) Rules
+### B. Recharged (Modernized) Rules (Additions Only)
 
-These features represent the new, additive logic introduced in the Recharged firmware:
+These features represent **new, additive game logic** introduced in the Recharged firmware:
 
-* **Free Play:** A game adjustment setting is available via EEPROM to enable Free Play operation, eliminating the need for coinage to start a game.
+* **Free Play (New):** A game adjustment setting is available via EEPROM to enable Free Play operation, eliminating the need for coinage to start a game.
 * **Ball Save:** **15-second timer** begins after playfield validation. Pulsing "Shoot Again" lamp indicates active save.
-* **Skill Shot (Saucer - SW 40):** Awards **5,000 points** if hit on the initial plunge before any other switch.
-* **Spinner Lite Value:** When bonus is 10,000 or higher, the spinner awards **1,000 points** per spin count (additive scoring, overriding the 100 pt score).
+* **Skill Shot (Saucer):** Awards **5,000 points** if hit on the initial plunge before any other switch.
 * **Display Enhancement:** The current **Spinner Hit Count** is actively displayed on the Credit/Player Display (Display 0).
-* **Arc Surge Combo (New Feature):** A timed combo started by the **Right Inlane (SW 2)**. Player has **8 seconds** to complete the sequence:
-    * **Hit Target 1 (SW 25):** Scores a moderate bonus.
-    * **Hit Saucer (SW 40):** Scores the **Super Value** (50,000 points) and awards **3 bonus advances**.
+* **Arc Surge Combo (New Feature):** A timed combo started by the **Right Inlane**. Player has **8 seconds** to complete the sequence:
+    * **Hit Target 1:** Scores a moderate bonus.
+    * **Hit Saucer:** Scores the **Super Value** (50,000 points) and awards **3 bonus advances**.
 
 ---
 
 ## ⚙️ Hardware Requirements (RPU - Retro Pin Upgrade)
 
-This firmware is designed to run exclusively on the **RPU (Retro Pin Upgrade)**, a custom open-source pinball controller built on the Arduino platform (typically a Teensy or similar microcontroller) compatible with classic Stern/Bally hardware interfaces.
+This firmware is designed to run exclusively on the **RPU (Retro Pin Upgrade)**, a custom open-source pinball controller built on the **Arduino Mega 2560** platform compatible with classic Stern/Bally hardware interfaces.
 
 ## 🛠️ Getting Started (Flashing and Setup)
 
