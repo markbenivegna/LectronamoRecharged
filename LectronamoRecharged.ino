@@ -431,6 +431,13 @@ void ProcessSwitches() {
     byte switchHit;
     while ((switchHit = RPU_PullFirstFromSwitchStack()) != NO_SWITCH_HIT) {
         // Update the Ball Search Timer on any switch activity
+        if (!firstHitMade) {
+            // Any switch hit cancels the skill shot.
+            // Turn off the lamp and disable the skill shot immediately.
+            RPU_SetLampState(LAMP_SAUCER_EJECT, 0);
+            firstHitMade = true;
+        }
+
         lastSwitchHitTime = millis();
 
         switch (switchHit) {
@@ -570,29 +577,55 @@ void RunBallSaveLogic(unsigned long CurrentTime) {
 }
 
 void HandleArcSurgeCombo(unsigned long CurrentTime) {
+    // 1. COMBO START (Right Inlane Hit) - Target 1 Pulses
+    // The Bonus Ladder Chase is activated by setting FLAG_ARC_SURGE_ACTIVE
     if (RPU_ReadSingleSwitchState(SW_RIGHT_RETURN_LANE) && !(gGameFlags & FLAG_ARC_SURGE_ACTIVE)) {
         gGameFlags |= FLAG_ARC_SURGE_ACTIVE;
         arcSurgeTimerStart = CurrentTime;
-        RPU_SetLampState(LAMP_SAUCER_EJECT, 1, 0, 500); // Pulse target
+
+        // Start TARGET 1 pulsing (STAGE 1: Left Return Lamp)
+        RPU_SetLampState(LAMP_ARC_SURGE_TARGET_1, 1, 0, 500); // PULSE Target 1 (Q42)
+        RPU_SetLampState(LAMP_SAUCER_EJECT, 0); // Ensure Saucer is OFF
     }
 
     if (gGameFlags & FLAG_ARC_SURGE_ACTIVE) {
-        if (CurrentTime > arcSurgeTimerStart + TIME_ARC_SURGE_COMBO_MS) {
-            gGameFlags &= ~FLAG_ARC_SURGE_ACTIVE; // Turn off flag
-            RPU_SetLampState(LAMP_SAUCER_EJECT, 0); 
-        } else {
-            if (RPU_ReadSingleSwitchState(SW_ADV_BONUS_1000)) { // Target 1 Hit
-                gGameFlags |= FLAG_ARC_SURGE_T1_HIT;
-                AddToPlayerScore(SCORE_ARC_SURGE_T1);
-                PlayStockSound(SND_1000_POINTS); 
-            }
-            if (RPU_ReadSingleSwitchState(SW_SAUCER) && (gGameFlags & FLAG_ARC_SURGE_T1_HIT)) { // Super Target Hit
-                AddToPlayerScore(SCORE_ARC_SURGE_SUPER);
-                PlayStockSound(SND_10000_POINTS); // Use high-value sound for combo completion
-                
-                gGameFlags &= ~(FLAG_ARC_SURGE_ACTIVE | FLAG_ARC_SURGE_T1_HIT);
-                RPU_SetLampState(LAMP_SAUCER_EJECT, 0); 
-                FireSolenoid(SOL_SAUCER, 50); // Fire Solenoid 14
+        // 2. COMBO ADVANCE (Target 1 Hit) - Saucer Pulses
+        // SW_ADV_BONUS_1000 is the constant for Target 1
+        if (RPU_ReadSingleSwitchState(SW_ADV_BONUS_1000) && !(gGameFlags & FLAG_ARC_SURGE_T1_HIT)) {
+            AddToPlayerScore(SCORE_ARC_SURGE_T1);
+            PlayStockSound(SND_1000_POINTS); 
+
+            gGameFlags |= FLAG_ARC_SURGE_T1_HIT;
+
+            // Stop Target 1 Pulse, Start Saucer Pulse (STAGE 2)
+            RPU_SetLampState(LAMP_ARC_SURGE_TARGET_1, 0);
+            RPU_SetLampState(LAMP_SAUCER_EJECT, 1, 0, 500); // PULSE Saucer (Q25)
+        }
+
+        // 3. COMBO SUCCESS (Saucer Hit) - End Combo
+        if (RPU_ReadSingleSwitchState(SW_SAUCER) && (gGameFlags & FLAG_ARC_SURGE_T1_HIT)) {
+            // Score Super Value and Add 3 bonus advances
+            AddToPlayerScore(SCORE_ARC_SURGE_SUPER);
+            currentBonus += 3000; 
+            PlayStockSound(SND_10000_POINTS); 
+
+            // Set flag to trigger cleanup
+            gGameFlags |= FLAG_ARC_SURGE_COMPLETED; 
+        }
+
+        // 4. COMBO END/TIMEOUT (Cleanup Check)
+        if ((CurrentTime > arcSurgeTimerStart + TIME_ARC_SURGE_COMBO_MS) || (gGameFlags & FLAG_ARC_SURGE_COMPLETED)) {
+            bool completed = (gGameFlags & FLAG_ARC_SURGE_COMPLETED);
+            // Cleanup flags: This will also stop the chase in RunBonusLadderChase()
+            gGameFlags &= ~(FLAG_ARC_SURGE_ACTIVE | FLAG_ARC_SURGE_T1_HIT | FLAG_ARC_SURGE_COMPLETED);
+            
+            // Ensure BOTH target lamps are OFF
+            RPU_SetLampState(LAMP_ARC_SURGE_TARGET_1, 0);
+            RPU_SetLampState(LAMP_SAUCER_EJECT, 0);
+            
+            // Fire Saucer Solenoid on successful completion
+            if (completed) {
+                FireSolenoid(SOL_SAUCER, 50); 
             }
         }
     }
@@ -664,6 +697,12 @@ void RPU_Callback_GameLogic(){
         RunBonusCountdown(CurrentTime); 
         RunBallSearch(CurrentTime); 
         UpdatePlayerDisplay(); 
+
+        if (!firstHitMade) {
+            RPU_SetLampState(LAMP_SAUCER_EJECT, 1, 0, 500); // Pulse the lamp for skill shot
+        } else {
+            // This handles turning it off if it was pulsing from ArcSurge but that combo timed out.
+        }
     }
 
     // --- 3. Display Updates (Runs if game is active or waiting) ---

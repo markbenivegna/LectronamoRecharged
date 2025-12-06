@@ -24,10 +24,6 @@
 #define RPU_OS_MAJOR_VERSION  5
 #define RPU_OS_MINOR_VERSION  8
 
-typedef void (*GameLogicCallback)();
-void RPU_init(GameLogicCallback callback);
-void RPU_loop();
-
 struct PlayfieldAndCabinetSwitch {
   byte switchNum;
   byte solenoid;

@@ -92,49 +92,52 @@
 #define SND_POP_BUMPER      (1 << 5)
 
 //----------------------------
-// Lamp Definitions (LAMP_)
+// Lamp Definitions (LAMP_) - Synchronized to Lectronamo Q-Connector Addresses
 //----------------------------
+
 // Bonus Multiplier Lamps
-#define LAMP_BONUS_DOUBLE       22
-#define LAMP_BONUS_TRIPLE       13
-#define LAMP_BONUS_QUINTUPLE    10
-#define LAMP_BONUS_2X_NEXT      25
-#define LAMP_BONUS_3X_NEXT      11
-#define LAMP_BONUS_5X_NEXT      20
+#define LAMP_BONUS_DOUBLE       2  // Q2
+#define LAMP_BONUS_TRIPLE       17 // Q17
+#define LAMP_BONUS_QUINTUPLE    41 // Q41
+#define LAMP_BONUS_2X_NEXT      35 // Q35 (Advance Bonus #2)
+#define LAMP_BONUS_3X_NEXT      49 // Q49 (Advance Bonus #3)
+#define LAMP_BONUS_5X_NEXT      54 // Q54 (Advance Bonus #4)
 
 // Feature & High-Value Lamps
-#define LAMP_SAUCER_EJECT       6
-#define LAMP_ADVANCE_BONUS_3    17
-#define LAMP_EXTRA_BALL_LANE    18
-#define LAMP_SPINNER            28
-#define LAMP_SHOOT_AGAIN        27
+#define LAMP_SAUCER_EJECT       25 // Q25
+#define LAMP_EXTRA_BALL_LANE    46 // Q46
+#define LAMP_ARC_SURGE_TARGET_1 42 // Q42 (Left Return Lamp - First target of the Arc Surge Combo)
+#define LAMP_SPINNER            44 // Q44
+#define LAMP_EXTRA_BALL         11 // Q11 (Used for Shoot Again light logic, but tied to Extra Ball)
 
-// Bonus Ladder Lamps
-#define LAMP_BONUS_1000         18
-#define LAMP_BONUS_2000         1
-#define LAMP_BONUS_3000         26
-#define LAMP_BONUS_4000         1
-#define LAMP_BONUS_5000         15
-#define LAMP_BONUS_6000         9
-#define LAMP_BONUS_7000         25
-#define LAMP_BONUS_8000         12
-#define LAMP_BONUS_9000         17
-#define LAMP_BONUS_10000        8
+// Bonus Ladder Lamps (1K through 10K)
+// NOTE: These addresses MUST be sequentially correct for the chase routines (RunBonusLadderChase).
+#define LAMP_BONUS_1000         14 // Q14
+#define LAMP_BONUS_2000         29 // Q29
+#define LAMP_BONUS_3000         36 // Q36
+#define LAMP_BONUS_4000         57 // Q57
+#define LAMP_BONUS_5000         12 // Q12
+#define LAMP_BONUS_6000         27 // Q27
+#define LAMP_BONUS_7000         38 // Q38
+#define LAMP_BONUS_8000         50 // Q50
+#define LAMP_BONUS_9000         13 // Q13
+#define LAMP_BONUS_10000        28 // Q28
 
 // Display & Cabinet Lamps
-#define LAMP_BALL_IN_PLAY       122
-#define LAMP_PLAYER_1           116
-#define LAMP_PLAYER_UP_1        114
-#define LAMP_MATCH              108
-#define LAMP_HIGH_SCORE_TO_DATE 123
-#define LAMP_PLAYER_2           120
-#define LAMP_PLAYER_UP_2        115
-#define LAMP_GAME_OVER          111
-#define LAMP_PLAYER_3           106
-#define LAMP_PLAYER_UP_3        102
-#define LAMP_TILT               110
-#define LAMP_PLAYER_4           107
-#define LAMP_PLAYER_UP_4        101
+#define LAMP_BALL_IN_PLAY       16 // Q16
+#define LAMP_PLAYER_1           5  // Q5
+#define LAMP_PLAYER_2           18 // Q18
+#define LAMP_PLAYER_3           30 // Q30
+#define LAMP_PLAYER_4           43 // Q43
+#define LAMP_PLAYER_UP_1        6  // Q6 (1st Player Up)
+#define LAMP_PLAYER_UP_2        19 // Q19 (2nd Player Up)
+#define LAMP_PLAYER_UP_3        31 // Q31 (3rd Player Up)
+#define LAMP_PLAYER_UP_4        45 // Q45 (4th Player Up)
+#define LAMP_MATCH              23 // Q23
+#define LAMP_HIGH_SCORE_TO_DATE 15 // Q15
+#define LAMP_GAME_OVER          33 // Q33
+#define LAMP_TILT               47 // Q47
+#define LAMP_SHOOT_AGAIN        3  // Q3
 
 //================================================================
 // II. CONSTANTS AND GAME FLOW DEFINITIONS
