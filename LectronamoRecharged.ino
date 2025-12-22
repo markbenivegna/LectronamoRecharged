@@ -49,24 +49,23 @@ int gChaserIndex = 0;
 
 // Attract Mode Lamp Arrays
 const byte SpinnerAdvanceLamps[] = {
-    LAMP_BONUS_2X_NEXT, LAMP_BONUS_3X_NEXT, LAMP_BONUS_5X_NEXT, LAMP_SPINNER
+    LAMP_ADVANCE_BONUS_1, LAMP_ADVANCE_BONUS_2, LAMP_ADVANCE_BONUS_3, LAMP_ADVANCE_BONUS_4
 };
 const int NUM_SPINNER_ADVANCE_LAMPS = 4;
 
 const byte BonusLadderLamps[] = {
-    LAMP_BONUS_1000, LAMP_BONUS_2000, LAMP_BONUS_3000, LAMP_BONUS_4000, 
-    LAMP_BONUS_5000, LAMP_BONUS_6000, LAMP_BONUS_7000, LAMP_BONUS_8000, 
-    LAMP_BONUS_9000, LAMP_BONUS_10000
+    LAMP_BONUS_1K, LAMP_BONUS_2K, LAMP_BONUS_3K, LAMP_BONUS_4K, 
+    LAMP_BONUS_5K, LAMP_BONUS_6K, LAMP_BONUS_7K, LAMP_BONUS_8K, 
+    LAMP_BONUS_9K, LAMP_BONUS_10K
 };
 const int NUM_BONUS_LADDER_LAMPS = 10;
 
 const byte AllFeatureLamps[] = {
-    LAMP_BONUS_1000, LAMP_BONUS_2000, LAMP_BONUS_3000, LAMP_BONUS_4000, 
-    LAMP_BONUS_5000, LAMP_BONUS_6000, LAMP_BONUS_7000, LAMP_BONUS_8000, 
-    LAMP_BONUS_9000, LAMP_BONUS_10000,
-    LAMP_BONUS_2X_NEXT, LAMP_BONUS_3X_NEXT, LAMP_BONUS_5X_NEXT,
-    LAMP_BONUS_DOUBLE, LAMP_BONUS_TRIPLE, LAMP_BONUS_QUINTUPLE,
-    LAMP_SAUCER_EJECT, LAMP_ADVANCE_BONUS_3, LAMP_EXTRA_BALL_LANE, 
+    LAMP_BONUS_1K, LAMP_BONUS_2K, LAMP_BONUS_3K, LAMP_BONUS_4K, 
+    LAMP_BONUS_5K, LAMP_BONUS_6K, LAMP_BONUS_7K, LAMP_BONUS_8K, 
+    LAMP_BONUS_9K, LAMP_BONUS_10K,
+    LAMP_BONUS_MULTIPLIER_2X, LAMP_BONUS_MULTIPLIER_3X, LAMP_BONUS_MULTIPLIER_5X,
+    LAMP_SAUCER, LAMP_ADVANCE_BONUS_3, LAMP_EXTRA_BALL_LANE, 
     LAMP_SPINNER, LAMP_SHOOT_AGAIN
 };
 const int NUM_ALL_FEATURE_LAMPS = sizeof(AllFeatureLamps) / sizeof(AllFeatureLamps[0]);
@@ -77,18 +76,14 @@ void RunAttractModeLights(unsigned long CurrentTime);
 
 // RPU Hardware Mapping
 #define NUM_SWITCHES 40 // Total number of switches for the RPU to scan
-#define NUM_PRIORITY_SWITCHES 9 // Number of switches with immediate solenoid responses
+#define NUM_PRIORITY_SWITCHES 5 // Number of switches with immediate solenoid responses
 
 PlayfieldAndCabinetSwitch gameSwitchArray[NUM_PRIORITY_SWITCHES] = {
     { SW_RIGHT_SLINGSHOT, SOL_RIGHT_SLINGSHOT, 4 },
     { SW_LEFT_SLINGSHOT, SOL_LEFT_SLINGSHOT, 4 },
     { SW_THUMPER_CENTER, SOL_CENTER_THUMPER, 6 },
     { SW_THUMPER_RIGHT, SOL_RIGHT_THUMPER, 6 },
-    { SW_THUMPER_LEFT, SOL_LEFT_THUMPER, 6 },
-    { SW_OUTHOLE, SOL_NONE, 0 }, // Scanned, but no immediate solenoid
-    { SW_SAUCER, SOL_NONE, 0 }, // Scanned, but no immediate solenoid
-    { SW_TILT, SOL_NONE, 0 },
-    { SW_SLAM_TILT, SOL_NONE, 0 }
+    { SW_THUMPER_LEFT, SOL_LEFT_THUMPER, 6 }
 };
 
 // Core RPU Callbacks & Setup
@@ -103,6 +98,9 @@ void DrainBall(bool isTilted = false) {
     if (isTilted) {
         currentBonus = 0;
     }
+    gGameFlags &= ~FLAG_SIDE_LANE_LIT;
+    RPU_SetLampState(LAMP_SAUCER, 0);
+    RPU_SetDisableFlippers(true);
     SaveHighScore();
     PlayBonusCollectSound();
     gameState = BONUS_COUNT;
@@ -134,6 +132,7 @@ void PlayStockSound(byte soundID) {
 
 void AwardReplay() {
     credits++; // Increment credit
+    RPU_SetCoinLockout(credits >= 8);
     PlayStockSound(SND_10000_POINTS); 
     FireSolenoid(SOL_KNOCKER, 75); 
 }
@@ -362,12 +361,9 @@ void HandleSpinnerHit() {
 
 // Core Ruleset Handlers
 void ClearAllMultiplierLamps() {
-    RPU_SetLampState(LAMP_BONUS_DOUBLE, 0, 0, 0);
-    RPU_SetLampState(LAMP_BONUS_TRIPLE, 0, 0, 0);
-    RPU_SetLampState(LAMP_BONUS_QUINTUPLE, 0, 0, 0);
-    RPU_SetLampState(LAMP_BONUS_2X_NEXT, 0, 0, 0);
-    RPU_SetLampState(LAMP_BONUS_3X_NEXT, 0, 0, 0);
-    RPU_SetLampState(LAMP_BONUS_5X_NEXT, 0, 0, 0);
+    RPU_SetLampState(LAMP_BONUS_MULTIPLIER_2X, 0, 0, 0);
+    RPU_SetLampState(LAMP_BONUS_MULTIPLIER_3X, 0, 0, 0);
+    RPU_SetLampState(LAMP_BONUS_MULTIPLIER_5X, 0, 0, 0);
 }
 
 // Handles 3-Bank completion and bonus multiplier logic.
@@ -382,15 +378,13 @@ void Handle3BankCompletion() {
     
     if (threeBankCompleteCount == 1) {
         bonusMultiplier = 2;
-        RPU_SetLampState(LAMP_BONUS_DOUBLE, 1, 0, 0); 
-        RPU_SetLampState(LAMP_BONUS_3X_NEXT, 1, 0, 0);
+        RPU_SetLampState(LAMP_BONUS_MULTIPLIER_2X, 1, 0, 0); 
     } else if (threeBankCompleteCount == 2) {
         bonusMultiplier = 3;
-        RPU_SetLampState(LAMP_BONUS_TRIPLE, 1, 0, 0); 
-        RPU_SetLampState(LAMP_BONUS_5X_NEXT, 1, 0, 0);
+        RPU_SetLampState(LAMP_BONUS_MULTIPLIER_3X, 1, 0, 0); 
     } else if (threeBankCompleteCount >= 3) {
         bonusMultiplier = 5;
-        RPU_SetLampState(LAMP_BONUS_QUINTUPLE, 1, 0, 0); 
+        RPU_SetLampState(LAMP_BONUS_MULTIPLIER_5X, 1, 0, 0); 
     }
 }
 
@@ -415,7 +409,7 @@ void Handle5BankCompletion() {
         }
     } else if (fiveBankCompleteCount >= 3) {
         AddToPlayerScore(SpecialScoreValue);
-        RPU_SetLampState(LAMP_BONUS_QUINTUPLE, 1, 0, 500); 
+        RPU_SetLampState(LAMP_BONUS_MULTIPLIER_5X, 1, 0, 500); 
         PlayExtraBallAward();
     }
 }
@@ -429,12 +423,12 @@ void CollectBonus() {
 // Handles all switch closures and dispatches to specific handlers.
 void ProcessSwitches() {
     byte switchHit;
-    while ((switchHit = RPU_PullFirstFromSwitchStack()) != NO_SWITCH_HIT) {
+    while ((switchHit = RPU_PullFirstFromSwitchStack()) != SWITCH_STACK_EMPTY) {
         // Update the Ball Search Timer on any switch activity
         if (!firstHitMade) {
             // Any switch hit cancels the skill shot.
             // Turn off the lamp and disable the skill shot immediately.
-            RPU_SetLampState(LAMP_SAUCER_EJECT, 0);
+            RPU_SetLampState(LAMP_SAUCER, 0);
             firstHitMade = true;
         }
 
@@ -446,6 +440,12 @@ void ProcessSwitches() {
                 break;
 
             case SW_KICKER: // Side Lane Kicker
+                // Kicker 'Short Circuit' Rule: If the Arc Surge combo is active,
+                // hitting the kicker cancels it before collecting bonus.
+                if (gGameFlags & FLAG_ARC_SURGE_ACTIVE) {
+                    gGameFlags &= ~FLAG_ARC_SURGE_ACTIVE; // Clear the surge flag
+                    RPU_SetLampState(LAMP_SAUCER, 0);     // Turn off the pulsing lamp
+                }
                 CollectBonus();
                 FireSolenoid(SOL_KICKER, 50); // Fire Solenoid 12
                 break;
@@ -460,23 +460,38 @@ void ProcessSwitches() {
             case SW_TARGET_4_5BANK: fiveTargetsDown[3] = true; AddToPlayerScore(SCORE_DROP_TARGET_BASE); PlayStockSound(SND_100_POINTS); break;
             case SW_TARGET_5_5BANK: fiveTargetsDown[4] = true; AddToPlayerScore(SCORE_DROP_TARGET_BASE); PlayStockSound(SND_100_POINTS); break;
 
-            case SW_SPIN_TARGET:
+            case SW_SPINNER:
                 HandleSpinnerHit();
                 break;
 
-            case SW_THUMPER_CENTER:
-            case SW_THUMPER_RIGHT:
-            case SW_THUMPER_LEFT:
+            case SW_BOTTOM_POP:
+            case SW_RIGHT_POP:
+            case SW_LEFT_POP:
                 AddToPlayerScore(SCORE_POP_BUMPER);
                 PlayStockSound(SND_POP_BUMPER);
                 break;
 
-            case SW_RIGHT_RETURN_LANE:
+            case SW_RIGHT_INLANE:
                 AddToPlayerScore(100L);
                 break;
             
             case SW_ADV_BONUS_1000: // Arc Surge Target 1
-                // Logic is handled inside HandleArcSurgeCombo()
+                if (gGameFlags & FLAG_ARC_SURGE_ACTIVE) {
+                    AddToPlayerScore(SCORE_ARC_SURGE_T1);
+                    PlayStockSound(SND_1000_POINTS);
+                } else {
+                    if (gGameFlags & FLAG_SIDE_LANE_LIT) {
+                        AddToPlayerScore(5000L);
+                        currentBonus += 3000;
+                        PlayStockSound(SND_10000_POINTS);
+                        gGameFlags &= ~FLAG_SIDE_LANE_LIT;
+                        RPU_SetLampState(LAMP_SAUCER, 0);
+                    } else {
+                        AddToPlayerScore(1000L);
+                        currentBonus += 1000;
+                        PlayStockSound(SND_1000_POINTS);
+                    }
+                }
                 break;
 
             case SW_SAUCER: // Saucer / Eject Pocket
@@ -485,13 +500,14 @@ void ProcessSwitches() {
 
             case SW_STANDUP_TARGET: // 5000 pts and 1 bonus advance
                 gGameFlags |= FLAG_SIDE_LANE_LIT; // Set flag for saucer interaction
+                RPU_SetLampState(LAMP_SAUCER, 1);
                 AddToPlayerScore(5000L); 
                 currentBonus += 1000;
                 PlayStockSound(SND_1000_POINTS);
                 break;
 
-            case SW_RIGHT_SLINGSHOT: // SW 38
-            case SW_LEFT_SLINGSHOT:  // SW 39
+            case SW_RIGHT_SLING: // SW 38
+            case SW_LEFT_SLING:  // SW 39
                 AddToPlayerScore(100L); // Corrected to 100 points
                 PlayStockSound(SND_100_POINTS); // Use the 100 pt sound
                 break;
@@ -520,8 +536,8 @@ void ProcessSwitches() {
                 PlayStockSound(SND_100_POINTS); // ADDED: Standard 100 pt sound
                 break;
 
-            case SW_LEFT_RETURN_LANE:
-                if (gGameFlags & FLAG_LEFT_RETURN_LANE_LIT) {
+            case SW_LEFT_INLANE:
+                if (gGameFlags & FLAG_LEFT_RETURN_LANE_LIT) { // This flag name seems ok to keep
                     AddToPlayerScore(9000L);
                     gGameFlags &= ~FLAG_LEFT_RETURN_LANE_LIT; // Turn off the light
                     PlayStockSound(SND_10000_POINTS); // ADDED: Very high-value sound
@@ -556,6 +572,8 @@ void HandleSkillShot(byte switchHit) {
             AddToPlayerScore(5000L); // 5,000 points
             currentBonus += 3000;    // 3 bonus advances
             PlayStockSound(SND_10000_POINTS); // Use high-value sound
+            gGameFlags &= ~FLAG_SIDE_LANE_LIT;
+            RPU_SetLampState(LAMP_SAUCER, 0);
         } else {
             AddToPlayerScore(500L);  // 500 points
             currentBonus += 1000;    // 1 bonus advance
@@ -577,56 +595,44 @@ void RunBallSaveLogic(unsigned long CurrentTime) {
 }
 
 void HandleArcSurgeCombo(unsigned long CurrentTime) {
-    // 1. COMBO START (Right Inlane Hit) - Target 1 Pulses
-    // The Bonus Ladder Chase is activated by setting FLAG_ARC_SURGE_ACTIVE
-    if (RPU_ReadSingleSwitchState(SW_RIGHT_RETURN_LANE) && !(gGameFlags & FLAG_ARC_SURGE_ACTIVE)) {
+    // 1. COMBO START (Right Inlane Hit)
+    if (RPU_ReadSingleSwitchState(SW_RIGHT_INLANE) && !(gGameFlags & FLAG_ARC_SURGE_ACTIVE)) {
         gGameFlags |= FLAG_ARC_SURGE_ACTIVE;
         arcSurgeTimerStart = CurrentTime;
 
-        // Start TARGET 1 pulsing (STAGE 1: Left Return Lamp)
-        RPU_SetLampState(LAMP_ARC_SURGE_TARGET_1, 1, 0, 500); // PULSE Target 1 (Q42)
-        RPU_SetLampState(LAMP_SAUCER_EJECT, 0); // Ensure Saucer is OFF
+        // Start pulsing LAMP_SAUCER immediately
+        RPU_SetLampState(LAMP_SAUCER, 1, 0, 500); 
     }
 
     if (gGameFlags & FLAG_ARC_SURGE_ACTIVE) {
-        // 2. COMBO ADVANCE (Target 1 Hit) - Saucer Pulses
-        // SW_ADV_BONUS_1000 is the constant for Target 1
-        if (RPU_ReadSingleSwitchState(SW_ADV_BONUS_1000) && !(gGameFlags & FLAG_ARC_SURGE_T1_HIT)) {
-            AddToPlayerScore(SCORE_ARC_SURGE_T1);
-            PlayStockSound(SND_1000_POINTS); 
-
-            gGameFlags |= FLAG_ARC_SURGE_T1_HIT;
-
-            // Stop Target 1 Pulse, Start Saucer Pulse (STAGE 2)
-            RPU_SetLampState(LAMP_ARC_SURGE_TARGET_1, 0);
-            RPU_SetLampState(LAMP_SAUCER_EJECT, 1, 0, 500); // PULSE Saucer (Q25)
-        }
-
         // 3. COMBO SUCCESS (Saucer Hit) - End Combo
-        if (RPU_ReadSingleSwitchState(SW_SAUCER) && (gGameFlags & FLAG_ARC_SURGE_T1_HIT)) {
+        if (RPU_ReadSingleSwitchState(SW_SAUCER)) {
             // Score Super Value and Add 3 bonus advances
             AddToPlayerScore(SCORE_ARC_SURGE_SUPER);
             currentBonus += 3000; 
             PlayStockSound(SND_10000_POINTS); 
 
-            // Set flag to trigger cleanup
-            gGameFlags |= FLAG_ARC_SURGE_COMPLETED; 
+            // Cleanup flags and lamps immediately
+            gGameFlags &= ~FLAG_ARC_SURGE_ACTIVE;
+            RPU_SetLampState(LAMP_SAUCER, 0);
+            
+            // Fire Saucer Solenoid on successful completion
+            FireSolenoid(SOL_SAUCER, 50); 
+            arcSurgeTimerStart = 0; // Reset timer to prevent timeout logic from running
         }
 
         // 4. COMBO END/TIMEOUT (Cleanup Check)
-        if ((CurrentTime > arcSurgeTimerStart + TIME_ARC_SURGE_COMBO_MS) || (gGameFlags & FLAG_ARC_SURGE_COMPLETED)) {
-            bool completed = (gGameFlags & FLAG_ARC_SURGE_COMPLETED);
+        if (arcSurgeTimerStart != 0 && (CurrentTime > arcSurgeTimerStart + TIME_ARC_SURGE_COMBO_MS)) {
             // Cleanup flags: This will also stop the chase in RunBonusLadderChase()
-            gGameFlags &= ~(FLAG_ARC_SURGE_ACTIVE | FLAG_ARC_SURGE_T1_HIT | FLAG_ARC_SURGE_COMPLETED);
+            gGameFlags &= ~FLAG_ARC_SURGE_ACTIVE;
             
-            // Ensure BOTH target lamps are OFF
-            RPU_SetLampState(LAMP_ARC_SURGE_TARGET_1, 0);
-            RPU_SetLampState(LAMP_SAUCER_EJECT, 0);
-            
-            // Fire Saucer Solenoid on successful completion
-            if (completed) {
-                FireSolenoid(SOL_SAUCER, 50); 
+            // Ensure LAMP_SAUCER is OFF
+            if (gGameFlags & FLAG_SIDE_LANE_LIT) {
+                RPU_SetLampState(LAMP_SAUCER, 1);
+            } else {
+                RPU_SetLampState(LAMP_SAUCER, 0);
             }
+            arcSurgeTimerStart = 0;
         }
     }
 }
@@ -650,6 +656,7 @@ void StartGame(byte numPlayers) {
     gNumPlayers = numPlayers; 
     StopAttractModeLights();
     
+    RPU_SetDisableFlippers(false);
     gameState = BALL_IN_PLAY; 
     PlayGameStartMelody();
     
@@ -699,7 +706,7 @@ void RPU_Callback_GameLogic(){
         UpdatePlayerDisplay(); 
 
         if (!firstHitMade) {
-            RPU_SetLampState(LAMP_SAUCER_EJECT, 1, 0, 500); // Pulse the lamp for skill shot
+            RPU_SetLampState(LAMP_SAUCER, 1, 0, 500); // Pulse the lamp for skill shot
         } else {
             // This handles turning it off if it was pulsing from ArcSurge but that combo timed out.
         }
@@ -708,13 +715,13 @@ void RPU_Callback_GameLogic(){
     // --- 3. Display Updates (Runs if game is active or waiting) ---
     if (gameState == ATTRACT_MODE || gameState == GAME_OVER || gameState == BALL_IN_PLAY) {
         for (int i = 1; i <= 4; i++) {
-            if (i > gNumPlayers) {RPU_SetDisplay(i - 1, 0, true); }
+            if (i > gNumPlayers) {RPU_SetDisplay(i - 1, 0, true, 1); }
         }
     }
     
     // --- 4. Switch Stack Processing (Input Handler) ---
-    byte switchHit; 
-    while ((switchHit = RPU_PullFirstFromSwitchStack()) != NO_SWITCH_HIT) {
+    byte switchHit;
+    while ((switchHit = RPU_PullFirstFromSwitchStack()) != SWITCH_STACK_EMPTY) {
         
         // --- TILT Logic ---
         if (switchHit == SW_TILT) {
@@ -740,13 +747,17 @@ void RPU_Callback_GameLogic(){
                 credits++;
                 PlayCreditAddMelody(); 
             }
+            RPU_SetCoinLockout(credits >= 8);
         } 
         
         // 1. Start game from Attract/Game Over (Normal Credit/Free Play Start)
         if (switchHit == SW_CREDIT_BUTTON && (gameState == ATTRACT_MODE || gameState == GAME_OVER)) {
              bool freePlay = RPU_ReadByteFromEEProm(ADDR_FREE_PLAY_ADJUSTMENT) == 1;
              if (credits > 0 || freePlay) {
-                if (!freePlay) credits--;
+                if (!freePlay) {
+                    credits--;
+                    RPU_SetCoinLockout(credits >= 8);
+                }
                 if (gameState == ATTRACT_MODE) PlayGameStartMelody();
                 StopAttractModeLights();
                 StartGame(1);
@@ -777,7 +788,7 @@ void StopAttractModeLights() {
 void RunAttractModeLights(unsigned long CurrentTime) {
     const unsigned long ATTRACT_PHASE_TIMER_MS = 80;
 
-    RPU_SetLampState(LAMP_SAUCER_EJECT, 1, 0, 750); // Pulse effect
+    RPU_SetLampState(LAMP_SAUCER, 1, 0, 750); // Pulse effect
     
     if (CurrentTime < gAttractModeTimer) {
         return;
@@ -793,10 +804,10 @@ void RunAttractModeLights(unsigned long CurrentTime) {
             
             if (gSpinnerAdvancerCount >= 44) {
                 RPU_SetLampState(LAMP_BONUS_10000, 1);
-                
-                RPU_SetLampState(LAMP_BONUS_DOUBLE, 1);
-                RPU_SetLampState(LAMP_BONUS_TRIPLE, 1);
-                RPU_SetLampState(LAMP_BONUS_QUINTUPLE, 1);
+
+                RPU_SetLampState(LAMP_BONUS_MULTIPLIER_2X, 1);
+                RPU_SetLampState(LAMP_BONUS_MULTIPLIER_3X, 1);
+                RPU_SetLampState(LAMP_BONUS_MULTIPLIER_5X, 1);
                 RPU_SetLampState(LAMP_SPINNER, 1); // Spinner Lamp
                 
                 attractPhase = ATTRACT_PHASE_2_ARC_SURGE;
@@ -824,14 +835,14 @@ void RunAttractModeLights(unsigned long CurrentTime) {
                 attractStep = 2;
             } else if (attractStep == 2) {
                 RPU_SetLampState(LAMP_EXTRA_BALL_LANE, 0);
-                RPU_SetLampState(LAMP_BONUS_DOUBLE, 1, 0, 200);
-                RPU_SetLampState(LAMP_BONUS_TRIPLE, 1, 0, 200);
-                RPU_SetLampState(LAMP_BONUS_QUINTUPLE, 1, 0, 200);
+                RPU_SetLampState(LAMP_BONUS_MULTIPLIER_2X, 1, 0, 200);
+                RPU_SetLampState(LAMP_BONUS_MULTIPLIER_3X, 1, 0, 200);
+                RPU_SetLampState(LAMP_BONUS_MULTIPLIER_5X, 1, 0, 200);
                 gAttractModeTimer = CurrentTime + 2000;
                 attractStep = 3;
             } else if (attractStep == 3) {
                 StopAttractModeLights();
-                RPU_SetLampState(LAMP_SAUCER_EJECT, 1, 0, 250); // Flash
+                RPU_SetLampState(LAMP_SAUCER, 1, 0, 250); // Flash
                 gAttractModeTimer = CurrentTime + 1500;
                 attractStep = 4;
             } else {
