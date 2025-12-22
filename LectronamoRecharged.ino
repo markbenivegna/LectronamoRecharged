@@ -14,7 +14,6 @@ unsigned long ballSaveStartTime;
 bool isBallSaveActive;
 bool firstHitMade;
 unsigned long arcSurgeTimerStart;
-bool arcSurgeActive;
 int attractPhase;
 int attractStep;
 unsigned long selfTestTimerStart;
@@ -36,7 +35,6 @@ int gNumPlayers = 1;
 bool specialAwardedThisBall;
 unsigned long highScore;
 int credits;
-uint8_t gGameFlags = 0;
 byte MaxTiltWarnings;
 byte NumTiltWarnings = 0;
 long ExtraBallScoreValue;
@@ -46,6 +44,9 @@ unsigned long lastSwitchHitTime = 0;
 unsigned long gAttractModeTimer = 0;
 int gSpinnerAdvancerCount = 0;
 int gChaserIndex = 0;
+bool isSaucerLit = false;
+bool isArcSurgeActive = false;
+bool isLeftReturnLaneLit = false;
 
 // Attract Mode Lamp Arrays
 const byte SpinnerAdvanceLamps[] = {
@@ -98,7 +99,9 @@ void DrainBall(bool isTilted = false) {
     if (isTilted) {
         currentBonus = 0;
     }
-    gGameFlags &= ~FLAG_SIDE_LANE_LIT;
+    isSaucerLit = false;
+    isArcSurgeActive = false;
+    isLeftReturnLaneLit = false;
     RPU_SetLampState(LAMP_SAUCER, 0);
     RPU_SetDisableFlippers(true);
     SaveHighScore();
@@ -305,12 +308,12 @@ void RunBonusLadderChase(unsigned long CurrentTime) {
     static unsigned long lastChaseTime = 0;
     const unsigned long CHASE_INTERVAL = 50;
 
-    if ((gGameFlags & FLAG_ARC_SURGE_ACTIVE) && CurrentTime > lastChaseTime + CHASE_INTERVAL) {
+    if (isArcSurgeActive && CurrentTime > lastChaseTime + CHASE_INTERVAL) {
         RPU_SetLampState(BonusLadderLamps[gChaserIndex], 0);
         gChaserIndex = (gChaserIndex + 1) % NUM_BONUS_LADDER_LAMPS;
         RPU_SetLampState(BonusLadderLamps[gChaserIndex], 1);
         lastChaseTime = CurrentTime;
-    } else if (!(gGameFlags & FLAG_ARC_SURGE_ACTIVE)) {
+    } else if (!isArcSurgeActive) {
         RPU_SetLampState(BonusLadderLamps[gChaserIndex], 0);
     }
 }
@@ -441,9 +444,9 @@ void ProcessSwitches() {
             case SW_KICKER: // Side Lane Kicker
                 // Kicker 'Short Circuit' Rule: If the Arc Surge combo is active,
                 // hitting the kicker cancels it before collecting bonus.
-                if (gGameFlags & FLAG_ARC_SURGE_ACTIVE) {
-                    gGameFlags &= ~FLAG_ARC_SURGE_ACTIVE;
-                    RPU_SetLampState(LAMP_SAUCER, (gGameFlags & FLAG_SIDE_LANE_LIT) ? 1 : 0);
+                if (isArcSurgeActive) {
+                    isArcSurgeActive = false;
+                    RPU_SetLampState(LAMP_SAUCER, (isSaucerLit) ? 1 : 0);
                 }
                 CollectBonus();
                 FireSolenoid(SOL_KICKER, 50); // Fire Solenoid 12
@@ -475,10 +478,10 @@ void ProcessSwitches() {
                 break;
             
             case SW_ADV_BONUS_1000: // Arc Surge Target 1
-                if (gGameFlags & FLAG_ARC_SURGE_ACTIVE) {
+                if (isArcSurgeActive) {
                     AddToPlayerScore(SCORE_ARC_SURGE_T1);
                     PlayStockSound(SND_1000_POINTS);
-                } else if (gGameFlags & FLAG_SIDE_LANE_LIT) {
+                } else if (isSaucerLit) {
                     AddToPlayerScore(5000L);
                     currentBonus += 3000;
                     PlayStockSound(SND_10000_POINTS);
@@ -494,7 +497,7 @@ void ProcessSwitches() {
                 break;
 
             case SW_STANDUP_TARGET:
-                gGameFlags |= FLAG_SIDE_LANE_LIT;
+                isSaucerLit = true;
                 RPU_SetLampState(LAMP_SAUCER, 1);
                 AddToPlayerScore(500);
                 break;
@@ -525,14 +528,14 @@ void ProcessSwitches() {
 
             case SW_ROLLOVER_BUTTON:
                 AddToPlayerScore(SCORE_SPINNER_BASE); // 100 points
-                gGameFlags |= FLAG_LEFT_RETURN_LANE_LIT; // Lite the Left Return Lane
+                isLeftReturnLaneLit = true; // Lite the Left Return Lane
                 PlayStockSound(SND_100_POINTS); // ADDED: Standard 100 pt sound
                 break;
 
             case SW_LEFT_INLANE:
-                if (gGameFlags & FLAG_LEFT_RETURN_LANE_LIT) { // This flag name seems ok to keep
+                if (isLeftReturnLaneLit) { // This flag name seems ok to keep
                     AddToPlayerScore(9000L);
-                    gGameFlags &= ~FLAG_LEFT_RETURN_LANE_LIT; // Turn off the light
+                    isLeftReturnLaneLit = false; // Turn off the light
                     PlayStockSound(SND_10000_POINTS); // ADDED: Very high-value sound
                 } else {
                     AddToPlayerScore(SCORE_SPINNER_BASE); 
@@ -566,7 +569,7 @@ void HandleSkillShot(byte switchHit) {
     }
     
     if (switchHit == SW_SAUCER) {
-        if (gGameFlags & FLAG_SIDE_LANE_LIT) { // Check if lit by stationary target
+        if (isSaucerLit) { // Check if lit by stationary target
             AddToPlayerScore(SCORE_SKILL_SHOT); // 5,000 points
             PlayStockSound(SND_10000_POINTS); // Use high-value sound
             // Per rules, do NOT clear the flag or turn off the lamp. It stays lit until drain.
@@ -592,15 +595,15 @@ void RunBallSaveLogic(unsigned long CurrentTime) {
 
 void HandleArcSurgeCombo(unsigned long CurrentTime) {
     // 1. COMBO START (Right Inlane Hit)
-    if (RPU_ReadSingleSwitchState(SW_RIGHT_INLANE) && !(gGameFlags & FLAG_ARC_SURGE_ACTIVE)) {
-        gGameFlags |= FLAG_ARC_SURGE_ACTIVE;
+    if (RPU_ReadSingleSwitchState(SW_RIGHT_INLANE) && !isArcSurgeActive) {
+        isArcSurgeActive = true;
         arcSurgeTimerStart = CurrentTime;
 
         // Start pulsing LAMP_SAUCER immediately
         RPU_SetLampState(LAMP_SAUCER, 1, 0, 500); 
     }
 
-    if (gGameFlags & FLAG_ARC_SURGE_ACTIVE) {
+    if (isArcSurgeActive) {
         // 3. COMBO SUCCESS (Saucer Hit) - End Combo
         if (RPU_ReadSingleSwitchState(SW_SAUCER)) {
             // Score Super Value and Add 3 bonus advances
@@ -609,7 +612,7 @@ void HandleArcSurgeCombo(unsigned long CurrentTime) {
             PlayStockSound(SND_10000_POINTS); 
 
             // Cleanup flags and lamps immediately
-            gGameFlags &= ~FLAG_ARC_SURGE_ACTIVE;
+            isArcSurgeActive = false;
             RPU_SetLampState(LAMP_SAUCER, 0);
             
             // Fire Saucer Solenoid on successful completion
@@ -620,10 +623,10 @@ void HandleArcSurgeCombo(unsigned long CurrentTime) {
         // 4. COMBO END/TIMEOUT (Cleanup Check)
         if (arcSurgeTimerStart != 0 && (CurrentTime > arcSurgeTimerStart + TIME_ARC_SURGE_COMBO_MS)) {
             // Cleanup flags: This will also stop the chase in RunBonusLadderChase()
-            gGameFlags &= ~FLAG_ARC_SURGE_ACTIVE;
+            isArcSurgeActive = false;
             
             // Ensure LAMP_SAUCER is OFF
-            if (gGameFlags & FLAG_SIDE_LANE_LIT) {
+            if (isSaucerLit) {
                 RPU_SetLampState(LAMP_SAUCER, 1);
             } else {
                 RPU_SetLampState(LAMP_SAUCER, 0);
@@ -641,7 +644,7 @@ void StartGame(byte numPlayers) {
     isBallSaveActive = true; 
     ballSaveStartTime = millis(); 
     firstHitMade = false;
-    arcSurgeActive = false;
+    isArcSurgeActive = false;
     threeBankCompleteCount = 0;
     fiveBankCompleteCount = 0;
     spinnerHitCount = 0;
