@@ -443,8 +443,8 @@ void ProcessSwitches() {
                 // Kicker 'Short Circuit' Rule: If the Arc Surge combo is active,
                 // hitting the kicker cancels it before collecting bonus.
                 if (gGameFlags & FLAG_ARC_SURGE_ACTIVE) {
-                    gGameFlags &= ~FLAG_ARC_SURGE_ACTIVE; // Clear the surge flag
-                    RPU_SetLampState(LAMP_SAUCER, 0);     // Turn off the pulsing lamp
+                    gGameFlags &= ~FLAG_ARC_SURGE_ACTIVE;
+                    RPU_SetLampState(LAMP_SAUCER, (gGameFlags & FLAG_SIDE_LANE_LIT) ? 1 : 0);
                 }
                 CollectBonus();
                 FireSolenoid(SOL_KICKER, 50); // Fire Solenoid 12
@@ -479,18 +479,14 @@ void ProcessSwitches() {
                 if (gGameFlags & FLAG_ARC_SURGE_ACTIVE) {
                     AddToPlayerScore(SCORE_ARC_SURGE_T1);
                     PlayStockSound(SND_1000_POINTS);
+                } else if (gGameFlags & FLAG_SIDE_LANE_LIT) {
+                    AddToPlayerScore(5000L);
+                    currentBonus += 3000;
+                    PlayStockSound(SND_10000_POINTS);
                 } else {
-                    if (gGameFlags & FLAG_SIDE_LANE_LIT) {
-                        AddToPlayerScore(5000L);
-                        currentBonus += 3000;
-                        PlayStockSound(SND_10000_POINTS);
-                        gGameFlags &= ~FLAG_SIDE_LANE_LIT;
-                        RPU_SetLampState(LAMP_SAUCER, 0);
-                    } else {
-                        AddToPlayerScore(1000L);
-                        currentBonus += 1000;
-                        PlayStockSound(SND_1000_POINTS);
-                    }
+                    AddToPlayerScore(1000L);
+                    currentBonus += 1000;
+                    PlayStockSound(SND_1000_POINTS);
                 }
                 break;
 
@@ -498,12 +494,10 @@ void ProcessSwitches() {
                 HandleSkillShot(switchHit); // Handles both Skill Shot and normal saucer logic
                 break;
 
-            case SW_STANDUP_TARGET: // 5000 pts and 1 bonus advance
-                gGameFlags |= FLAG_SIDE_LANE_LIT; // Set flag for saucer interaction
+            case SW_STANDUP_TARGET:
+                gGameFlags |= FLAG_SIDE_LANE_LIT;
                 RPU_SetLampState(LAMP_SAUCER, 1);
-                AddToPlayerScore(5000L); 
-                currentBonus += 1000;
-                PlayStockSound(SND_1000_POINTS);
+                AddToPlayerScore(500);
                 break;
 
             case SW_RIGHT_SLING: // SW 38
@@ -559,6 +553,8 @@ void ProcessSwitches() {
 
 // Custom Ruleset Implementation
 void HandleSkillShot(byte switchHit) {
+    if (gGameFlags & FLAG_ARC_SURGE_ACTIVE) return;
+
     if (gameState == BALL_IN_PLAY && !firstHitMade) {
         if (switchHit == SW_SAUCER) {
             AddToPlayerScore(SCORE_SKILL_SHOT);
@@ -568,12 +564,11 @@ void HandleSkillShot(byte switchHit) {
     }
     
     if (switchHit == SW_SAUCER) {
-        if (gGameFlags & FLAG_SIDE_LANE_LIT) {
+        if (gGameFlags & FLAG_SIDE_LANE_LIT) { // Check if lit by stationary target
             AddToPlayerScore(5000L); // 5,000 points
             currentBonus += 3000;    // 3 bonus advances
             PlayStockSound(SND_10000_POINTS); // Use high-value sound
-            gGameFlags &= ~FLAG_SIDE_LANE_LIT;
-            RPU_SetLampState(LAMP_SAUCER, 0);
+            // Per rules, do NOT clear the flag or turn off the lamp. It stays lit until drain.
         } else {
             AddToPlayerScore(500L);  // 500 points
             currentBonus += 1000;    // 1 bonus advance
