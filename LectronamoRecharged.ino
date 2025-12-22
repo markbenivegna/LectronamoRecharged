@@ -429,7 +429,6 @@ void ProcessSwitches() {
             // Any switch hit cancels the skill shot.
             // Turn off the lamp and disable the skill shot immediately.
             RPU_SetLampState(LAMP_SAUCER, 0);
-            firstHitMade = true;
         }
 
         lastSwitchHitTime = millis();
@@ -541,6 +540,8 @@ void ProcessSwitches() {
                 }
                 break;
         }
+
+        if (!firstHitMade) firstHitMade = true;
     }
 
     if (threeTargetsDown[0] && threeTargetsDown[1] && threeTargetsDown[2]) {
@@ -553,20 +554,20 @@ void ProcessSwitches() {
 
 // Custom Ruleset Implementation
 void HandleSkillShot(byte switchHit) {
-    if (gGameFlags & FLAG_ARC_SURGE_ACTIVE) return;
-
     if (gameState == BALL_IN_PLAY && !firstHitMade) {
         if (switchHit == SW_SAUCER) {
-            AddToPlayerScore(SCORE_SKILL_SHOT);
-            PlayStockSound(SND_1000_POINTS); // Use 1000 pt sound for base skill shot
+            AddToPlayerScore(5000L);
+            currentBonus += 3000;
+            PlayStockSound(SND_10000_POINTS);
+            FireSolenoid(SOL_SAUCER, 50);
         }
         firstHitMade = true; // Prevents subsequent Skill Shots
+        return;
     }
     
     if (switchHit == SW_SAUCER) {
         if (gGameFlags & FLAG_SIDE_LANE_LIT) { // Check if lit by stationary target
-            AddToPlayerScore(5000L); // 5,000 points
-            currentBonus += 3000;    // 3 bonus advances
+            AddToPlayerScore(SCORE_SKILL_SHOT); // 5,000 points
             PlayStockSound(SND_10000_POINTS); // Use high-value sound
             // Per rules, do NOT clear the flag or turn off the lamp. It stays lit until drain.
         } else {
