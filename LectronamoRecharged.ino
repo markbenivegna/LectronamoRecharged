@@ -31,7 +31,7 @@ int ball;
 int player;
 int ballsPerGame;
 bool thumperScoreIs1000;
-int gNumPlayers = 1;
+int numPlayers = 1;
 bool specialAwardedThisBall;
 unsigned long highScore;
 int credits;
@@ -41,9 +41,9 @@ long ExtraBallScoreValue;
 long SpecialScoreValue;
 byte AwardHighscoreNumReplays;
 unsigned long lastSwitchHitTime = 0;
-unsigned long gAttractModeTimer = 0;
-int gSpinnerAdvancerCount = 0;
-int gChaserIndex = 0;
+unsigned long attractTimer = 0;
+int spinnerLampIndex = 0;
+int chaserIndex = 0;
 bool isSaucerLit = false;
 bool isArcSurgeActive = false;
 bool isLeftReturnLaneLit = false;
@@ -191,7 +191,7 @@ void CheckHighScores() {
     if (AwardHighscoreNumReplays > 3) AwardHighscoreNumReplays = 0; 
     
     long gameHighScore = 0;
-    for (int i = 0; i < gNumPlayers; i++) {
+    for (int i = 0; i < numPlayers; i++) {
         if (playerScores[i] > gameHighScore) {
             gameHighScore = playerScores[i];
         }
@@ -230,7 +230,7 @@ void RunMatchMode(unsigned long CurrentTime) {
     }
 
     bool matchFound = false;
-    for (int p = 1; p <= gNumPlayers; p++) {
+    for (int p = 1; p <= numPlayers; p++) {
         long lastTwoDigits = playerScores[p - 1] % 100;
         byte playerMatchDigit = (byte)(lastTwoDigits / 10);
         
@@ -309,12 +309,12 @@ void RunBonusLadderChase(unsigned long CurrentTime) {
     const unsigned long CHASE_INTERVAL = 50;
 
     if (isArcSurgeActive && CurrentTime > lastChaseTime + CHASE_INTERVAL) {
-        RPU_SetLampState(BonusLadderLamps[gChaserIndex], 0);
-        gChaserIndex = (gChaserIndex + 1) % NUM_BONUS_LADDER_LAMPS;
-        RPU_SetLampState(BonusLadderLamps[gChaserIndex], 1);
+        RPU_SetLampState(BonusLadderLamps[chaserIndex], 0);
+        chaserIndex = (chaserIndex + 1) % NUM_BONUS_LADDER_LAMPS;
+        RPU_SetLampState(BonusLadderLamps[chaserIndex], 1);
         lastChaseTime = CurrentTime;
     } else if (!isArcSurgeActive) {
-        RPU_SetLampState(BonusLadderLamps[gChaserIndex], 0);
+        RPU_SetLampState(BonusLadderLamps[chaserIndex], 0);
     }
 }
 
@@ -636,7 +636,7 @@ void HandleArcSurgeCombo(unsigned long CurrentTime) {
     }
 }
 
-void StartGame(byte numPlayers) {
+void StartGame(byte initialPlayers) {
     for(int i=0; i<4; i++) { playerScores[i] = 0; }
     currentBonus = 1000; // Start with 1000 bonus
     bonusMultiplier = 1; // Reset Multiplier
@@ -652,7 +652,7 @@ void StartGame(byte numPlayers) {
     extraBalls = 0;
     ball = 1;
     player = 1;
-    gNumPlayers = numPlayers; 
+    numPlayers = initialPlayers; 
     StopAttractModeLights();
     
     RPU_SetDisableFlippers(false);
@@ -714,7 +714,7 @@ void RPU_Callback_GameLogic(){
     // --- 3. Display Updates (Runs if game is active or waiting) ---
     if (gameState == ATTRACT_MODE || gameState == GAME_OVER || gameState == BALL_IN_PLAY) {
         for (int i = 1; i <= 4; i++) {
-            if (i > gNumPlayers) {RPU_SetDisplay(i - 1, 0, true, 1); }
+            if (i > numPlayers) {RPU_SetDisplay(i - 1, 0, true, 1); }
         }
     }
     
@@ -765,9 +765,9 @@ void RPU_Callback_GameLogic(){
         } 
         
         // 2. Adding Players Logic (While game is active and not max players)
-        if (switchHit == SW_CREDIT_BUTTON && gNumPlayers < 4 && gameState == BALL_IN_PLAY) {
+        if (switchHit == SW_CREDIT_BUTTON && numPlayers < 4 && gameState == BALL_IN_PLAY) {
             if (startButtonHoldTime == 0) {
-                gNumPlayers++;
+                numPlayers++;
                 PlayGameStartMelody();
             }
         }
@@ -779,9 +779,9 @@ void StopAttractModeLights() {
 
     attractPhase = ATTRACT_PHASE_1_CLASSIC_FLOW;
     attractStep = 0;
-    gAttractModeTimer = 0;
-    gSpinnerAdvancerCount = 0;
-    gChaserIndex = 0;
+    attractTimer = 0;
+    spinnerLampIndex = 0;
+    chaserIndex = 0;
 }
 
 void RunAttractModeLights(unsigned long CurrentTime) {
@@ -789,19 +789,19 @@ void RunAttractModeLights(unsigned long CurrentTime) {
 
     RPU_SetLampState(LAMP_SAUCER, 1, 0, 750); // Pulse effect
     
-    if (CurrentTime < gAttractModeTimer) {
+    if (CurrentTime < attractTimer) {
         return;
     }
     
-    gAttractModeTimer = CurrentTime + 80;
+    attractTimer = CurrentTime + 80;
 
     switch (attractPhase) {
         
         case ATTRACT_PHASE_1_CLASSIC_FLOW:
-            RPU_SetLampState(SpinnerAdvanceLamps[gSpinnerAdvancerCount % NUM_SPINNER_ADVANCE_LAMPS], 0);
-            gSpinnerAdvancerCount++;
+            RPU_SetLampState(SpinnerAdvanceLamps[spinnerLampIndex % NUM_SPINNER_ADVANCE_LAMPS], 0);
+            spinnerLampIndex++;
             
-            if (gSpinnerAdvancerCount >= 44) {
+            if (spinnerLampIndex >= 44) {
                 RPU_SetLampState(LAMP_BONUS_10000, 1);
 
                 RPU_SetLampState(LAMP_BONUS_MULTIPLIER_2X, 1);
@@ -810,56 +810,56 @@ void RunAttractModeLights(unsigned long CurrentTime) {
                 RPU_SetLampState(LAMP_SPINNER, 1); // Spinner Lamp
                 
                 attractPhase = ATTRACT_PHASE_2_ARC_SURGE;
-                gAttractModeTimer = CurrentTime + 3000; // Hold the final lights for 3 seconds
+                attractTimer = CurrentTime + 3000; // Hold the final lights for 3 seconds
                 attractStep = 1; // Start Phase 2 at Step 1
                 return;
             }
             
-            if (gSpinnerAdvancerCount % NUM_SPINNER_ADVANCE_LAMPS == 0) {
-                if (gChaserIndex > 0) {
-                    RPU_SetLampState(BonusLadderLamps[gChaserIndex - 1], 0);
+            if (spinnerLampIndex % NUM_SPINNER_ADVANCE_LAMPS == 0) {
+                if (chaserIndex > 0) {
+                    RPU_SetLampState(BonusLadderLamps[chaserIndex - 1], 0);
                 }
-                RPU_SetLampState(BonusLadderLamps[gChaserIndex], 1);
-                gChaserIndex++; // Move to the next bonus ladder light
+                RPU_SetLampState(BonusLadderLamps[chaserIndex], 1);
+                chaserIndex++; // Move to the next bonus ladder light
             }
             
-            RPU_SetLampState(SpinnerAdvanceLamps[gSpinnerAdvancerCount % NUM_SPINNER_ADVANCE_LAMPS], 1);
+            RPU_SetLampState(SpinnerAdvanceLamps[spinnerLampIndex % NUM_SPINNER_ADVANCE_LAMPS], 1);
             break;
 
         case ATTRACT_PHASE_2_ARC_SURGE:
             if (attractStep == 1) {
                 StopAttractModeLights(); // Clear lights from previous step
                 RPU_SetLampState(LAMP_EXTRA_BALL_LANE, 1, 0, 250); // Flash
-                gAttractModeTimer = CurrentTime + 1500;
+                attractTimer = CurrentTime + 1500;
                 attractStep = 2;
             } else if (attractStep == 2) {
                 RPU_SetLampState(LAMP_EXTRA_BALL_LANE, 0);
                 RPU_SetLampState(LAMP_BONUS_MULTIPLIER_2X, 1, 0, 200);
                 RPU_SetLampState(LAMP_BONUS_MULTIPLIER_3X, 1, 0, 200);
                 RPU_SetLampState(LAMP_BONUS_MULTIPLIER_5X, 1, 0, 200);
-                gAttractModeTimer = CurrentTime + 2000;
+                attractTimer = CurrentTime + 2000;
                 attractStep = 3;
             } else if (attractStep == 3) {
                 StopAttractModeLights();
                 RPU_SetLampState(LAMP_SAUCER, 1, 0, 250); // Flash
-                gAttractModeTimer = CurrentTime + 1500;
+                attractTimer = CurrentTime + 1500;
                 attractStep = 4;
             } else {
                 attractPhase = ATTRACT_PHASE_3_WAVE;
-                gChaserIndex = 0; // Reset chaser for Phase 3
-                gAttractModeTimer = CurrentTime + 10;
+                chaserIndex = 0; // Reset chaser for Phase 3
+                attractTimer = CurrentTime + 10;
             }
             break;
 
         case ATTRACT_PHASE_3_WAVE:
-            gAttractModeTimer = CurrentTime + 50; // Very fast chaser
+            attractTimer = CurrentTime + 50; // Very fast chaser
             
-            if (gChaserIndex < NUM_ALL_FEATURE_LAMPS) {
-                RPU_SetLampState(AllFeatureLamps[gChaserIndex], 1);
-                if (gChaserIndex > 0) {
-                    RPU_SetLampState(AllFeatureLamps[gChaserIndex - 1], 0);
+            if (chaserIndex < NUM_ALL_FEATURE_LAMPS) {
+                RPU_SetLampState(AllFeatureLamps[chaserIndex], 1);
+                if (chaserIndex > 0) {
+                    RPU_SetLampState(AllFeatureLamps[chaserIndex - 1], 0);
                 }
-                gChaserIndex++;
+                chaserIndex++;
             } else {
                 StopAttractModeLights(); // This will reset all variables including attractPhase
             }
