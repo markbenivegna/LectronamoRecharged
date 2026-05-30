@@ -1,99 +1,4 @@
-#ifndef LECTRONAMO_H
-#define LECTRONAMO_H
 
-#include <Arduino.h> // Defines byte for use in header file
-#include "RPU.h"
-
-//================================================================
-// I. HARDWARE DEFINITIONS AND SCORING
-//================================================================
-
-// Score Constants
-#define SCORE_DROP_TARGET_BASE      500L
-#define SCORE_POP_BUMPER            100L
-#define SCORE_OUTLANE               3000L
-#define SCORE_SKILL_SHOT            5000L
-#define SCORE_SPINNER_BASE          100L
-#define SCORE_SPINNER_LIT           1000L
-#define SCORE_3BANK_COMPLETION      6000L
-#define SCORE_5BANK_COMPLETION      10000L
-#define SCORE_ARC_SURGE_T1          10000L
-#define SCORE_ARC_SURGE_SUPER       50000L
-
-//----------------------------
-// Switch Definitions (SW_)
-//----------------------------
-#define SW_RIGHT_OUTLANE            0
-#define SW_LEFT_OUTLANE             1
-#define SW_RIGHT_INLANE             2
-#define SW_LEFT_INLANE              3
-#define SW_TARGET_1_5BANK           4
-#define SW_CREDIT_BUTTON            5
-#define SW_TILT                     6
-#define SW_OUTHOLE                  7
-#define SW_COIN_3                   8
-#define SW_COIN_1                   9
-#define SW_COIN_2                  10
-#define SW_STANDUP_TARGET          11
-#define SW_TARGET_2_5BANK          12
-#define SW_TARGET_3_3BANK          13
-#define SW_ROLLOVER_BUTTON         14
-#define SW_SLAM_TILT               15
-#define SW_SPINNER                 16
-#define SW_ADV_BONUS_300           17
-#define SW_SCORE_10                18
-// #define SW_                     19
-#define SW_TARGET_3_5BANK          20
-#define SW_TARGET_2_3BANK          21
-#define SW_SAUCER                  22
-#define SW_KICKER                  23
-#define SW_ADV_BONUS_1000          24
-// #define SW_                     25
-// #define SW_                     26
-// #define SW_                     27
-#define SW_TARGET_4_5BANK          28
-#define SW_TARGET_1_3BANK          29
-// #define SW_                     30
-// #define SW_                     31
-#define SW_BOTTOM_POP              32
-#define SW_RIGHT_POP               33
-#define SW_LEFT_POP                34
-// #define SW_                     35
-#define SW_TARGET_5_5BANK          36
-#define SW_RIGHT_SLING             37
-#define SW_LEFT_SLING              38
-// #define SW_                     39
-
-//----------------------------
-// Solenoid Definitions (SOL_)
-//----------------------------
-#define SOL_LEFT_THUMPER 7 // Solenoid 7
-#define SOL_RIGHT_THUMPER 8 // Solenoid 8
-#define SOL_CENTER_THUMPER 9 // Solenoid 9
-#define SOL_OUTHOLE 10 // Solenoid 10
-#define SOL_RIGHT_SLINGSHOT 11 // Solenoid 11
-#define SOL_KICKER 12 // Solenoid 12
-#define SOL_DROP_TARGET_3BANK_RESET 13 // Solenoid 13
-#define SOL_SAUCER 14 // Solenoid 14
-#define SOL_DROP_TARGET_5BANK_RESET 15 // Solenoid 15
-#define SOL_LEFT_SLINGSHOT 16 // Solenoid 16
-#define SOL_KNOCKER 17 // Solenoid 17
-#define SOL_FLIPPERS 18 // Solenoid 18
-#define SOL_COIN_LOCKOUT 19 // Solenoid 19
-
-//----------------------------
-// Sound Definitions (SND_) - For Stern SB-100 Sound Board (Bitmask)
-//----------------------------
-#define SND_10_POINTS       (1 << 0)
-#define SND_100_POINTS      (1 << 1)
-#define SND_1000_POINTS     (1 << 2)
-#define SND_10000_POINTS    (1 << 3)
-#define SND_ADD_BONUS       (1 << 4)
-#define SND_POP_BUMPER      (1 << 5)
-
-//----------------------------
-// Lamp Definitions (LAMP_)
-//----------------------------
 
 #define LAMP_5_BANK_TARGET_SPECIAL      32 // Q1
 #define LAMP_BONUS_MULTIPLIER_2X        36 // Q2
@@ -105,7 +10,7 @@
 #define LAMP_ADVANCE_BONUS_1            12 // Q8
 // #define LAMP_UNUSED                  16 // Q9
 // #define LAMP_UNUSED                  20 // Q10
-#define LAMP_EXTRA_BALL                 24 // Q11
+#define LAMP_XTRA_BALL                  24 // Q11
 #define LAMP_BONUS_5K                   4 // Q12
 #define LAMP_BONUS_9K                   8 // Q13
 #define LAMP_BONUS_1K                   0 // Q14
@@ -118,9 +23,8 @@
 // #define LAMP_UNUSED                  45 // Q21
 // #define LAMP_UNUSED                  21 // Q22
 #define LAMP_MATCH                      41 // Q23
-#define LAMP_ROLLOVER_BUTTON            32 // Q24
-// #define LAMP_UNUSED                  3 // Q24
-#define LAMP_SAUCER                     29 // Q25 (Also Left kickout lamp)
+#define LAMP_ROLLOVER_BUTTON            33 // Q24, J1-5
+#define LAMP_SAUCER                     29 // Q25
 // #define LAMP_UNUSED                  25 // Q26
 #define LAMP_BONUS_6K                   5 // Q27
 #define LAMP_BONUS_10K                  9 // Q28
@@ -157,88 +61,107 @@
 // #define LAMP_UNUSED                  27 // Q59
 // #define LAMP_UNUSED                  23 // Q60
 
-//================================================================
-// II. CONSTANTS AND GAME FLOW DEFINITIONS
-//================================================================
 
-// Game Flow States
-#define HIGH_SCORE_CHECK 98
 
-// Timings
-#define TIME_MATCH_SEQUENCE_MS 3000
-#define TIME_BALL_SAVE_DURATION_MS 15000
-#define TIME_ARC_SURGE_COMBO_MS 8000
+#define SW_RIGHT_OUTLANE            0
+#define SW_RIGHT_INLANE             1
+#define SW_LEFT_OUTLANE             2
+#define SW_LEFT_INLANE              3
+#define SW_TARGET_1_5BANK           4
+#define SW_CREDIT_BUTTON            5
+#define SW_TILT                     6
+#define SW_OUTHOLE                  7
+#define SW_COIN_3                   8
+#define SW_COIN_1                   9
+#define SW_COIN_2                  10
+#define SW_STANDUP_TARGET          11
+#define SW_TARGET_2_5BANK          12
+#define SW_TARGET_3_3BANK          13
+#define SW_SPINNER                 14
+#define SW_SLAM_TILT               15
+#define SW_ROLLOVER_BUTTON         16
+#define SW_ADV_BONUS_300           17
+#define SW_SCORE_10                18
+// #define SW_                     19
+#define SW_TARGET_3_5BANK          20
+#define SW_TARGET_2_3BANK          21
+// #define SW_                     22
+#define SW_KICKER                  23
+#define SW_ADV_BONUS_1000          24
+// #define SW_                     25
+// #define SW_                     26
+// #define SW_                     27
+#define SW_TARGET_4_5BANK          28
+#define SW_TARGET_1_3BANK          29
+// #define SW_                     30
+// #define SW_                     31
+#define SW_BOTTOM_POP              32
+#define SW_RIGHT_POP               33
+#define SW_LEFT_POP                34
+// #define SW_                     35
+#define SW_TARGET_5_5BANK          36
+#define SW_RIGHT_SLING             37
+#define SW_LEFT_SLING              38
+#define SW_SAUCER                  39
 
-// Attract Mode Phases
-#define ATTRACT_PHASE_1_CLASSIC_FLOW 1
-#define ATTRACT_PHASE_2_ARC_SURGE 2
-#define ATTRACT_PHASE_3_WAVE 3
+#define SOL_LEFT_THUMPER             7 // Solenoid 7
+#define SOL_RIGHT_THUMPER            8 // Solenoid 8
+#define SOL_CENTER_THUMPER           9 // Solenoid 9
+#define SOL_OUTHOLE                 10 // Solenoid 10
+#define SOL_RIGHT_SLINGSHOT         11 // Solenoid 11
+#define SOL_KICKER                  12 // Solenoid 12
+#define SOL_DROP_TARGET_3BANK_RESET 13 // Solenoid 13
+#define SOL_SAUCER                  14 // Solenoid 14
+#define SOL_DROP_TARGET_5BANK_RESET 15 // Solenoid 15
+#define SOL_LEFT_SLINGSHOT          16 // Solenoid 16
+#define SOL_KNOCKER                 17 // Solenoid 17
 
-//================================================================
-// III. EEPROM ADDRESSES (MPU ADJUSTMENTS)
-//================================================================
-#define ADDR_MAX_TILT_WARNINGS 10
-#define ADDR_EXTRA_BALL_SCORE 11
-#define ADDR_SPECIAL_SCORE 12
-#define ADDR_HIGHSCORE_REPLAY_AWARD 13
-#define ADDR_SAUCER_LIGHT_PERSISTENCE 14
-#define ADDR_FREE_PLAY_ADJUSTMENT 15
+//----------------------------
+// Sound Definitions (SND_) - Stern SB-100 Sound Board (bitmask)
+//----------------------------
+#define SND_10_POINTS       (1 << 0)  // Solenoid 1 — highest pitch
+#define SND_100_POINTS      (1 << 1)  // Solenoid 2
+#define SND_1000_POINTS     (1 << 2)  // Solenoid 3
+#define SND_10000_POINTS    (1 << 3)  // Solenoid 4 — lowest pitch / dramatic
+#define SND_ADD_BONUS       (1 << 4)  // Solenoid 5 — bonus collect chime
+#define SND_POP_BUMPER      (1 << 5)  // Solenoid 6 — pop bumper thwack
 
-// Standard RPU OS EEPROM Addresses
-#define ADDR_BALLS_PER_GAME 0x0001
-#define ADDR_SPECIAL_LIMIT  0x0002
-#define ADDR_HIGH_SCORE     0x0005
-#define ADDR_MAX_CREDITS_17 0x0011
-#define ADDR_MAX_CREDITS_18 0x0012
-#define ADDR_MAX_CREDITS_19 0x0013
-#define ADDR_BONUS_COUNTDOWN_METHOD 0x27
-#define ADDR_EXTRA_BALL_BYPASS 0x29
+// ── Framework compatibility aliases ──────────────────────────────────────────
+// Head lamp names used by the RPU framework internals
+#define LAMP_HEAD_TILT          LAMP_TILT           // 51
+#define LAMP_HEAD_HIGH_SCORE    LAMP_HIGHEST_SCORE  // 49
+#define LAMP_HEAD_MATCH         LAMP_MATCH          // 41
+#define LAMP_HEAD_GAME_OVER     LAMP_GAME_OVER      // 50
 
-//================================================================
-// IV. GLOBAL GAME STATE AND VARIABLES
-//================================================================
+// Player-up lamp names expected by framework display/lamp routines
+#define LAMP_HEAD_PLAYER_1_UP   LAMP_1ST_PLAYER_UP  // 56
+#define LAMP_HEAD_PLAYER_2_UP   LAMP_2ND_PLAYER_UP  // 57
+#define LAMP_HEAD_PLAYER_3_UP   LAMP_3RD_PLAYER_UP  // 58
+#define LAMP_HEAD_PLAYER_4_UP   LAMP_4TH_PLAYER_UP  // 59
 
-enum GameState {
-    ATTRACT_MODE,
-    GAME_START,
-    BALL_IN_PLAY,
-    BONUS_COUNT,
-    GAME_OVER,
-    MATCH_MODE,
-    AUDIT_MODE
+// Bonus multiplier short-names used in ShowBonusXLamps()
+#define LAMP_2X  LAMP_BONUS_MULTIPLIER_2X  // 36
+#define LAMP_3X  LAMP_BONUS_MULTIPLIER_3X  // 37
+#define LAMP_5X  LAMP_BONUS_MULTIPLIER_5X  // 38
+
+// Switch name aliases
+#define SW_CREDIT_RESET     SW_CREDIT_BUTTON   // 5
+#define SW_CENTER_THUMPER   SW_BOTTOM_POP      // 32
+#define SW_RIGHT_THUMPER    SW_RIGHT_POP       // 33
+#define SW_LEFT_THUMPER     SW_LEFT_POP        // 34
+#define SW_RIGHT_SLINGSHOT  SW_RIGHT_SLING     // 37
+#define SW_LEFT_SLINGSHOT   SW_LEFT_SLING      // 38
+// ─────────────────────────────────────────────────────────────────────────────
+
+
+
+#define NUM_SWITCHES_WITH_TRIGGERS          5 // total number of solenoid/switch pairs
+#define NUM_PRIORITY_SWITCHES_WITH_TRIGGERS 5 // This number should match the define above
+
+struct PlayfieldAndCabinetSwitch SolenoidAssociatedSwitches[] = {
+  { SW_RIGHT_SLING, SOL_RIGHT_SLINGSHOT, 4},
+  { SW_LEFT_SLING,  SOL_LEFT_SLINGSHOT,  4},
+  { SW_BOTTOM_POP,  SOL_CENTER_THUMPER,  6},
+  { SW_RIGHT_POP,   SOL_RIGHT_THUMPER,   6},
+  { SW_LEFT_POP,    SOL_LEFT_THUMPER,    6}
 };
-extern GameState gameState;
-extern long playerScores[4];
-extern int currentBonus;
-extern int bonusMultiplier;
-extern bool extraBallLit;
-extern unsigned long ballSaveStartTime;
-extern bool isBallSaveActive;
-extern bool firstHitMade;
-extern unsigned long arcSurgeTimerStart;
-extern int attractPhase;
-extern int attractStep;
-extern unsigned long selfTestTimerStart;
-extern int selfTestPressCount;
-extern bool inAuditMode;
-extern int currentTestMode;
-extern int threeBankCompleteCount;
-extern bool threeTargetsDown[3];
-extern int fiveBankCompleteCount;
-extern bool fiveTargetsDown[5];
-extern int spinnerHitCount;
-extern bool holdBonus;
-extern int extraBalls;
-extern int ball;
-extern int player;
-extern int ballsPerGame;
-extern bool specialAwardedThisBall;
-extern unsigned long highScore;
-extern int credits;
-extern unsigned long lastSwitchHitTime;
-extern byte MaxTiltWarnings;
-extern byte NumTiltWarnings;
-extern long ExtraBallScoreValue;
-extern long SpecialScoreValue;
-extern byte AwardHighscoreNumReplays;
-#endif // LECTRONAMO_H

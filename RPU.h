@@ -22,7 +22,7 @@
 #ifndef RPU_OS_H
 
 #define RPU_OS_MAJOR_VERSION  5
-#define RPU_OS_MINOR_VERSION  8
+#define RPU_OS_MINOR_VERSION  11
 
 struct PlayfieldAndCabinetSwitch {
   byte switchNum;
@@ -79,6 +79,7 @@ byte RPU_GetDipSwitches(byte index);
 
 //   Swtiches
 byte RPU_PullFirstFromSwitchStack();
+boolean RPU_SetSwitchInversion(byte switchNum);
 boolean RPU_ReadSingleSwitchState(byte switchNum);
 void RPU_PushToSwitchStack(byte switchNumber);
 boolean RPU_GetUpDownSwitchState(); // This always returns true for RPU_MPU_ARCHITECTURE==1 (no up/down switch)
@@ -88,6 +89,7 @@ void RPU_ClearUpDownSwitchState();
 void RPU_PushToSolenoidStack(byte solenoidNumber, byte numPushes, boolean disableOverride = false);
 void RPU_SetCoinLockout(boolean lockoutOff = false, byte solbit = CONTSOL_DISABLE_COIN_LOCKOUT);
 void RPU_SetDisableFlippers(boolean disableFlippers = true, byte solbit = CONTSOL_DISABLE_FLIPPERS);
+boolean RPU_GetDisableFlippers(byte solbit = CONTSOL_DISABLE_FLIPPERS);
 void RPU_SetContinuousSolenoidBit(boolean bitOn, byte solBit = 0x10);
 #if (RPU_MPU_ARCHITECTURE>=10)
 void RPU_SetContinuousSolenoid(boolean solOn, byte solNum);
@@ -96,6 +98,7 @@ boolean RPU_FireContinuousSolenoid(byte solBit, byte numCyclesToFire);
 byte RPU_ReadContinuousSolenoids();
 void RPU_DisableSolenoidStack();
 void RPU_EnableSolenoidStack();
+boolean RPU_IsSolenoidStackEnabled();
 boolean RPU_PushToTimedSolenoidStack(byte solenoidNumber, byte numPushes, unsigned long whenToFire, boolean disableOverride = false);
 void RPU_UpdateTimedSolenoidStack(unsigned long curTime);
 
@@ -107,7 +110,7 @@ void RPU_SetDisplayMatch(int value, boolean displayOn = true, boolean showBothDi
 void RPU_SetDisplayBallInPlay(int value, boolean displayOn = true, boolean showBothDigits=true);
 void RPU_SetDisplayFlash(int displayNumber, unsigned long value, unsigned long curTime, int period=500, byte minDigits=2);
 void RPU_SetDisplayFlashCredits(unsigned long curTime, int period=100);
-void RPU_CycleAllDisplays(unsigned long curTime, byte digitNum=0); // Self-test function
+void RPU_CycleAllDisplays(unsigned long curTime, byte digitNum=0, byte digitValue=0xFF); // Self-test function
 byte RPU_GetDisplayBlank(int displayNumber);
 #if (RPU_MPU_ARCHITECTURE==15)
 byte RPU_SetDisplayText(int displayNumber, char *text, boolean blankByLength=true);
@@ -138,7 +141,7 @@ void RPU_PlaySB100Chime(byte soundByte);
 #endif 
 #endif
 
-#ifdef RPU_OS_USE_DASH51
+#if defined(RPU_OS_USE_DASH50) || defined(RPU_OS_USE_DASH51)
 void RPU_PlaySoundDash51(byte soundByte);
 #endif
 
@@ -174,8 +177,8 @@ void RPU_WriteULToEEProm(unsigned short startByte, unsigned long value);
 
 
 #ifdef RPU_CPP_FILE
-  int NumGameSwitches = 0;
-  int NumGamePrioritySwitches = 0;
+  byte NumGameSwitches = 0;
+  byte NumGamePrioritySwitches = 0;
   PlayfieldAndCabinetSwitch *GameSwitches = NULL;
 
 #if (RPU_MPU_ARCHITECTURE==15)
