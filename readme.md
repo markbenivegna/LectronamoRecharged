@@ -1,6 +1,6 @@
 # Lectronamo Recharged
 
-Complete firmware for the **Lectronamo Recharged** project — a modernization of the classic 1978 Stern/Bally Lectronamo pinball machine using the **RPU (Retro Pin Upgrade)** microcontroller system.
+Complete firmware for the **Lectronamo Recharged** project — a modernization of the classic 1978 Stern Lectronamo pinball machine using the **RPU (Retro Pin Upgrade)** microcontroller system.
 
 This firmware implements a full ruleset-driven game engine on modern, reliable hardware, replacing the original MPU and Driver Boards while preserving the original gameplay feel and adding new "Recharged" features.
 
