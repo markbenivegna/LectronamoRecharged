@@ -850,7 +850,7 @@ byte Display_UpdateDisplays(byte displayNum, boolean finishAnimation, boolean fl
       // if we're showing the high score, just show that
       if (allScoresShowValue!=0xFFFFFFFF) {
         ShowPlayerScore(allScoresShowValue, displayCount);
-      } else if (CurrentNumPlayers && displayCount>(CurrentNumPlayers-1)) {
+      } else if (displayCount >= CurrentNumPlayers) {
         // We're not showing a high score and there is no player this high, so blank the display
         RPU_SetDisplayBlank(displayCount, 0x00);
       } else if (CurrentNumPlayers <= DISPLAY_NUMBER_OF_PLAYER_DISPLAYS) {

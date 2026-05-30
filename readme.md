@@ -69,6 +69,7 @@ The project is currently in the **Lite Version** stage. All core game rules, sco
 | Ball Save | Configurable timer begins after first playfield switch; pulsing Shoot Again lamp |
 | Skill Shot | First plunge to Saucer awards 5,000 points + 3 bonus advances |
 | Arc Surge Combo | Right Inlane starts 8-second timed combo; hitting Saucer during combo awards 50,000 + 3 bonus advances |
+| 3-Bank Sweep | All 3 targets cleared within 1.5 seconds: +10,000 bonus points + 1.5-second lamp flash on the bank targets |
 | Attract Mode Animations | 6 lamp animations including Classic Flow and Arc Surge Showcase sequences |
 
 ---

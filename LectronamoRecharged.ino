@@ -286,6 +286,8 @@ unsigned long BallSaveEndTime;
 #define SCORE_DROP_TARGET_BASE  500
 #define SCORE_STANDUP_TARGET    5000
 #define SCORE_3BANK_COMPLETION  6000
+#define SCORE_3BANK_SWEEP_BONUS 10000
+#define TIME_3BANK_SWEEP_WINDOW_MS 1500
 #define SCORE_5BANK_COMPLETION  10000
 #define SCORE_OUTLANE           3000
 #define SCORE_ARC_SURGE_T1      10000
@@ -327,6 +329,8 @@ int threeBankCompleteCount[RPU_NUMBER_OF_PLAYERS_ALLOWED];
 int fiveBankCompleteCount[RPU_NUMBER_OF_PLAYERS_ALLOWED];
 int spinnerHitCount[RPU_NUMBER_OF_PLAYERS_ALLOWED];
 unsigned long arcSurgeTimerStart[RPU_NUMBER_OF_PLAYERS_ALLOWED];
+unsigned long threeBankSweepStartTime[RPU_NUMBER_OF_PLAYERS_ALLOWED];
+unsigned long threeBankSweepAnimationStart[RPU_NUMBER_OF_PLAYERS_ALLOWED];
 
 DropTargetBank ThreeBank(3, 1, DROP_TARGET_TYPE_STRN_1, 8);
 DropTargetBank FiveBank(5, 1, DROP_TARGET_TYPE_STRN_1, 8);
@@ -755,11 +759,12 @@ void setup() {
 
   CurrentTime = millis();
 
-  // 3-note ascending chime x2 on boot
+  // 4-note ascending chime x2 on boot
   for (byte rep = 0; rep < 2; rep++) {
-    Audio.PlaySound(SND_1000_POINTS, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS); delay(300);
-    Audio.PlaySound(SND_100_POINTS,  AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS); delay(300);
-    Audio.PlaySound(SND_10_POINTS,   AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS); delay(300);
+    Audio.PlaySound(SND_10000_POINTS, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS); delay(300);
+    Audio.PlaySound(SND_1000_POINTS,  AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS); delay(300);
+    Audio.PlaySound(SND_100_POINTS,   AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS); delay(300);
+    Audio.PlaySound(SND_10_POINTS,    AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS); delay(300);
   }
   OperatorSwitchPressStarted = 0;
   InOperatorMenu = false;
@@ -890,11 +895,26 @@ void ShowGameplayLamps() {
     RPU_SetLampState(SpinnerAdvanceLamps[i], i == spinnerProgress ? 1 : 0);
   }
 
-  // Drop target lamps: lit when the target is UP (not knocked down)
-  byte threeBankStatus = ThreeBank.GetStatus(false);
-  RPU_SetLampState(LAMP_DROP_TARGET_2X, (threeBankStatus & 0x01) ? 0 : 1);
-  RPU_SetLampState(LAMP_DROP_TARGET_3X, (threeBankStatus & 0x02) ? 0 : 1);
-  RPU_SetLampState(LAMP_DROP_TARGET_5X, (threeBankStatus & 0x04) ? 0 : 1);
+  // Drop target lamps: flash briefly on sweep, otherwise lit when target is UP
+  if (threeBankSweepAnimationStart[CurrentPlayer] != 0) {
+    if ((CurrentTime - threeBankSweepAnimationStart[CurrentPlayer]) < 1500) {
+      byte flashOn = (CurrentTime / 100) % 2;
+      RPU_SetLampState(LAMP_DROP_TARGET_2X, flashOn);
+      RPU_SetLampState(LAMP_DROP_TARGET_3X, flashOn);
+      RPU_SetLampState(LAMP_DROP_TARGET_5X, flashOn);
+    } else {
+      threeBankSweepAnimationStart[CurrentPlayer] = 0;
+      byte threeBankStatus = ThreeBank.GetStatus(false);
+      RPU_SetLampState(LAMP_DROP_TARGET_2X, (threeBankStatus & 0x01) ? 0 : 1);
+      RPU_SetLampState(LAMP_DROP_TARGET_3X, (threeBankStatus & 0x02) ? 0 : 1);
+      RPU_SetLampState(LAMP_DROP_TARGET_5X, (threeBankStatus & 0x04) ? 0 : 1);
+    }
+  } else {
+    byte threeBankStatus = ThreeBank.GetStatus(false);
+    RPU_SetLampState(LAMP_DROP_TARGET_2X, (threeBankStatus & 0x01) ? 0 : 1);
+    RPU_SetLampState(LAMP_DROP_TARGET_3X, (threeBankStatus & 0x02) ? 0 : 1);
+    RPU_SetLampState(LAMP_DROP_TARGET_5X, (threeBankStatus & 0x04) ? 0 : 1);
+  }
 
   // LAMP_ROLLOVER_BUTTON: on when available; turns off after rolled (value moves to left inlane)
   RPU_SetLampState(LAMP_ROLLOVER_BUTTON, isLeftReturnLaneLit[CurrentPlayer] ? 0 : 1);
@@ -922,11 +942,12 @@ boolean AddPlayer(boolean resetNumPlayers = false) {
   RPU_SetDisplay(CurrentNumPlayers - 1, 0, true, 2);
   
   if (CurrentNumPlayers > 1) {
-    // 3-note ascending chime x2 when a player is added
+    // 4-note ascending chime x2 when a player is added
     for (byte rep = 0; rep < 2; rep++) {
-      Audio.PlaySound(SND_1000_POINTS, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS); delay(300);
-      Audio.PlaySound(SND_100_POINTS,  AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS); delay(300);
-      Audio.PlaySound(SND_10_POINTS,   AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS); delay(300);
+      Audio.PlaySound(SND_10000_POINTS, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS); delay(300);
+      Audio.PlaySound(SND_1000_POINTS,  AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS); delay(300);
+      Audio.PlaySound(SND_100_POINTS,   AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS); delay(300);
+      Audio.PlaySound(SND_10_POINTS,    AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS); delay(300);
     }
   }
 
@@ -1022,6 +1043,8 @@ void AddSpecialCredit() {
   RPU_PushToTimedSolenoidStack(SOL_KNOCKER, KNOCKER_SOLENOID_STRENGTH, CurrentTime, true);
   RPU_WriteULToEEProm(RPU_TOTAL_REPLAYS_EEPROM_START_BYTE, RPU_ReadULFromEEProm(RPU_TOTAL_REPLAYS_EEPROM_START_BYTE) + 1);
 }
+
+boolean AwardExtraBall(boolean basedOnScore = false);
 
 void AwardSpecial(boolean overrideSpecialCollected = false) {
   if (SpecialCollected && !overrideSpecialCollected && !SpecialOpenEnded) return;
@@ -1939,7 +1962,7 @@ int RunAttractMode(int curState, boolean curStateChanged) {
     RPU_SetLampState(LAMP_HEAD_HIGH_SCORE, 0);
     for (byte count=0; count<4; count++) {
       if (count<CurrentNumPlayers) Display_UpdateDisplays(count, false, false, false, CurrentScores[count]);
-      else if (CurrentNumPlayers==0) Display_UpdateDisplays(count, false, false, false, 0);
+      else RPU_SetDisplayBlank(count, 0x00);
     }
 
     AttractLastHeadMode = 3;
@@ -2094,6 +2117,8 @@ int InitGamePlay(boolean curStateChanged) {
       fiveBankCompleteCount[p] = 0;
       spinnerHitCount[p] = 0;
       arcSurgeTimerStart[p] = 0;
+      threeBankSweepStartTime[p] = 0;
+      threeBankSweepAnimationStart[p] = 0;
     }
   }
 
@@ -2187,6 +2212,8 @@ int InitNewBall(bool curStateChanged) {
     firstHitMade[CurrentPlayer] = false;
     arcSurgeTimerStart[CurrentPlayer] = 0;
     spinnerHitCount[CurrentPlayer] = 0;
+    threeBankSweepStartTime[CurrentPlayer] = 0;
+    threeBankSweepAnimationStart[CurrentPlayer] = 0;
     ThreeBank.ResetDropTargets(CurrentTime + 500, true);
     FiveBank.ResetDropTargets(CurrentTime + 500, true);
     BallSearchPhase = 0;
@@ -2248,16 +2275,16 @@ int ManageGameMode() {
   if ((CurrentTime - LastSwitchHitTime) > 3000) TimersPaused = true;
   else TimersPaused = false;
 
-  // Game start melody: 3-note ascending chime played twice while ball is in shooter lane (ball 1, player 1 only)
+  // Game start melody: 4-note ascending chime played twice while ball is in shooter lane (ball 1, player 1 only)
   if (CurrentBallInPlay == 1 && CurrentPlayer == 0 &&
-      GameStartMelodyStep < 6 && BallFirstSwitchHitTime == 0 &&
+      GameStartMelodyStep < 8 && BallFirstSwitchHitTime == 0 &&
       GameStartNotificationTime > 0) {
     unsigned long elapsed = CurrentTime - GameStartNotificationTime;
     byte targetStep = (byte)(elapsed / 300);
-    if (targetStep > 6) targetStep = 6;
+    if (targetStep > 8) targetStep = 8;
     while (GameStartMelodyStep < targetStep) {
-      static const byte melodyNotes[3] = {SND_1000_POINTS, SND_100_POINTS, SND_10_POINTS};
-      Audio.PlaySound(melodyNotes[GameStartMelodyStep % 3], AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS);
+      static const byte melodyNotes[4] = {SND_10000_POINTS, SND_1000_POINTS, SND_100_POINTS, SND_10_POINTS};
+      Audio.PlaySound(melodyNotes[GameStartMelodyStep % 4], AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS);
       GameStartMelodyStep++;
     }
   }
@@ -2798,6 +2825,10 @@ void ValidateAndRegisterPlayfieldSwitch() {
 
 
 void Handle3BankCompletion() {
+    boolean isSweep = (threeBankSweepStartTime[CurrentPlayer] != 0 &&
+                       (CurrentTime - threeBankSweepStartTime[CurrentPlayer]) < TIME_3BANK_SWEEP_WINDOW_MS);
+    threeBankSweepStartTime[CurrentPlayer] = 0;
+
     CurrentScores[CurrentPlayer] += SCORE_3BANK_COMPLETION * PlayfieldMultiplier;
     ThreeBank.ResetDropTargets(CurrentTime + 500);
 
@@ -2811,7 +2842,15 @@ void Handle3BankCompletion() {
         BonusX[CurrentPlayer] = 5;
     }
     BonusXAnimationStart = CurrentTime;
-    PlaySoundEffect(SOUND_EFFECT_DROP_TARGET_COMPLETE);
+
+    if (isSweep) {
+        CurrentScores[CurrentPlayer] += SCORE_3BANK_SWEEP_BONUS * PlayfieldMultiplier;
+        threeBankSweepAnimationStart[CurrentPlayer] = CurrentTime;
+        PlaySoundEffect(SOUND_EFFECT_DROP_TARGET_COMPLETE);
+        Audio.PlaySound(SND_10_POINTS, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS);
+    } else {
+        PlaySoundEffect(SOUND_EFFECT_DROP_TARGET_COMPLETE);
+    }
 }
 
 void Handle5BankCompletion() {
@@ -2842,6 +2881,8 @@ void HandleGamePlaySwitches(byte switchHit) {
         case SW_TARGET_1_3BANK:
         case SW_TARGET_2_3BANK:
         case SW_TARGET_3_3BANK:
+            if (ThreeBank.GetStatus(false) == 0x00 && threeBankSweepStartTime[CurrentPlayer] == 0)
+                threeBankSweepStartTime[CurrentPlayer] = CurrentTime;
             ThreeBank.HandleDropTargetHit(switchHit);
             CurrentScores[CurrentPlayer] += SCORE_DROP_TARGET_BASE * PlayfieldMultiplier;
             PlaySoundEffect(SOUND_EFFECT_DROP_TARGET_SOUND_1);
