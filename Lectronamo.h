@@ -1,7 +1,7 @@
 
 
 #define LAMP_5_BANK_TARGET_SPECIAL      32 // Q1
-#define LAMP_BONUS_MULTIPLIER_2X        36 // Q2
+#define LAMP_DROP_TARGET_2X             36 // Q2  (physically: drop target 2X indicator)
 #define LAMP_SHOOT_AGAIN                40 // Q3
 #define LAMP_SPINNER                    28 // Q4
 #define LAMP_PLAYER_1                   52 // Q5
@@ -10,53 +10,53 @@
 #define LAMP_ADVANCE_BONUS_1            12 // Q8
 // #define LAMP_UNUSED                  16 // Q9
 // #define LAMP_UNUSED                  20 // Q10
-#define LAMP_XTRA_BALL                  24 // Q11
-#define LAMP_BONUS_5K                   4 // Q12
-#define LAMP_BONUS_9K                   8 // Q13
-#define LAMP_BONUS_1K                   0 // Q14
+#define LAMP_XTRA_BALL                  24 // Q11 — physically: right return lane (extra ball collect)
+#define LAMP_BONUS_5K                   4  // Q12
+#define LAMP_BONUS_9K                   8  // Q13
+#define LAMP_BONUS_1K                   0  // Q14
 #define LAMP_HIGHEST_SCORE              49 // Q15
 #define LAMP_BALL_IN_PLAY               48 // Q16
-#define LAMP_BONUS_MULTIPLIER_3X        37 // Q17
+#define LAMP_DROP_TARGET_3X             37 // Q17 (physically: drop target 3X indicator)
 #define LAMP_PLAYER_2                   53 // Q18
 #define LAMP_2ND_PLAYER_UP              57 // Q19
 // #define LAMP_UNUSED                  30 // Q20
 // #define LAMP_UNUSED                  45 // Q21
 // #define LAMP_UNUSED                  21 // Q22
 #define LAMP_MATCH                      41 // Q23
-#define LAMP_ROLLOVER_BUTTON            33 // Q24, J1-5
-#define LAMP_SAUCER                     29 // Q25
+#define LAMP_ROLLOVER_BUTTON            29 // Q25 (physically swapped)
+#define LAMP_SAUCER                     33 // Q24 (physically swapped)
 // #define LAMP_UNUSED                  25 // Q26
-#define LAMP_BONUS_6K                   5 // Q27
-#define LAMP_BONUS_10K                  9 // Q28
-#define LAMP_BONUS_2K                   1 // Q29
+#define LAMP_BONUS_6K                   5  // Q27
+#define LAMP_BONUS_10K                  9  // Q28
+#define LAMP_BONUS_2K                   1  // Q29
 #define LAMP_PLAYER_3                   54 // Q30
 #define LAMP_3RD_PLAYER_UP              58 // Q31
 // #define LAMP_UNUSED                  26 // Q32
 #define LAMP_GAME_OVER                  50 // Q33
 // #define LAMP_UNUSED                  17 // Q34
 #define LAMP_ADVANCE_BONUS_2            13 // Q35
-#define LAMP_BONUS_3K                   2 // Q36
+#define LAMP_BONUS_3K                   2  // Q36
 // #define LAMP_UNUSED                  22 // Q37
-#define LAMP_BONUS_7K                   6 // Q38
+#define LAMP_BONUS_7K                   6  // Q38
 // #define LAMP_UNUSED                  46 // Q39
-#define LAMP_DROP_TARGET_2X             42 // Q40
-#define LAMP_BONUS_MULTIPLIER_5X        38 // Q41
+#define LAMP_BONUS_MULTIPLIER_2X        42 // Q40 (physically: bonus multiplier 2X)
+#define LAMP_DROP_TARGET_5X             38 // Q41 (physically: drop target 5X indicator)
 #define LAMP_LEFT_RETURN                34 // Q42
 #define LAMP_PLAYER_4                   55 // Q43
 // #define LAMP_UNUSED                  10 // Q44
 #define LAMP_4TH_PLAYER_UP              59 // Q45
-#define LAMP_EXTRA_BALL_LANE            39 // Q46
+#define LAMP_EXTRA_BALL_LANE            39 // Q46 — physically: near 5-bank (1st completion indicator) — needs lamp test verification
 #define LAMP_TILT                       51 // Q47
 // #define LAMP_UNUSED                  18 // Q48
 #define LAMP_ADVANCE_BONUS_3            14 // Q49
-#define LAMP_BONUS_8K                   7 // Q50
+#define LAMP_BONUS_8K                   7  // Q50
 // #define LAMP_UNUSED                  11 // Q51
-#define LAMP_DROP_TARGET_3X             43 // Q52
+#define LAMP_BONUS_MULTIPLIER_3X        43 // Q52 (physically: bonus multiplier 3X)
 // #define LAMP_UNUSED                  47 // Q53
 #define LAMP_ADVANCE_BONUS_4            15 // Q54
 // #define LAMP_UNUSED                  19 // Q55
-#define LAMP_DROP_TARGET_5X             35 // Q56
-#define LAMP_BONUS_4K                   3 // Q57
+#define LAMP_BONUS_MULTIPLIER_5X        35 // Q56 (physically: bonus multiplier 5X)
+#define LAMP_BONUS_4K                   3  // Q57
 // #define LAMP_UNUSED                  31 // Q58
 // #define LAMP_UNUSED                  27 // Q59
 // #define LAMP_UNUSED                  23 // Q60
@@ -71,7 +71,7 @@
 #define SW_CREDIT_BUTTON            5
 #define SW_TILT                     6
 #define SW_OUTHOLE                  7
-#define SW_COIN_3                   8
+#define SW_COIN_3                 255  // Not wired on this machine
 #define SW_COIN_1                   9
 #define SW_COIN_2                  10
 #define SW_STANDUP_TARGET          11
@@ -79,7 +79,7 @@
 #define SW_TARGET_3_3BANK          13
 #define SW_SPINNER                 14
 #define SW_SLAM_TILT               15
-#define SW_ROLLOVER_BUTTON         16
+#define SW_ROLLOVER_BUTTON          8
 #define SW_ADV_BONUS_300           17
 #define SW_SCORE_10                18
 // #define SW_                     19
@@ -95,26 +95,27 @@
 #define SW_TARGET_1_3BANK          29
 // #define SW_                     30
 // #define SW_                     31
-#define SW_BOTTOM_POP              32
-#define SW_RIGHT_POP               33
-#define SW_LEFT_POP                34
-// #define SW_                     35
+// #define SW_                     32 (not used)
 #define SW_TARGET_5_5BANK          36
 #define SW_RIGHT_SLING             37
 #define SW_LEFT_SLING              38
 #define SW_SAUCER                  39
+#define SW_BOTTOM_POP              32
+#define SW_RIGHT_POP               33
+#define SW_LEFT_POP                34
 
-#define SOL_LEFT_THUMPER             7 // Solenoid 7
-#define SOL_RIGHT_THUMPER            8 // Solenoid 8
-#define SOL_CENTER_THUMPER           9 // Solenoid 9
-#define SOL_OUTHOLE                 10 // Solenoid 10
-#define SOL_RIGHT_SLINGSHOT         11 // Solenoid 11
-#define SOL_KICKER                  12 // Solenoid 12
-#define SOL_DROP_TARGET_3BANK_RESET 13 // Solenoid 13
-#define SOL_SAUCER                  14 // Solenoid 14
-#define SOL_DROP_TARGET_5BANK_RESET 15 // Solenoid 15
-#define SOL_LEFT_SLINGSHOT          16 // Solenoid 16
-#define SOL_KNOCKER                 17 // Solenoid 17
+// Solenoid numbering: 4-14, verified mappings from hardware testing
+#define SOL_DROP_TARGET_3BANK_RESET   4
+#define SOL_KNOCKER                   5
+#define SOL_OUTHOLE                   6
+#define SOL_SAUCER                    7
+#define SOL_KICKER                    8
+#define SOL_DROP_TARGET_5BANK_RESET   9
+#define SOL_LEFT_THUMPER             10
+#define SOL_RIGHT_THUMPER            11
+#define SOL_CENTER_THUMPER           12
+#define SOL_RIGHT_SLINGSHOT          13
+#define SOL_LEFT_SLINGSHOT           14
 
 //----------------------------
 // Sound Definitions (SND_) - Stern SB-100 Sound Board (bitmask)
@@ -140,9 +141,9 @@
 #define LAMP_HEAD_PLAYER_4_UP   LAMP_4TH_PLAYER_UP  // 59
 
 // Bonus multiplier short-names used in ShowBonusXLamps()
-#define LAMP_2X  LAMP_BONUS_MULTIPLIER_2X  // 36
-#define LAMP_3X  LAMP_BONUS_MULTIPLIER_3X  // 37
-#define LAMP_5X  LAMP_BONUS_MULTIPLIER_5X  // 38
+#define LAMP_2X  LAMP_BONUS_MULTIPLIER_2X  // 42
+#define LAMP_3X  LAMP_BONUS_MULTIPLIER_3X  // 43
+#define LAMP_5X  LAMP_BONUS_MULTIPLIER_5X  // 35
 
 // Switch name aliases
 #define SW_CREDIT_RESET     SW_CREDIT_BUTTON   // 5
@@ -156,7 +157,7 @@
 
 
 #define NUM_SWITCHES_WITH_TRIGGERS          5 // total number of solenoid/switch pairs
-#define NUM_PRIORITY_SWITCHES_WITH_TRIGGERS 5 // This number should match the define above
+#define NUM_PRIORITY_SWITCHES_WITH_TRIGGERS 2 // slingshots only — thumpers use validated (debounced) path
 
 struct PlayfieldAndCabinetSwitch SolenoidAssociatedSwitches[] = {
   { SW_RIGHT_SLING, SOL_RIGHT_SLINGSHOT, 4},
