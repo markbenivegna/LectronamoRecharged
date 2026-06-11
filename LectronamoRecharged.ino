@@ -3083,7 +3083,16 @@ void HandleGamePlaySwitches(byte switchHit) {
              if (isArcSurgeActive[CurrentPlayer]) { // Arc Surge logic takes priority
                 CurrentScores[CurrentPlayer] += SCORE_ARC_SURGE_SUPER * PlayfieldMultiplier;
                 AddToBonus(3);
-                PlaySoundEffect(SOUND_EFFECT_BONUS_5);
+                // Arc Surge completion fanfare
+                Audio.PlaySound(SND_10_POINTS, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS);
+                Audio.QueueSound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, CurrentTime + 100);
+                Audio.QueueSound(SND_100_POINTS, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, CurrentTime + 150);
+                Audio.QueueSound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, CurrentTime + 250);
+                Audio.QueueSound(SND_1000_POINTS, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, CurrentTime + 300);
+                Audio.QueueSound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, CurrentTime + 400);
+                Audio.QueueSound(SND_10000_POINTS, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, CurrentTime + 450);
+                Audio.QueueSound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, CurrentTime + 550);
+                Audio.QueueSound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, CurrentTime + 600);
                 isArcSurgeActive[CurrentPlayer] = false;
                 arcSurgeCompleteTime = CurrentTime;
              } else if (!firstHitMade[CurrentPlayer]) { // Skill shot
