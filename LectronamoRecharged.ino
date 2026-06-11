@@ -308,7 +308,7 @@ const byte ATTRACT_PHASE_3_WAVE = 3;
 
 byte ExtraBallsAvailable[RPU_NUMBER_OF_PLAYERS_ALLOWED];
 byte GameRulesSelection;
-byte BallServeSolenoidStrength = 4;
+byte BallServeSolenoidStrength = 2;
 byte SaucerSolenoidStrength = 4;
 byte TempSlingStrength = 4;
 byte TempPopStrength = 4;
