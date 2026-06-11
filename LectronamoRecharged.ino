@@ -2255,12 +2255,12 @@ int InitNewBall(bool curStateChanged) {
     spinnerHitCount[CurrentPlayer] = 0;
     threeBankSweepStartTime[CurrentPlayer] = 0;
     threeBankSweepAnimationStart[CurrentPlayer] = 0;
-    // Only reset drop targets if any are down (stuck from previous game)
+    // Stagger drop target resets to avoid simultaneous solenoid firing
     if (ThreeBank.GetStatus() != 0) {
-      ThreeBank.ResetDropTargets(CurrentTime + 500, true, true);
+      ThreeBank.ResetDropTargets(CurrentTime + 300, true, true);
     }
     if (FiveBank.GetStatus() != 0) {
-      FiveBank.ResetDropTargets(CurrentTime + 500, true, true);
+      FiveBank.ResetDropTargets(CurrentTime + 600, true, true);
     }
     BallSearchPhase = 0;
     BallSearchAttempts = 0;
@@ -2282,7 +2282,7 @@ int InitNewBall(bool curStateChanged) {
 
     SetBallSave(0);
 
-    RPU_PushToTimedSolenoidStack(SOL_OUTHOLE, BallServeSolenoidStrength, CurrentTime + 750, false);
+    RPU_PushToTimedSolenoidStack(SOL_OUTHOLE, BallServeSolenoidStrength, CurrentTime + 950, false);
     LastTimeBallServed = CurrentTime + 1000;
     
     NumberOfBallsInPlay = 1;
