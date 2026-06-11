@@ -3051,6 +3051,7 @@ void HandleGamePlaySwitches(byte switchHit) {
                 Audio.QueueSound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, CurrentTime + 400);
                 Audio.QueueSound(SND_10000_POINTS, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, CurrentTime + 450);
                 Audio.QueueSound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, CurrentTime + 550);
+                Audio.QueueSound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, CurrentTime + 600);
                 AwardExtraBall();
                 ExtraBallCollectedThisBall[CurrentPlayer] = true;
                 ExtraBallLaneAvailable[CurrentPlayer] = false;
