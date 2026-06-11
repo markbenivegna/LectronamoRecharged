@@ -79,7 +79,7 @@
 #define SW_TARGET_3_3BANK          13
 #define SW_SPINNER                 14
 #define SW_SLAM_TILT               15
-#define SW_ROLLOVER_BUTTON          8
+#define SW_ROLLOVER_BUTTON         16
 #define SW_ADV_BONUS_300           17
 #define SW_SCORE_10                18
 // #define SW_                     19
