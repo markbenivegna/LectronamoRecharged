@@ -3033,6 +3033,7 @@ void HandleGamePlaySwitches(byte switchHit) {
 
         case SW_RIGHT_INLANE:
             CurrentScores[CurrentPlayer] += 100L * PlayfieldMultiplier;
+            PlaySoundEffect(SOUND_EFFECT_SCORE_TICK);
             if (DEBUG_MESSAGES) {
                 char buf[64];
                 sprintf(buf, "RIGHT_INLANE: 5bank=%d EBEnabled=%d EBAvail=%d\n",
