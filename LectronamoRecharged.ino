@@ -1533,13 +1533,14 @@ void RunOperatorMenu() {
       switch (subLevel) {
         case OM_GAME_ADJ_TROUGH_EJECT_STRENGTH:
           adjustmentType = OPERATOR_MENU_ADJ_TYPE_LIST;
-          numAdjustmentValues = 6;
+          numAdjustmentValues = 7;
           adjustmentValues[0] = 2;
-          adjustmentValues[1] = 4;
-          adjustmentValues[2] = 6;
-          adjustmentValues[3] = 8;
-          adjustmentValues[4] = 10;
-          adjustmentValues[5] = 12;
+          adjustmentValues[1] = 3;
+          adjustmentValues[2] = 4;
+          adjustmentValues[3] = 5;
+          adjustmentValues[4] = 6;
+          adjustmentValues[5] = 7;
+          adjustmentValues[6] = 8;
           currentAdjustmentByte = &BallServeSolenoidStrength;
           currentAdjustmentStorageByte = EEPROM_TROUGH_EJECT_STRENGTH;
           break;
