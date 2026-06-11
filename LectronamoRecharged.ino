@@ -2961,6 +2961,7 @@ void Handle5BankCompletion() {
             Audio.QueueSound(0,               AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, CurrentTime + 850);
             Audio.QueueSound(SND_10_POINTS,   AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, CurrentTime + 1050);
             Audio.QueueSound(0,               AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, CurrentTime + 1200);
+            Audio.QueueSound(0,               AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, CurrentTime + 1300);
         } else {
             PlaySoundEffect(SOUND_EFFECT_DROP_TARGET_COMPLETE);
         }
