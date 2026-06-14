@@ -2718,6 +2718,7 @@ int CountdownBonus(boolean curStateChanged) {
 
       DecrementingBonusCounter -= 1;
       Bonus[CurrentPlayer] = DecrementingBonusCounter;
+      BonusXAnimationStart = CurrentTime;  // Trigger lamp flash to sync with sound
       ShowBonusLamps();
 
     } else if (BonusCountDownEndTime == 0xFFFFFFFF) {
