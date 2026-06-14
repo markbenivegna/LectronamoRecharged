@@ -53,7 +53,7 @@ The project is currently in the **Lite Version** stage. All core game rules, sco
 | Stationary Target | 5,000 points, +1 bonus advance, lights Saucer |
 | Saucer (lit) | 5,000 points, +3 bonus advances |
 | Saucer (unlit) | 500 points, +1 bonus advance |
-| 3-Bank Completion | 6,000 points; advances bonus multiplier (2X → 3X → 5X) |
+| 3-Bank Completion | 6,000 points; advances bonus multiplier (2X → 3X → 5X → 7X → 8X → 10X) |
 | 5-Bank Completion (1st) | 10,000 points |
 | 5-Bank Completion (2nd) | Lights Extra Ball Lane (collect via Right Inlane) |
 | 5-Bank Completion (3rd+) | Special |
@@ -70,6 +70,7 @@ The project is currently in the **Lite Version** stage. All core game rules, sco
 | Skill Shot | First plunge to Saucer awards 5,000 points + 3 bonus advances |
 | Arc Surge Combo | Right Inlane starts 8-second timed combo; hitting Saucer during combo awards 50,000 + 3 bonus advances |
 | 3-Bank Sweep | All 3 targets cleared within 1.5 seconds: +10,000 bonus points + 1.5-second lamp flash on the bank targets |
+| Extended Multiplier | Bonus multiplier extends beyond 5X to 7X, 8X, 10X (max). 3-Bank target lamps show next multiplier; go dark at 10X (max reached) |
 | Attract Mode Animations | 6 lamp animations including Classic Flow and Arc Surge Showcase sequences |
 
 ---
@@ -132,7 +133,7 @@ Press the **self-test switch** (inside coin door) repeatedly to advance through 
 
 | # | Adjustment | Options | Default | Notes |
 |---|------------|---------|---------|-------|
-| 0 | Trough Eject Strength | 10 / 20 / 30 / 40 / 50 / 60 | — | Ball serve solenoid power; tune until ball reliably reaches shooter lane |
+| 0 | Trough Eject Strength | 2 / 3 / 4 / 5 / 6 / 7 / 8 | — | Ball serve solenoid power; tune until ball reliably reaches shooter lane |
 | 1 | Saucer Eject Strength | 5–15 | — | Saucer ejection solenoid power |
 | 2 | Slingshot Strength | 4–8 | — | Applied to both left and right slingshots |
 | 3 | Pop Bumper Strength | 4–8 | — | Applied to all three pop bumpers |
