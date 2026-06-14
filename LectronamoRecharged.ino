@@ -873,20 +873,43 @@ void ShowBonusLamps() {
 }
 
 void ShowBonusXLamps() {
-  if (CurrentTime > (BonusXAnimationStart+2000)) {
+  if (CurrentTime > (BonusXAnimationStart + 2000)) {
     BonusXAnimationStart = 0;
   }
 
-  // Bonus multiplier lamps light cumulatively as multipliers are earned
-  // Flash briefly on earn, then stay solid
-  RPU_SetLampState(LAMP_2X, BonusX[CurrentPlayer] >= 2 ? 1 : 0, 0, (BonusXAnimationStart && BonusX[CurrentPlayer]==2) ? 100 : 0);
-  RPU_SetLampState(LAMP_3X, BonusX[CurrentPlayer] >= 3 ? 1 : 0, 0, (BonusXAnimationStart && BonusX[CurrentPlayer]==3) ? 100 : 0);
-  RPU_SetLampState(LAMP_5X, BonusX[CurrentPlayer] >= 5 ? 1 : 0, 0, (BonusXAnimationStart && BonusX[CurrentPlayer]==5) ? 100 : 0);
+  LampState state = GetMultiplierLampState(BonusX[CurrentPlayer]);
+  boolean isAnimating = (BonusXAnimationStart != 0);
+  int flashPeriod = isAnimating ? 100 : 0;
+
+  RPU_SetLampState(LAMP_2X, state.lamp2X, 0, flashPeriod);
+  RPU_SetLampState(LAMP_3X, state.lamp3X, 0, flashPeriod);
+  RPU_SetLampState(LAMP_5X, state.lamp5X, 0, flashPeriod);
 }
 
 
 
 
+
+// Helper: Encode multiplier value to 3-lamp states using dual-lamp encoding
+struct LampState {
+  byte lamp2X;
+  byte lamp3X;
+  byte lamp5X;
+};
+
+LampState GetMultiplierLampState(byte multiplier) {
+  LampState state = {0, 0, 0};
+
+  switch(multiplier) {
+    case 2: state.lamp2X = 1; break;
+    case 3: state.lamp2X = 1; state.lamp3X = 1; break;
+    case 5: state.lamp2X = 1; state.lamp3X = 1; state.lamp5X = 1; break;
+    case 7: state.lamp2X = 1; state.lamp5X = 1; break;
+    case 8: state.lamp3X = 1; state.lamp5X = 1; break;
+    case 10: state.lamp2X = 1; state.lamp3X = 1; state.lamp5X = 1; break;
+  }
+  return state;
+}
 
 void ShowShootAgainLamp() {
 
@@ -896,6 +919,33 @@ void ShowShootAgainLamp() {
     RPU_SetLampState(LAMP_SHOOT_AGAIN, 1, 0, (msRemaining < 5000) ? 100 : 500);
   } else {
     RPU_SetLampState(LAMP_SHOOT_AGAIN, SamePlayerShootsAgain);
+  }
+}
+
+void ShowThreeBankTargetLamps() {
+  // Display next target multiplier on 3-bank lamps, or OFF if at max (10X)
+  byte targetMultiplier = BonusX[CurrentPlayer];
+
+  // Calculate next multiplier in progression
+  if (targetMultiplier < 10) {
+    if (targetMultiplier == 1) targetMultiplier = 2;
+    else if (targetMultiplier == 2) targetMultiplier = 3;
+    else if (targetMultiplier == 3) targetMultiplier = 5;
+    else if (targetMultiplier == 5) targetMultiplier = 7;
+    else if (targetMultiplier == 7) targetMultiplier = 8;
+    else if (targetMultiplier == 8) targetMultiplier = 10;
+  }
+
+  // At max (10X), turn off target lamps; otherwise show next target
+  if (BonusX[CurrentPlayer] >= 10) {
+    RPU_SetLampState(LAMP_DROP_TARGET_2X, 0);
+    RPU_SetLampState(LAMP_DROP_TARGET_3X, 0);
+    RPU_SetLampState(LAMP_DROP_TARGET_5X, 0);
+  } else {
+    LampState state = GetMultiplierLampState(targetMultiplier);
+    RPU_SetLampState(LAMP_DROP_TARGET_2X, state.lamp2X);
+    RPU_SetLampState(LAMP_DROP_TARGET_3X, state.lamp3X);
+    RPU_SetLampState(LAMP_DROP_TARGET_5X, state.lamp5X);
   }
 }
 
@@ -2107,16 +2157,16 @@ void IncreaseBonusX() {
   if (BonusX[CurrentPlayer] < 10) {
     if (BonusX[CurrentPlayer] == 1) {
       BonusX[CurrentPlayer] = 2;
-//      QueueNotification(SOUND_EFFECT_VP_BONUS_2X, 5);
     } else if (BonusX[CurrentPlayer] == 2) {
       BonusX[CurrentPlayer] = 3;
-//      QueueNotification(SOUND_EFFECT_VP_BONUS_3X, 5);
     } else if (BonusX[CurrentPlayer] == 3) {
       BonusX[CurrentPlayer] = 5;
-//      QueueNotification(SOUND_EFFECT_VP_BONUS_5X, 5);
     } else if (BonusX[CurrentPlayer] == 5) {
+      BonusX[CurrentPlayer] = 7;
+    } else if (BonusX[CurrentPlayer] == 7) {
+      BonusX[CurrentPlayer] = 8;
+    } else if (BonusX[CurrentPlayer] == 8) {
       BonusX[CurrentPlayer] = 10;
-//      QueueNotification(SOUND_EFFECT_VP_BONUS_10X, 5);
     }
     BonusXAnimationStart = CurrentTime;
   }
@@ -2514,6 +2564,7 @@ int ManageGameMode() {
   if ( !statusRunning && !specialAnimationRunning && NumTiltWarnings <= MaxTiltWarnings ) {
     ShowBonusLamps();
     ShowBonusXLamps();
+    ShowThreeBankTargetLamps();
     ShowShootAgainLamp();
     ShowGameplayLamps();
   }
