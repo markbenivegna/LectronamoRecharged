@@ -889,6 +889,12 @@ void ShowBonusXLamps() {
   boolean isAnimating = (BonusXAnimationStart != 0);
   int flashPeriod = isAnimating ? 100 : 0;
 
+  if (DEBUG_MESSAGES && isAnimating) {
+    char buf[64];
+    sprintf(buf, "BONUS MULTIPLIER: %dX (2X=%d, 3X=%d, 5X=%d)\n", BonusX[CurrentPlayer], state.lamp2X, state.lamp3X, state.lamp5X);
+    Serial.write(buf);
+  }
+
   RPU_SetLampState(LAMP_2X, state.lamp2X, 0, flashPeriod);
   RPU_SetLampState(LAMP_3X, state.lamp3X, 0, flashPeriod);
   RPU_SetLampState(LAMP_5X, state.lamp5X, 0, flashPeriod);
@@ -936,6 +942,16 @@ void ShowThreeBankTargetLamps() {
     else if (targetMultiplier == 5) targetMultiplier = 7;
     else if (targetMultiplier == 7) targetMultiplier = 8;
     else if (targetMultiplier == 8) targetMultiplier = 10;
+  }
+
+  if (DEBUG_MESSAGES) {
+    static unsigned long lastDebugTime = 0;
+    if (CurrentTime > lastDebugTime + 2000) {
+      char buf[80];
+      sprintf(buf, "3-BANK TARGET: Current=%dX, Target=%dX\n", BonusX[CurrentPlayer], (BonusX[CurrentPlayer] >= 10) ? 10 : targetMultiplier);
+      Serial.write(buf);
+      lastDebugTime = CurrentTime;
+    }
   }
 
   // At max (10X), turn off target lamps; otherwise show next target
