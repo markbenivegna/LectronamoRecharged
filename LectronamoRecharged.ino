@@ -188,6 +188,14 @@ boolean MachineStateChanged = true;
     Machine state and options
 
 *********************************************************************/
+
+// Lamp state structure for bonus multiplier encoding
+struct LampState {
+  byte lamp2X;
+  byte lamp3X;
+  byte lamp5X;
+};
+
 byte Credits = 0;
 byte BallSaveNumSeconds = 0;
 byte MaximumCredits = 40;
@@ -891,12 +899,6 @@ void ShowBonusXLamps() {
 
 
 // Helper: Encode multiplier value to 3-lamp states using dual-lamp encoding
-struct LampState {
-  byte lamp2X;
-  byte lamp3X;
-  byte lamp5X;
-};
-
 LampState GetMultiplierLampState(byte multiplier) {
   LampState state = {0, 0, 0};
 
