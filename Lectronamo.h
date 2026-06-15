@@ -20,8 +20,8 @@
 #define LAMP_PLAYER_2                   53 // Q18
 #define LAMP_2ND_PLAYER_UP              57 // Q19
 // #define LAMP_UNUSED                  30 // Q20
-// #define LAMP_UNUSED                  45 // Q21
 // #define LAMP_UNUSED                  21 // Q22
+// #define LAMP_ADV_BONUS_1000          45 // Q21 (physically: advance bonus 1000 below switch) — TODO: separate from saucer lamp when hardware is modified
 #define LAMP_MATCH                      41 // Q23
 #define LAMP_ROLLOVER_BUTTON            29 // Q25 (physically swapped)
 #define LAMP_SAUCER                     33 // Q24 (physically swapped)
