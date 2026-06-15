@@ -331,6 +331,7 @@ unsigned long ThumperEnableTime = 0;
 unsigned long PlayfieldMultiplierTimeLeft;
 unsigned long BonusChangedTime;
 unsigned long BonusXAnimationStart;
+unsigned long SkillShotAnimationStart;
 unsigned long LastTimeBallServed;
 unsigned long LastSpinnerHitTime = 0;
 
@@ -972,13 +973,16 @@ void ShowThreeBankTargetLamps() {
 }
 
 void ShowGameplayLamps() {
-  // LAMP_SAUCER: pulse fast during Arc Surge, pulse slow during skill shot, solid when lit
-  if (isArcSurgeActive[CurrentPlayer]) {
+  // LAMP_SAUCER: pulse fast during Arc Surge, pulse during skill shot, solid when lit
+  if (SkillShotAnimationStart != 0 && (CurrentTime - SkillShotAnimationStart) < 1000) {
+    RPU_SetLampState(LAMP_SAUCER, 1, 0, 200);
+  } else if (isArcSurgeActive[CurrentPlayer]) {
     RPU_SetLampState(LAMP_SAUCER, 1, 0, 250);
   } else if (!firstHitMade[CurrentPlayer]) {
     RPU_SetLampState(LAMP_SAUCER, 1, 0, 500);
   } else {
     RPU_SetLampState(LAMP_SAUCER, isSaucerLit[CurrentPlayer] ? 1 : 0);
+    SkillShotAnimationStart = 0;
   }
 
   // LAMP_SPINNER: lit when bonus ladder is full (>= 10 steps)
@@ -3180,6 +3184,7 @@ void HandleGamePlaySwitches(byte switchHit) {
                  CurrentScores[CurrentPlayer] += SCORE_SKILL_SHOT * PlayfieldMultiplier;
                  AddToBonus(3);
                  PlaySoundEffect(SOUND_EFFECT_BONUS_3);
+                 SkillShotAnimationStart = CurrentTime;
             } else if (isSaucerLit[CurrentPlayer]) {
                  CurrentScores[CurrentPlayer] += SCORE_SKILL_SHOT * PlayfieldMultiplier;
                  AddToBonus(3);
