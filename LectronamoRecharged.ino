@@ -337,6 +337,7 @@ unsigned long LastSpinnerHitTime = 0;
 // Per-player game state (indexed by player number 0-3)
 boolean isSaucerLit[RPU_NUMBER_OF_PLAYERS_ALLOWED];
 boolean isArcSurgeActive[RPU_NUMBER_OF_PLAYERS_ALLOWED];
+boolean arcSurgeT1Hit[RPU_NUMBER_OF_PLAYERS_ALLOWED];
 boolean isLeftReturnLaneLit[RPU_NUMBER_OF_PLAYERS_ALLOWED];
 boolean ExtraBallCollectedThisBall[RPU_NUMBER_OF_PLAYERS_ALLOWED];
 boolean ExtraBallLaneAvailable[RPU_NUMBER_OF_PLAYERS_ALLOWED];
@@ -910,8 +911,8 @@ LampState GetMultiplierLampState(byte multiplier) {
 
   switch(multiplier) {
     case 2: state.lamp2X = 1; break;
-    case 3: state.lamp2X = 1; state.lamp3X = 1; break;
-    case 5: state.lamp2X = 1; state.lamp3X = 1; state.lamp5X = 1; break;
+    case 3: state.lamp3X = 1; break;
+    case 5: state.lamp5X = 1; break;
     case 7: state.lamp2X = 1; state.lamp5X = 1; break;
     case 8: state.lamp3X = 1; state.lamp5X = 1; break;
     case 10: state.lamp2X = 1; state.lamp3X = 1; state.lamp5X = 1; break;
@@ -954,16 +955,19 @@ void ShowThreeBankTargetLamps() {
     }
   }
 
-  // At max (10X), turn off target lamps; otherwise show next target
+  // At max (10X), turn off target lamps; otherwise show next target with 500ms pulse
   if (BonusX[CurrentPlayer] >= 10) {
     RPU_SetLampState(LAMP_DROP_TARGET_2X, 0);
     RPU_SetLampState(LAMP_DROP_TARGET_3X, 0);
     RPU_SetLampState(LAMP_DROP_TARGET_5X, 0);
   } else {
     LampState state = GetMultiplierLampState(targetMultiplier);
-    RPU_SetLampState(LAMP_DROP_TARGET_2X, state.lamp2X);
-    RPU_SetLampState(LAMP_DROP_TARGET_3X, state.lamp3X);
-    RPU_SetLampState(LAMP_DROP_TARGET_5X, state.lamp5X);
+    if (state.lamp2X) RPU_SetLampState(LAMP_DROP_TARGET_2X, 1, 0, 500);
+    else RPU_SetLampState(LAMP_DROP_TARGET_2X, 0);
+    if (state.lamp3X) RPU_SetLampState(LAMP_DROP_TARGET_3X, 1, 0, 500);
+    else RPU_SetLampState(LAMP_DROP_TARGET_3X, 0);
+    if (state.lamp5X) RPU_SetLampState(LAMP_DROP_TARGET_5X, 1, 0, 500);
+    else RPU_SetLampState(LAMP_DROP_TARGET_5X, 0);
   }
 }
 
@@ -1004,12 +1008,8 @@ void ShowGameplayLamps() {
     } else {
       threeBankSweepAnimationStart[CurrentPlayer] = 0;
     }
-  } else {
-    // Normal: show achieved levels (solid) and current goal (pulsing)
-    RPU_SetLampState(LAMP_DROP_TARGET_2X, 1, 0, (bankCount == 0) ? 500 : 0);
-    RPU_SetLampState(LAMP_DROP_TARGET_3X, bankCount >= 1 ? 1 : 0, 0, (bankCount == 1) ? 500 : 0);
-    RPU_SetLampState(LAMP_DROP_TARGET_5X, bankCount >= 2 ? 1 : 0, 0, (bankCount == 2) ? 500 : 0);
   }
+  // Note: Drop target lamps now used for bonus multiplier target display in ShowThreeBankTargetLamps()
 
   // LAMP_ROLLOVER_BUTTON: on when available; turns off after rolled (value moves to left inlane)
   RPU_SetLampState(LAMP_ROLLOVER_BUTTON, isLeftReturnLaneLit[CurrentPlayer] ? 0 : 1);
@@ -2219,6 +2219,7 @@ int InitGamePlay(boolean curStateChanged) {
     for (byte p = 0; p < RPU_NUMBER_OF_PLAYERS_ALLOWED; p++) {
       isSaucerLit[p] = false;
       isArcSurgeActive[p] = false;
+      arcSurgeT1Hit[p] = false;
       isLeftReturnLaneLit[p] = false;
       firstHitMade[p] = false;
       threeBankCompleteCount[p] = 0;
@@ -2318,6 +2319,7 @@ int InitNewBall(bool curStateChanged) {
 
     isSaucerLit[CurrentPlayer] = false;
     isArcSurgeActive[CurrentPlayer] = false;
+    arcSurgeT1Hit[CurrentPlayer] = false;
     isLeftReturnLaneLit[CurrentPlayer] = false;
     firstHitMade[CurrentPlayer] = false;
     arcSurgeTimerStart[CurrentPlayer] = 0;
@@ -2573,6 +2575,7 @@ int ManageGameMode() {
 
       if (isArcSurgeActive[CurrentPlayer] && (CurrentTime - arcSurgeTimerStart[CurrentPlayer]) > TIME_ARC_SURGE_COMBO_MS) {
         isArcSurgeActive[CurrentPlayer] = false;
+        arcSurgeT1Hit[CurrentPlayer] = false;
       }
 
       break;
@@ -2982,15 +2985,7 @@ void Handle3BankCompletion() {
     ThreeBank.ResetDropTargets(CurrentTime + 500);
 
     threeBankCompleteCount[CurrentPlayer]++;
-
-    if (threeBankCompleteCount[CurrentPlayer] == 1) {
-        BonusX[CurrentPlayer] = 2;
-    } else if (threeBankCompleteCount[CurrentPlayer] == 2) {
-        BonusX[CurrentPlayer] = 3;
-    } else if (threeBankCompleteCount[CurrentPlayer] >= 3) {
-        BonusX[CurrentPlayer] = 5;
-    }
-    BonusXAnimationStart = CurrentTime;
+    IncreaseBonusX();
 
     if (isSweep) {
         CurrentScores[CurrentPlayer] += SCORE_3BANK_SWEEP_BONUS * PlayfieldMultiplier;
@@ -3048,6 +3043,7 @@ void HandleGamePlaySwitches(byte switchHit) {
         case SW_KICKER:
             if (!KickerBonusCollect) {
                 isArcSurgeActive[CurrentPlayer] = false;
+                arcSurgeT1Hit[CurrentPlayer] = false;
                 KickerBonusCollect = true;
                 CollectBonusViaKicker = true;
             }
@@ -3135,6 +3131,7 @@ void HandleGamePlaySwitches(byte switchHit) {
         case SW_ADV_BONUS_1000: // Side lane wire form — scores T1 during Arc Surge (combo continues to saucer)
             if (isArcSurgeActive[CurrentPlayer]) {
                 CurrentScores[CurrentPlayer] += SCORE_ARC_SURGE_T1 * PlayfieldMultiplier;
+                arcSurgeT1Hit[CurrentPlayer] = true;
                 PlaySoundEffect(SOUND_EFFECT_BONUS_5);
                 // Arc Surge stays active - saucer completes the combo
             } else if (isSaucerLit[CurrentPlayer]) {
@@ -3150,7 +3147,7 @@ void HandleGamePlaySwitches(byte switchHit) {
             break;
 
         case SW_SAUCER: // Saucer / Eject Pocket
-             if (isArcSurgeActive[CurrentPlayer]) { // Arc Surge logic takes priority
+             if (isArcSurgeActive[CurrentPlayer] && arcSurgeT1Hit[CurrentPlayer]) { // Arc Surge combo complete (both T1 and saucer hit)
                 CurrentScores[CurrentPlayer] += SCORE_ARC_SURGE_SUPER * PlayfieldMultiplier;
                 AddToBonus(3);
                 // Arc Surge completion fanfare
@@ -3164,7 +3161,21 @@ void HandleGamePlaySwitches(byte switchHit) {
                 Audio.QueueSound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, CurrentTime + 550);
                 Audio.QueueSound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, CurrentTime + 600);
                 isArcSurgeActive[CurrentPlayer] = false;
+                arcSurgeT1Hit[CurrentPlayer] = false;
                 arcSurgeCompleteTime = CurrentTime;
+             } else if (isArcSurgeActive[CurrentPlayer] && !arcSurgeT1Hit[CurrentPlayer]) { // Arc Surge active but T1 not hit - deactivate and treat as normal saucer
+                isArcSurgeActive[CurrentPlayer] = false;
+                arcSurgeT1Hit[CurrentPlayer] = false;
+                if (isSaucerLit[CurrentPlayer]) {
+                    CurrentScores[CurrentPlayer] += SCORE_SKILL_SHOT * PlayfieldMultiplier;
+                    AddToBonus(3);
+                    PlaySoundEffect(SOUND_EFFECT_BONUS_3);
+                    if (!SaucerLightPersists) isSaucerLit[CurrentPlayer] = false;
+                } else {
+                    CurrentScores[CurrentPlayer] += 500L * PlayfieldMultiplier;
+                    AddToBonus(1);
+                    PlaySoundEffect(SOUND_EFFECT_BONUS_1);
+                }
              } else if (!firstHitMade[CurrentPlayer]) { // Skill shot
                  CurrentScores[CurrentPlayer] += SCORE_SKILL_SHOT * PlayfieldMultiplier;
                  AddToBonus(3);
@@ -3249,6 +3260,7 @@ void HandleGamePlaySwitches(byte switchHit) {
         switchHit != SW_SAUCER &&
         switchHit != SW_ADV_BONUS_1000) {
         isArcSurgeActive[CurrentPlayer] = false;
+        arcSurgeT1Hit[CurrentPlayer] = false;
     }
 }
 
