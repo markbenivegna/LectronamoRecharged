@@ -316,7 +316,7 @@ const byte ATTRACT_PHASE_3_WAVE = 3;
 
 byte ExtraBallsAvailable[RPU_NUMBER_OF_PLAYERS_ALLOWED];
 byte GameRulesSelection;
-byte BallServeSolenoidStrength = 2;
+byte BallServeSolenoidStrength = 3;
 byte SaucerSolenoidStrength = 4;
 byte TempSlingStrength = 4;
 byte TempPopStrength = 4;
@@ -876,8 +876,19 @@ void ShowBonusLamps() {
     byte chasePhase = (CurrentTime / 50) % 10;
     for (byte count = 0; count < 10; count++) RPU_SetLampState(BonusLampAssignments[count], count == chasePhase);
   } else {
+    byte bonusValue = Bonus[CurrentPlayer];
     for (byte count = 0; count < 10; count++) {
-      RPU_SetLampState(BonusLampAssignments[count], Bonus[CurrentPlayer] > count);
+      boolean lampOn = false;
+      if (bonusValue <= 10) {
+        lampOn = bonusValue > count;
+      } else {
+        if (count == 9) {
+          lampOn = true;
+        } else {
+          lampOn = bonusValue > (count + 10);
+        }
+      }
+      RPU_SetLampState(BonusLampAssignments[count], lampOn);
     }
   }
 }
@@ -1833,6 +1844,31 @@ void PlaySoundEffect(unsigned int soundEffectNum) {
 }
 
 
+void PlayScoreSounds(int score) {
+  byte tone;
+  int count;
+
+  if (score >= 10000 && score % 10000 == 0) {
+    tone = SND_10000_POINTS;
+    count = score / 10000;
+  } else if (score >= 1000 && score % 1000 == 0) {
+    tone = SND_1000_POINTS;
+    count = score / 1000;
+  } else if (score >= 100 && score % 100 == 0) {
+    tone = SND_100_POINTS;
+    count = score / 100;
+  } else {
+    tone = SND_10_POINTS;
+    count = score / 10;
+  }
+
+  for (int i = 0; i < count; i++) {
+    Audio.QueueSound(tone, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, CurrentTime + (i * 100));
+    Audio.QueueSound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, CurrentTime + (i * 100) + 150);
+  }
+}
+
+
 void QueueNotification(unsigned int soundEffectNum, byte priority) {
   (void)soundEffectNum;
   (void)priority;
@@ -2173,7 +2209,11 @@ void AddToBonus(byte bonus) {
   }
 }
 
-
+void PlayBonusAdvanceSound() {
+  Audio.PlaySound(SND_1000_POINTS, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS);
+  Audio.QueueSound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, CurrentTime + 80);
+  Audio.QueueSound(SND_1000_POINTS, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, CurrentTime + 120);
+}
 
 void IncreaseBonusX() {
   if (BonusX[CurrentPlayer] < 10) {
@@ -2778,6 +2818,8 @@ int CountdownBonus(boolean curStateChanged) {
     }
 
     if (DEBUG_MESSAGES) Serial.write("Count down over, moving to ball over\n");
+    if (LastBonusSoundPlayed != 0) Audio.StopSound(LastBonusSoundPlayed);
+    Audio.QueueSound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, CurrentTime);
     return MACHINE_STATE_BALL_OVER;
   }
 
@@ -2985,18 +3027,18 @@ void Handle3BankCompletion() {
                        (CurrentTime - threeBankSweepStartTime[CurrentPlayer]) < TIME_3BANK_SWEEP_WINDOW_MS);
     threeBankSweepStartTime[CurrentPlayer] = 0;
 
-    CurrentScores[CurrentPlayer] += SCORE_3BANK_COMPLETION * PlayfieldMultiplier;
     ThreeBank.ResetDropTargets(CurrentTime + 500);
-
     threeBankCompleteCount[CurrentPlayer]++;
     IncreaseBonusX();
 
     if (isSweep) {
+        if (DEBUG_MESSAGES) Serial.write("3-BANK SWEEP DETECTED!\n");
         CurrentScores[CurrentPlayer] += SCORE_3BANK_SWEEP_BONUS * PlayfieldMultiplier;
         threeBankSweepAnimationStart[CurrentPlayer] = CurrentTime;
-        PlaySoundEffect(SOUND_EFFECT_DROP_TARGET_COMPLETE);
     } else {
-        PlaySoundEffect(SOUND_EFFECT_DROP_TARGET_COMPLETE);
+        if (DEBUG_MESSAGES) Serial.write("Regular 3-bank completion - playing scoring sounds!\n");
+        CurrentScores[CurrentPlayer] += SCORE_3BANK_COMPLETION * PlayfieldMultiplier;
+        PlayScoreSounds(SCORE_3BANK_COMPLETION);
     }
 }
 
@@ -3006,12 +3048,15 @@ void Handle5BankCompletion() {
 
     fiveBankCompleteCount[CurrentPlayer]++;
 
-    if (fiveBankCompleteCount[CurrentPlayer] == 2) {
+    if (fiveBankCompleteCount[CurrentPlayer] == 1) {
+        // 1st: score and reset
+        PlayScoreSounds(SCORE_5BANK_COMPLETION);
+    } else if (fiveBankCompleteCount[CurrentPlayer] == 2) {
         // 2nd: extra ball lane available (if enabled) + special lamp lights
         if (ExtraBallLaneEnabled) {
             ExtraBallLaneAvailable[CurrentPlayer] = true;
         }
-        PlaySoundEffect(SOUND_EFFECT_BONUS_4);
+        PlayScoreSounds(SCORE_5BANK_COMPLETION);
     } else if (fiveBankCompleteCount[CurrentPlayer] >= 3) {
         // 3rd: award special via AwardSpecial() — respects SpecialAwardType, SpecialOpenEnded, SpecialCollected
         boolean specialAwarded = false;
@@ -3057,13 +3102,24 @@ void HandleGamePlaySwitches(byte switchHit) {
         case SW_TARGET_1_3BANK:
         case SW_TARGET_2_3BANK:
         case SW_TARGET_3_3BANK:
+        {
+            // Suppress individual target sounds only if already in sweep window
+            boolean inSweepWindow = (threeBankSweepStartTime[CurrentPlayer] != 0 && (CurrentTime - threeBankSweepStartTime[CurrentPlayer]) < TIME_3BANK_SWEEP_WINDOW_MS);
+
+            // Track sweep window start
             if (ThreeBank.GetStatus(false) == 0x00 && threeBankSweepStartTime[CurrentPlayer] == 0)
                 threeBankSweepStartTime[CurrentPlayer] = CurrentTime;
+
             ThreeBank.HandleDropTargetHit(switchHit);
             CurrentScores[CurrentPlayer] += SCORE_DROP_TARGET_BASE * PlayfieldMultiplier;
-            PlaySoundEffect(SOUND_EFFECT_DROP_TARGET_SOUND_1);
+
+            // Play sound only if NOT in sweep window
+            if (!inSweepWindow) {
+                PlayScoreSounds(SCORE_DROP_TARGET_BASE);
+            }
             ValidateAndRegisterPlayfieldSwitch();
             break;
+        }
 
         case SW_TARGET_1_5BANK:
         case SW_TARGET_2_5BANK:
@@ -3072,7 +3128,7 @@ void HandleGamePlaySwitches(byte switchHit) {
         case SW_TARGET_5_5BANK:
             FiveBank.HandleDropTargetHit(switchHit);
             CurrentScores[CurrentPlayer] += SCORE_DROP_TARGET_BASE * PlayfieldMultiplier;
-            PlaySoundEffect(SOUND_EFFECT_DROP_TARGET_SOUND_4);
+            PlayScoreSounds(SCORE_DROP_TARGET_BASE);
             ValidateAndRegisterPlayfieldSwitch();
             break;
 
@@ -3080,14 +3136,11 @@ void HandleGamePlaySwitches(byte switchHit) {
             static unsigned long lastSpinnerSoundTime = 0;
             spinnerHitCount[CurrentPlayer]++;
             LastSpinnerHitTime = CurrentTime;
+            int spinnerScore = (Bonus[CurrentPlayer] >= 10) ? SCORE_SPINNER_LIT : SCORE_SPINNER_BASE;
+            CurrentScores[CurrentPlayer] += spinnerScore * PlayfieldMultiplier;
             if (CurrentTime > (lastSpinnerSoundTime + 150)) {
-                PlaySoundEffect(SOUND_EFFECT_SPINNER);
+                PlayScoreSounds(spinnerScore);
                 lastSpinnerSoundTime = CurrentTime;
-            }
-            if (Bonus[CurrentPlayer] >= 10) {
-                 CurrentScores[CurrentPlayer] += SCORE_SPINNER_LIT * PlayfieldMultiplier;
-            } else {
-                 CurrentScores[CurrentPlayer] += SCORE_SPINNER_BASE * PlayfieldMultiplier;
             }
             if (spinnerHitCount[CurrentPlayer] % 4 == 0) { AddToBonus(1); }
             ValidateAndRegisterPlayfieldSwitch();
@@ -3096,16 +3149,19 @@ void HandleGamePlaySwitches(byte switchHit) {
 
         case SW_CENTER_THUMPER:
         case SW_RIGHT_THUMPER:
-        case SW_LEFT_THUMPER:
+        case SW_LEFT_THUMPER: {
             // 100 pts on 5-ball, 1,000 pts on 3-ball (per original rules)
-            CurrentScores[CurrentPlayer] += (BallsPerGame == 3 ? 1000 : 100) * PlayfieldMultiplier;
+            int popScore = (BallsPerGame == 3 ? 1000 : 100) * PlayfieldMultiplier;
+            CurrentScores[CurrentPlayer] += popScore;
             PlaySoundEffect(SOUND_EFFECT_POP_BUMPER);
+            PlayScoreSounds(popScore);
             ValidateAndRegisterPlayfieldSwitch();
             break;
+        }
 
         case SW_RIGHT_INLANE:
-            CurrentScores[CurrentPlayer] += 100L * PlayfieldMultiplier;
-            PlaySoundEffect(SOUND_EFFECT_BONUS_1);
+            CurrentScores[CurrentPlayer] += 3000L * PlayfieldMultiplier;
+            PlayScoreSounds(3000);
             if (DEBUG_MESSAGES) {
                 char buf[64];
                 sprintf(buf, "RIGHT_INLANE: 5bank=%d EBEnabled=%d EBAvail=%d\n",
@@ -3136,16 +3192,23 @@ void HandleGamePlaySwitches(byte switchHit) {
             if (isArcSurgeActive[CurrentPlayer]) {
                 CurrentScores[CurrentPlayer] += SCORE_ARC_SURGE_T1 * PlayfieldMultiplier;
                 arcSurgeT1Hit[CurrentPlayer] = true;
-                PlaySoundEffect(SOUND_EFFECT_BONUS_5);
+                PlayScoreSounds(SCORE_ARC_SURGE_T1);
                 // Arc Surge stays active - saucer completes the combo
             } else if (isSaucerLit[CurrentPlayer]) {
                 CurrentScores[CurrentPlayer] += 5000L * PlayfieldMultiplier;
+                PlayScoreSounds(5000);
                 AddToBonus(3);
-                PlaySoundEffect(SOUND_EFFECT_BONUS_4);
+                Audio.QueueSound(SND_10000_POINTS, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, CurrentTime + 300);
+                Audio.QueueSound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, CurrentTime + 380);
+                Audio.QueueSound(SND_10000_POINTS, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, CurrentTime + 420);
+                Audio.QueueSound(SND_10000_POINTS, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, CurrentTime + 600);
+                Audio.QueueSound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, CurrentTime + 680);
+                Audio.QueueSound(SND_10000_POINTS, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, CurrentTime + 720);
+                Audio.QueueSound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, CurrentTime + 800);
             } else {
                 CurrentScores[CurrentPlayer] += 1000L * PlayfieldMultiplier;
                 AddToBonus(1);
-                PlaySoundEffect(SOUND_EFFECT_BONUS_1);
+                PlayScoreSounds(1000);
             }
             ValidateAndRegisterPlayfieldSwitch();
             break;
@@ -3173,27 +3236,40 @@ void HandleGamePlaySwitches(byte switchHit) {
                 if (isSaucerLit[CurrentPlayer]) {
                     CurrentScores[CurrentPlayer] += SCORE_SKILL_SHOT * PlayfieldMultiplier;
                     AddToBonus(3);
-                    PlaySoundEffect(SOUND_EFFECT_BONUS_3);
+                    PlayScoreSounds(SCORE_SKILL_SHOT);
                     if (!SaucerLightPersists) isSaucerLit[CurrentPlayer] = false;
                 } else {
                     CurrentScores[CurrentPlayer] += 500L * PlayfieldMultiplier;
                     AddToBonus(1);
-                    PlaySoundEffect(SOUND_EFFECT_BONUS_1);
+                    PlayScoreSounds(500);
                 }
              } else if (!firstHitMade[CurrentPlayer]) { // Skill shot
                  CurrentScores[CurrentPlayer] += SCORE_SKILL_SHOT * PlayfieldMultiplier;
                  AddToBonus(3);
-                 PlaySoundEffect(SOUND_EFFECT_BONUS_3);
+                 // Skill shot fanfare: ascending 3-tone pattern
+                 Audio.PlaySound(SND_100_POINTS, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS);
+                 Audio.QueueSound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, CurrentTime + 100);
+                 Audio.QueueSound(SND_1000_POINTS, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, CurrentTime + 150);
+                 Audio.QueueSound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, CurrentTime + 250);
+                 Audio.QueueSound(SND_10000_POINTS, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, CurrentTime + 300);
+                 Audio.QueueSound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, CurrentTime + 400);
                  SkillShotAnimationStart = CurrentTime;
             } else if (isSaucerLit[CurrentPlayer]) {
                  CurrentScores[CurrentPlayer] += SCORE_SKILL_SHOT * PlayfieldMultiplier;
+                 PlayScoreSounds(SCORE_SKILL_SHOT);
                  AddToBonus(3);
-                 PlaySoundEffect(SOUND_EFFECT_BONUS_3);
+                 Audio.QueueSound(SND_10000_POINTS, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, CurrentTime + 300);
+                 Audio.QueueSound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, CurrentTime + 380);
+                 Audio.QueueSound(SND_10000_POINTS, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, CurrentTime + 420);
+                 Audio.QueueSound(SND_10000_POINTS, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, CurrentTime + 600);
+                 Audio.QueueSound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, CurrentTime + 680);
+                 Audio.QueueSound(SND_10000_POINTS, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, CurrentTime + 720);
+                 Audio.QueueSound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, CurrentTime + 800);
                  if (!SaucerLightPersists) isSaucerLit[CurrentPlayer] = false;
             } else {
                  CurrentScores[CurrentPlayer] += 500L * PlayfieldMultiplier;
                  AddToBonus(1);
-                 PlaySoundEffect(SOUND_EFFECT_BONUS_1);
+                 PlayScoreSounds(500);
             }
             RPU_PushToTimedSolenoidStack(SOL_SAUCER, SaucerSolenoidStrength, CurrentTime + 500, false);
             ValidateAndRegisterPlayfieldSwitch();
@@ -3203,42 +3279,49 @@ void HandleGamePlaySwitches(byte switchHit) {
             isSaucerLit[CurrentPlayer] = true;
             CurrentScores[CurrentPlayer] += SCORE_STANDUP_TARGET * PlayfieldMultiplier;
             AddToBonus(1);
-            PlaySoundEffect(SOUND_EFFECT_BONUS_2);
+            PlayScoreSounds(SCORE_STANDUP_TARGET);
             ValidateAndRegisterPlayfieldSwitch();
             break;
 
         case SW_RIGHT_SLINGSHOT:
         case SW_LEFT_SLINGSHOT:
             CurrentScores[CurrentPlayer] += 100L * PlayfieldMultiplier;
-            PlaySoundEffect(SOUND_EFFECT_SLINGSHOT);
+            PlayScoreSounds(100);
             ValidateAndRegisterPlayfieldSwitch();
             break;
 
         case SW_ADV_BONUS_300:
             CurrentScores[CurrentPlayer] += 300L * PlayfieldMultiplier;
             AddToBonus(1);
-            PlaySoundEffect(SOUND_EFFECT_SCORE_TICK);
+            PlayScoreSounds(300);
             ValidateAndRegisterPlayfieldSwitch();
             break;
 
         case SW_SCORE_10:
             CurrentScores[CurrentPlayer] += 10L * PlayfieldMultiplier;
-            PlaySoundEffect(SOUND_EFFECT_SCORE_TICK);
+            PlayScoreSounds(10);
             ValidateAndRegisterPlayfieldSwitch();
             break;
 
         case SW_RIGHT_OUTLANE:
         case SW_LEFT_OUTLANE:
             CurrentScores[CurrentPlayer] += SCORE_OUTLANE * PlayfieldMultiplier;
+            PlayScoreSounds(SCORE_OUTLANE);
             AddToBonus(3);
-            PlaySoundEffect(SOUND_EFFECT_BONUS_2);
+            Audio.QueueSound(SND_10000_POINTS, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, CurrentTime + 300);
+            Audio.QueueSound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, CurrentTime + 380);
+            Audio.QueueSound(SND_10000_POINTS, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, CurrentTime + 420);
+            Audio.QueueSound(SND_10000_POINTS, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, CurrentTime + 600);
+            Audio.QueueSound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, CurrentTime + 680);
+            Audio.QueueSound(SND_10000_POINTS, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, CurrentTime + 720);
+            Audio.QueueSound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, CurrentTime + 800);
             ValidateAndRegisterPlayfieldSwitch();
             break;
 
         case SW_ROLLOVER_BUTTON:
             CurrentScores[CurrentPlayer] += SCORE_SPINNER_BASE * PlayfieldMultiplier;
             isLeftReturnLaneLit[CurrentPlayer] = true;
-            PlaySoundEffect(SOUND_EFFECT_SCORE_TICK);
+            PlayScoreSounds(SCORE_SPINNER_BASE);
             ValidateAndRegisterPlayfieldSwitch();
             break;
 
@@ -3246,10 +3329,10 @@ void HandleGamePlaySwitches(byte switchHit) {
             if (isLeftReturnLaneLit[CurrentPlayer]) {
                 CurrentScores[CurrentPlayer] += 9000L * PlayfieldMultiplier;
                 isLeftReturnLaneLit[CurrentPlayer] = false;
-                PlaySoundEffect(SOUND_EFFECT_BONUS_4);
+                PlayScoreSounds(9000);
             } else {
-                CurrentScores[CurrentPlayer] += SCORE_SPINNER_BASE * PlayfieldMultiplier;
-                PlaySoundEffect(SOUND_EFFECT_SCORE_TICK);
+                CurrentScores[CurrentPlayer] += 3000L * PlayfieldMultiplier;
+                PlayScoreSounds(3000);
             }
             ValidateAndRegisterPlayfieldSwitch();
             break;
