@@ -159,10 +159,4 @@
 #define NUM_SWITCHES_WITH_TRIGGERS          5 // total number of solenoid/switch pairs
 #define NUM_PRIORITY_SWITCHES_WITH_TRIGGERS 2 // slingshots only — thumpers use validated (debounced) path
 
-struct PlayfieldAndCabinetSwitch SolenoidAssociatedSwitches[] = {
-  { SW_RIGHT_SLING, SOL_RIGHT_SLINGSHOT, 4},
-  { SW_LEFT_SLING,  SOL_LEFT_SLINGSHOT,  4},
-  { SW_BOTTOM_POP,  SOL_CENTER_THUMPER,  6},
-  { SW_RIGHT_POP,   SOL_RIGHT_THUMPER,   6},
-  { SW_LEFT_POP,    SOL_LEFT_THUMPER,    6}
-};
+extern struct PlayfieldAndCabinetSwitch SolenoidAssociatedSwitches[];
