@@ -954,17 +954,36 @@ boolean AudioHandler::FadeSound(unsigned short soundIndex, int fadeGain, int num
 
 
 
-boolean AudioHandler::QueueSound(unsigned short soundIndex, byte audioType, unsigned long timeToPlay, byte overrideVolume) {
+boolean AudioHandler::QueueSound(unsigned short soundIndex, byte audioType, unsigned long timeToPlay, byte overrideVolume, byte priority) {
+  // If this is a high-priority sound (priority > 10), interrupt lower-priority sounds
+  if (priority > 10) {
+    byte interruptedCount = 0;
+    for (int count = 0; count < SOUND_QUEUE_SIZE; count++) {
+      if (soundQueue[count].playTime > 0 && soundQueue[count].priority < priority) {
+        // This entry has lower priority — remove it
+        soundQueue[count].playTime = 0;
+        soundQueue[count].priority = 0;
+        interruptedCount++;
+      }
+    }
+    if (interruptedCount > 0) {
+      char buf[80];
+      sprintf(buf, "  AUDIO: Interrupted %d lower-priority sound(s)\n", interruptedCount);
+      Serial.write(buf);
+    }
+  }
+
   for (int count=0; count<SOUND_QUEUE_SIZE; count++) {
     if (soundQueue[count].playTime==0) {
       soundQueue[count].soundIndex = soundIndex;
       soundQueue[count].audioType = audioType;
       soundQueue[count].playTime = timeToPlay;
       soundQueue[count].overrideVolume = overrideVolume;
+      soundQueue[count].priority = priority;
       return true;
     }
   }
-  
+
   return false;
 }
 
