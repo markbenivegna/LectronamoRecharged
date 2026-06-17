@@ -889,6 +889,7 @@ void AudioHandler::ClearSoundCardQueue() {
 void AudioHandler::ClearSoundQueue() {
   for (int count=0; count<SOUND_QUEUE_SIZE; count++) {
     soundQueue[count].playTime = 0;
+    soundQueue[count].priority = 0;
   }
 }
 
@@ -955,20 +956,30 @@ boolean AudioHandler::FadeSound(unsigned short soundIndex, int fadeGain, int num
 
 
 boolean AudioHandler::QueueSound(unsigned short soundIndex, byte audioType, unsigned long timeToPlay, byte overrideVolume, byte priority) {
-  // If this is a high-priority sound (priority > 10), interrupt lower-priority sounds
+  char buf[128];
+  sprintf(buf, "AUDIO QueueSound: index=%d priority=%d @ %lu ms\n", soundIndex, priority, timeToPlay);
+  Serial.write(buf);
+
+  // If this is a high-priority sound (priority > 10), interrupt lower-priority sounds that overlap in time
+  // Interrupt if the queued sound plays within 500ms of when this sound starts (covers full sequence durations)
+  // This allows sequential sounds (bumper + score 250ms later) but stops overlapping sequences
   if (priority > 10) {
     byte interruptedCount = 0;
     for (int count = 0; count < SOUND_QUEUE_SIZE; count++) {
       if (soundQueue[count].playTime > 0 && soundQueue[count].priority < priority) {
-        // This entry has lower priority — remove it
-        soundQueue[count].playTime = 0;
-        soundQueue[count].priority = 0;
-        interruptedCount++;
+        // Interrupt if this sound plays within 100ms BEFORE or 500ms AFTER the new sound
+        // This catches overlapping sequences: if both play within ~100ms of each other, higher priority wins
+        if (soundQueue[count].playTime > (timeToPlay - 100) && soundQueue[count].playTime < (timeToPlay + 500)) {
+          sprintf(buf, "  AUDIO: Interrupting index=%d pri=%d @ %lu ms\n", soundQueue[count].soundIndex, soundQueue[count].priority, soundQueue[count].playTime);
+          Serial.write(buf);
+          soundQueue[count].playTime = 0;
+          soundQueue[count].priority = 0;
+          interruptedCount++;
+        }
       }
     }
     if (interruptedCount > 0) {
-      char buf[80];
-      sprintf(buf, "  AUDIO: Interrupted %d lower-priority sound(s)\n", interruptedCount);
+      sprintf(buf, "  AUDIO: Total interrupted = %d\n", interruptedCount);
       Serial.write(buf);
     }
   }

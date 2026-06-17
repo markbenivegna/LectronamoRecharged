@@ -930,12 +930,12 @@ void ShowBonusLamps() {
 
     for (byte count = 0; count < 10; count++) {
       boolean lampOn = false;
-      if (numLampsLit <= 10) {
-        // Bonus 1-10: light lamps 0 through (numLampsLit-1)
+      if (bonusValue <= 10) {
+        // Cycle 1 (Bonus 1-10): light lamps 0 through (numLampsLit-1)
         lampOn = (count < numLampsLit);
       } else {
-        // Bonus 11-19: always light lamp 9 (10th), then light lamps 0 through (numLampsLit-10)
-        lampOn = (count == 9) || (count < (numLampsLit - 10));
+        // Cycle 2 (Bonus 11-19): always light lamp 9 (10th), then light lamps 0 through (numLampsLit-1)
+        lampOn = (count == 9) || (count < numLampsLit);
       }
       RPU_SetLampState(BonusLampAssignments[count], lampOn);
     }
@@ -3192,7 +3192,7 @@ void HandleGamePlaySwitches(byte switchHit) {
             CurrentScores[CurrentPlayer] += spinnerScore * PlayfieldMultiplier;
             if (CurrentTime > (lastSpinnerSoundTime + 150)) {
                 byte seqID = (spinnerScore == SCORE_SPINNER_LIT) ? SEQ_SCORE_1000 : SEQ_SCORE_100;
-                PlaySoundSequence(seqID, 0, PRIORITY_SCORE);
+                PlaySoundSequence(seqID, 0, PRIORITY_ADVANCE);
                 lastSpinnerSoundTime = CurrentTime;
             }
             if (spinnerHitCount[CurrentPlayer] % 4 == 0) { AddToBonus(1); }
