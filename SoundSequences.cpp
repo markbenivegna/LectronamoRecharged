@@ -21,7 +21,7 @@ extern unsigned long CurrentTime;
 // Sequence definitions (PROGMEM - each step is {tone, gap_ms})
 // Sentinel: {0xFF, 0}
 
-// Score sequences — each plays the appropriate tone(s) with 100ms base spacing
+// Score sequences — each plays the appropriate tone(s) with 125ms base spacing
 // Silence automatically inserted after each tone at gap_ms + 150
 const SoundStep SEQ_SCORE_100_Data[] PROGMEM = {
   {SND_100_POINTS, 0},
@@ -30,17 +30,17 @@ const SoundStep SEQ_SCORE_100_Data[] PROGMEM = {
 
 const SoundStep SEQ_SCORE_300_Data[] PROGMEM = {
   {SND_100_POINTS, 0},
-  {SND_100_POINTS, 100},
-  {SND_100_POINTS, 200},
+  {SND_100_POINTS, 125},
+  {SND_100_POINTS, 250},
   {0xFF, 0}
 };
 
 const SoundStep SEQ_SCORE_500_Data[] PROGMEM = {
   {SND_100_POINTS, 0},
-  {SND_100_POINTS, 100},
-  {SND_100_POINTS, 200},
-  {SND_100_POINTS, 300},
-  {SND_100_POINTS, 400},
+  {SND_100_POINTS, 125},
+  {SND_100_POINTS, 250},
+  {SND_100_POINTS, 375},
+  {SND_100_POINTS, 500},
   {0xFF, 0}
 };
 
@@ -51,40 +51,40 @@ const SoundStep SEQ_SCORE_1000_Data[] PROGMEM = {
 
 const SoundStep SEQ_SCORE_3000_Data[] PROGMEM = {
   {SND_1000_POINTS, 0},
-  {SND_1000_POINTS, 100},
-  {SND_1000_POINTS, 200},
+  {SND_1000_POINTS, 125},
+  {SND_1000_POINTS, 250},
   {0xFF, 0}
 };
 
 const SoundStep SEQ_SCORE_5000_Data[] PROGMEM = {
   {SND_1000_POINTS, 0},
-  {SND_1000_POINTS, 100},
-  {SND_1000_POINTS, 200},
-  {SND_1000_POINTS, 300},
-  {SND_1000_POINTS, 400},
+  {SND_1000_POINTS, 125},
+  {SND_1000_POINTS, 250},
+  {SND_1000_POINTS, 375},
+  {SND_1000_POINTS, 500},
   {0xFF, 0}
 };
 
 const SoundStep SEQ_SCORE_6000_Data[] PROGMEM = {
   {SND_1000_POINTS, 0},
-  {SND_1000_POINTS, 100},
-  {SND_1000_POINTS, 200},
-  {SND_1000_POINTS, 300},
-  {SND_1000_POINTS, 400},
+  {SND_1000_POINTS, 125},
+  {SND_1000_POINTS, 250},
+  {SND_1000_POINTS, 375},
   {SND_1000_POINTS, 500},
+  {SND_1000_POINTS, 625},
   {0xFF, 0}
 };
 
 const SoundStep SEQ_SCORE_9000_Data[] PROGMEM = {
   {SND_1000_POINTS, 0},
-  {SND_1000_POINTS, 100},
-  {SND_1000_POINTS, 200},
-  {SND_1000_POINTS, 300},
-  {SND_1000_POINTS, 400},
+  {SND_1000_POINTS, 125},
+  {SND_1000_POINTS, 250},
+  {SND_1000_POINTS, 375},
   {SND_1000_POINTS, 500},
-  {SND_1000_POINTS, 600},
-  {SND_1000_POINTS, 700},
-  {SND_1000_POINTS, 800},
+  {SND_1000_POINTS, 625},
+  {SND_1000_POINTS, 750},
+  {SND_1000_POINTS, 875},
+  {SND_1000_POINTS, 1000},
   {0xFF, 0}
 };
 
