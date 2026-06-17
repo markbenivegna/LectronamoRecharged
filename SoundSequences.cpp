@@ -220,8 +220,12 @@ unsigned int PlaySoundSequence(byte seqID, unsigned long startOffset, byte prior
   unsigned int maxGap = 0;
   char buf[128];
 
-  sprintf(buf, "SEQ[%d]: START @ %lu ms (offset +%lu ms)\n", seqID, CurrentTime, startOffset);
+  sprintf(buf, "SEQ[%d]: START @ %lu ms (offset +%lu ms) [priority=%d]\n", seqID, CurrentTime, startOffset, priority);
   Serial.write(buf);
+  if (priority > 10) {
+    sprintf(buf, "  SEQ[%d]: HIGH PRIORITY — may interrupt lower-priority sounds\n", seqID);
+    Serial.write(buf);
+  }
 
   // Read and queue each step from PROGMEM
   for (int i = 0; ; i++) {
@@ -239,11 +243,11 @@ unsigned int PlaySoundSequence(byte seqID, unsigned long startOffset, byte prior
     memcpy_P(&nextStep, &seqPtr[i + 1], sizeof(SoundStep));
     boolean isLastTone = (nextStep.tone == 0xFF);
 
-    // Queue the tone
+    // Queue the tone with priority
     unsigned long playTime = CurrentTime + startOffset + step.gap_ms;
-    Audio.QueueSound(step.tone, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, playTime);
+    Audio.QueueSound(step.tone, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, playTime, 0xFF, priority);
 
-    sprintf(buf, "  SEQ[%d] TONE[%d]: tone=%d @ %lu ms (gap +%d ms)\n", seqID, i, step.tone, playTime, step.gap_ms);
+    sprintf(buf, "  SEQ[%d] TONE[%d]: tone=%d @ %lu ms (gap +%d ms) [pri=%d]\n", seqID, i, step.tone, playTime, step.gap_ms, priority);
     Serial.write(buf);
 
     // Track max gap for duration calculation
@@ -261,7 +265,7 @@ unsigned int PlaySoundSequence(byte seqID, unsigned long startOffset, byte prior
       silenceDuration = 150;
     }
     unsigned long silenceTime = playTime + silenceDuration;
-    Audio.QueueSound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, silenceTime);
+    Audio.QueueSound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, silenceTime, 0xFF, priority);
 
     sprintf(buf, "  SEQ[%d] SLEN[%d]: silence @ %lu ms\n", seqID, i, silenceTime);
     Serial.write(buf);
