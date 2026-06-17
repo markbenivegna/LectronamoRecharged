@@ -930,12 +930,12 @@ void ShowBonusLamps() {
 
     for (byte count = 0; count < 10; count++) {
       boolean lampOn = false;
-      if (bonusValue <= 10) {
-        // Bonus 1-10: light lamps 0 through (bonusValue-1)
-        lampOn = (count < bonusValue);
+      if (numLampsLit <= 10) {
+        // Bonus 1-10: light lamps 0 through (numLampsLit-1)
+        lampOn = (count < numLampsLit);
       } else {
-        // Bonus 11-19: always light lamp 9 (10th), then light lamps 0 through (bonusValue-11)
-        lampOn = (count == 9) || (count < (bonusValue - 10));
+        // Bonus 11-19: always light lamp 9 (10th), then light lamps 0 through (numLampsLit-10)
+        lampOn = (count == 9) || (count < (numLampsLit - 10));
       }
       RPU_SetLampState(BonusLampAssignments[count], lampOn);
     }
