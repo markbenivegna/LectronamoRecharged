@@ -218,14 +218,6 @@ unsigned int PlaySoundSequence(byte seqID, unsigned long startOffset, byte prior
   }
 
   unsigned int maxGap = 0;
-  char buf[128];
-
-  sprintf(buf, "SEQ[%d]: START @ %lu ms (offset +%lu ms) [priority=%d]\n", seqID, CurrentTime, startOffset, priority);
-  Serial.write(buf);
-  if (priority > 10) {
-    sprintf(buf, "  SEQ[%d]: HIGH PRIORITY — may interrupt lower-priority sounds\n", seqID);
-    Serial.write(buf);
-  }
 
   // Read and queue each step from PROGMEM
   for (int i = 0; ; i++) {
@@ -247,9 +239,6 @@ unsigned int PlaySoundSequence(byte seqID, unsigned long startOffset, byte prior
     unsigned long playTime = CurrentTime + startOffset + step.gap_ms;
     Audio.QueueSound(step.tone, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, playTime, 0xFF, priority);
 
-    sprintf(buf, "  SEQ[%d] TONE[%d]: tone=%d @ %lu ms (gap +%d ms) [pri=%d]\n", seqID, i, step.tone, playTime, step.gap_ms, priority);
-    Serial.write(buf);
-
     // Track max gap for duration calculation
     if (step.gap_ms > maxGap) {
       maxGap = step.gap_ms;
@@ -257,24 +246,17 @@ unsigned int PlaySoundSequence(byte seqID, unsigned long startOffset, byte prior
 
     // Auto-insert silence after this tone (special handling for drain sound's last tone)
     unsigned int silenceDuration;
-    if (seqID == 24) {
-      silenceDuration = 50;  // SEQ_MATCH_SPIN
-    } else if (seqID == 27 && isLastTone) {
+    if (seqID == 27 && isLastTone) {
       silenceDuration = 400; // SEQ_DRAIN — hold only the last tone longer
     } else {
       silenceDuration = 150;
     }
     unsigned long silenceTime = playTime + silenceDuration;
     Audio.QueueSound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, silenceTime, 0xFF, priority);
-
-    sprintf(buf, "  SEQ[%d] SLEN[%d]: silence @ %lu ms\n", seqID, i, silenceTime);
-    Serial.write(buf);
   }
 
-  unsigned int silenceDuration = (seqID == 24) ? 50 : 150;  // 24 = SEQ_MATCH_SPIN
+  unsigned int silenceDuration = 150;
   unsigned int duration = maxGap + silenceDuration;
-  sprintf(buf, "SEQ[%d]: END duration=%d ms\n", seqID, duration);
-  Serial.write(buf);
 
   // Return total duration: last tone start + tone decay
   return duration;

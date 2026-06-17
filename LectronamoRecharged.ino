@@ -3349,13 +3349,13 @@ void HandleGamePlaySwitches(byte switchHit) {
               PlaySoundSequence(SEQ_ADVANCE_3, 0, PRIORITY_ADVANCE);
               AddToBonus(3);
               // Drain feedback after advance finishes (with silence gap)
-              PlaySoundSequence(SEQ_DRAIN, 750, PRIORITY_AMBIENT);
+              PlaySoundSequence(SEQ_DRAIN, 750, PRIORITY_ADVANCE);
             } else {
               // Bonus full (19): play score sound
               if (DEBUG_MESSAGES) Serial.print("Outlane: Bonus="); Serial.print(Bonus[CurrentPlayer]); Serial.println(" >= 19 → SCORE");
               PlaySoundSequence(SEQ_SCORE_3000, 0, PRIORITY_SCORE);
               // Drain feedback after score finishes (with silence gap)
-              PlaySoundSequence(SEQ_DRAIN, 600, PRIORITY_AMBIENT);
+              PlaySoundSequence(SEQ_DRAIN, 600, PRIORITY_ADVANCE);
             }
             ValidateAndRegisterPlayfieldSwitch();
             break;
