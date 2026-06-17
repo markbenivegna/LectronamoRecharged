@@ -10,6 +10,12 @@
  * eliminating overlap and scattered QueueSound calls throughout the codebase.
  */
 
+// Sound priority tiers (higher = more important)
+#define PRIORITY_CRITICAL  95  // Tilt, game over, special events
+#define PRIORITY_ADVANCE   75  // Bonus advances, multiplier achievements
+#define PRIORITY_SCORE     50  // Score sequences, bumper feedback
+#define PRIORITY_AMBIENT   20  // Drain feedback, fanfares
+
 // Sound sequence entry (stored in PROGMEM)
 struct SoundStep {
   byte tone;           // SND_* constant (or 0 for silence)
@@ -44,6 +50,6 @@ struct SoundStep {
 
 // Play a named sound sequence, optionally offset from CurrentTime
 // Returns: total duration of sequence in ms (for chaining)
-unsigned int PlaySoundSequence(byte seqID, unsigned long startOffset = 0);
+unsigned int PlaySoundSequence(byte seqID, unsigned long startOffset = 0, byte priority = PRIORITY_SCORE);
 
 #endif
