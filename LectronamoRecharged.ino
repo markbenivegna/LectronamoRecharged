@@ -348,6 +348,7 @@ unsigned long BonusXAnimationStart;
 unsigned long BonusAnimationStart;
 byte BonusBefore;
 unsigned long SkillShotAnimationStart;
+unsigned long protectedSoundUntilTime = 0;  // Grace period for protected sequences (drop targets, drain, etc.)
 unsigned long LastTimeBallServed;
 unsigned long LastSpinnerHitTime = 0;
 
@@ -3064,9 +3065,13 @@ int HandleSystemSwitches(int curState, byte switchHit) {
               NumberOfBallSavesRemaining = 0;
             }
             RPU_SetLampState(LAMP_HEAD_TILT, 1);
-            PlaySoundSequence(SEQ_TILT, 0);
+            {
+              unsigned int duration = PlaySoundSequence(SEQ_TILT, 0);
+              protectedSoundUntilTime = CurrentTime + duration + 100;
+            }
           } else {
-            PlaySoundSequence(SEQ_TILT_WARNING, 0);
+            unsigned int duration = PlaySoundSequence(SEQ_TILT_WARNING, 0);
+            protectedSoundUntilTime = CurrentTime + duration + 100;
           }
         }
       } else {
@@ -3154,6 +3159,7 @@ void HandleGamePlaySwitches(byte switchHit) {
       sprintf(buf, "SW: %d @ %lu ms\n", switchHit, CurrentTime);
       Serial.write(buf);
     }
+
     switch (switchHit) {
         case SW_KICKER:
             if (!KickerBonusCollect) {
@@ -3181,7 +3187,8 @@ void HandleGamePlaySwitches(byte switchHit) {
 
             // Play sound only if NOT in sweep window
             if (!inSweepWindow) {
-                PlaySoundSequence(SEQ_SCORE_500, 0);
+                unsigned int duration = PlaySoundSequence(SEQ_SCORE_500, 0);
+                protectedSoundUntilTime = CurrentTime + duration + 100;  // Grace period after protected sound
             }
             ValidateAndRegisterPlayfieldSwitch();
             break;
@@ -3194,7 +3201,10 @@ void HandleGamePlaySwitches(byte switchHit) {
         case SW_TARGET_5_5BANK:
             FiveBank.HandleDropTargetHit(switchHit);
             CurrentScores[CurrentPlayer] += SCORE_DROP_TARGET_BASE * PlayfieldMultiplier;
-            PlaySoundSequence(SEQ_SCORE_500, 0);
+            {
+                unsigned int duration = PlaySoundSequence(SEQ_SCORE_500, 0);
+                protectedSoundUntilTime = CurrentTime + duration + 100;  // Grace period after protected sound
+            }
             ValidateAndRegisterPlayfieldSwitch();
             break;
 
@@ -3205,9 +3215,12 @@ void HandleGamePlaySwitches(byte switchHit) {
             int spinnerScore = (Bonus[CurrentPlayer] >= 10) ? SCORE_SPINNER_LIT : SCORE_SPINNER_BASE;
             CurrentScores[CurrentPlayer] += spinnerScore * PlayfieldMultiplier;
             if (CurrentTime > (lastSpinnerSoundTime + 150)) {
-                byte seqID = (spinnerScore == SCORE_SPINNER_LIT) ? SEQ_SCORE_1000 : SEQ_SCORE_100;
-                PlaySoundSequence(seqID, 0);
-                lastSpinnerSoundTime = CurrentTime;
+                // Don't queue spinner if a protected sequence is playing or grace period is active
+                if (CurrentTime >= protectedSoundUntilTime) {
+                    byte seqID = (spinnerScore == SCORE_SPINNER_LIT) ? SEQ_SCORE_1000 : SEQ_SCORE_100;
+                    PlaySoundSequence(seqID, 0);
+                    lastSpinnerSoundTime = CurrentTime;
+                }
             }
             if (spinnerHitCount[CurrentPlayer] % 4 == 0) { AddToBonus(1); }
             ValidateAndRegisterPlayfieldSwitch();
@@ -3363,13 +3376,19 @@ void HandleGamePlaySwitches(byte switchHit) {
               PlaySoundSequence(SEQ_ADVANCE_3, 0);
               AddToBonus(3);
               // Drain feedback after advance finishes (with silence gap)
-              PlaySoundSequence(SEQ_DRAIN, 0);
+              {
+                unsigned int duration = PlaySoundSequence(SEQ_DRAIN, 0);
+                protectedSoundUntilTime = CurrentTime + duration + 100;
+              }
             } else {
               // Bonus full (19): play score sound
               if (DEBUG_MESSAGES) Serial.print("Outlane: Bonus="); Serial.print(Bonus[CurrentPlayer]); Serial.println(" >= 19 → SCORE");
               PlaySoundSequence(SEQ_SCORE_3000, 0);
               // Drain feedback after score finishes (with silence gap)
-              PlaySoundSequence(SEQ_DRAIN, 0);
+              {
+                unsigned int duration = PlaySoundSequence(SEQ_DRAIN, 0);
+                protectedSoundUntilTime = CurrentTime + duration + 100;
+              }
             }
             ValidateAndRegisterPlayfieldSwitch();
             break;

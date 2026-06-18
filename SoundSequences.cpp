@@ -232,7 +232,7 @@ unsigned int PlaySoundSequence(byte seqID, unsigned long startOffset) {
   }
 
   // Queue the sequence for playback
-  // No priority checking: all sequences interrupt equally based on timing
+  // Interrupts current sequence, but only clears that sequence's queued sounds
   Audio.QueueSequence(seqID, startOffset);
 
   unsigned int silenceDuration = 75;  // Dick's timing: 75ms silences
