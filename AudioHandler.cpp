@@ -1039,8 +1039,8 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
     return false;
   }
 
-  // Auto-insert silence after this tone
-  unsigned int silenceDuration = 150;
+  // Auto-insert silence after this tone (Dick's timing: 75ms)
+  unsigned int silenceDuration = 75;
   if (seqID == 27) {  // SEQ_DRAIN special case
     // Check if this is the last tone
     SoundStep nextStep;
@@ -1102,8 +1102,8 @@ void AudioHandler::ResumeActiveSequence(unsigned long currentTime) {
   // Queue the next tone
   unsigned long playTime = activeSequence.startTime + activeSequence.startOffset + step.gap_ms;
   if (QueueSound(step.tone, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, playTime, 0xFF, 50)) {
-    // Auto-insert silence after this tone
-    unsigned int silenceDuration = 150;
+    // Auto-insert silence after this tone (Dick's timing: 75ms)
+    unsigned int silenceDuration = 75;
     if (activeSequence.seqID == 27) {  // SEQ_DRAIN special case
       // Check if this is the last tone
       SoundStep nextStep;
