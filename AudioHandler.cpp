@@ -506,14 +506,9 @@ AudioHandler::AudioHandler() {
   activeSequence.seqID = 0xFF;
   activeSequence.currentToneIndex = 0;
   activeSequence.priority = 0;
-  activeSequence.isPaused = false;
   activeSequence.startTime = 0;
   activeSequence.startOffset = 0;
-  activeSequence.pausedSeqID = 0xFF;
-  activeSequence.pausedToneIndex = 0;
-  activeSequence.pausedPriority = 0;
-  activeSequence.pausedStartTime = 0;
-  activeSequence.pausedStartOffset = 0;
+  activeSequence.isProtected = false;
   currentBackgroundTrack = BACKGROUND_TRACK_NONE;
   musicStopped = true;
   soundtrackRandomOrder = true;
@@ -909,14 +904,9 @@ void AudioHandler::ClearSoundQueue() {
   activeSequence.seqID = 0xFF;
   activeSequence.currentToneIndex = 0;
   activeSequence.priority = 0;
-  activeSequence.isPaused = false;
   activeSequence.startTime = 0;
   activeSequence.startOffset = 0;
-  activeSequence.pausedSeqID = 0xFF;
-  activeSequence.pausedToneIndex = 0;
-  activeSequence.pausedPriority = 0;
-  activeSequence.pausedStartTime = 0;
-  activeSequence.pausedStartOffset = 0;
+  activeSequence.isProtected = false;
 }
 
 
@@ -1024,18 +1014,7 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
       return false;  // Don't queue this sequence; protected sequence is playing
     }
 
-    // Not protected; save it as paused (interrupt-and-pause)
-    activeSequence.pausedSeqID = activeSequence.seqID;
-    activeSequence.pausedToneIndex = activeSequence.currentToneIndex;
-    activeSequence.pausedPriority = activeSequence.priority;
-    activeSequence.pausedTime = CurrentTime;  // when the interruption happened
-    activeSequence.pausedMinResumeTime = CurrentTime + 150;  // wait for tone+silence to finish
-    activeSequence.pausedStartTime = activeSequence.startTime;
-    activeSequence.pausedStartOffset = activeSequence.startOffset;
-
-    char buf[64];
-    sprintf(buf, "SEQ INTERRUPT: pausing seqID=%d at tone index %d\n", activeSequence.seqID, activeSequence.currentToneIndex);
-    Serial.write(buf);
+    // Not protected; interrupt it and queue the new sequence
   }
 
   // Start this sequence as active
@@ -1099,25 +1078,9 @@ void AudioHandler::ResumeActiveSequence(unsigned long currentTime) {
 
   // Check for end of sequence (sentinel)
   if (step.tone == 0xFF) {
-    // This sequence is complete; restore paused sequence if any
-    if (activeSequence.pausedSeqID != 0xFF) {
-      // Don't resume until interrupting sequence's tone+silence finishes
-      if (currentTime < activeSequence.pausedMinResumeTime) {
-        return;  // Too early, wait for next call
-      }
-      activeSequence.seqID = activeSequence.pausedSeqID;
-      activeSequence.currentToneIndex = activeSequence.pausedToneIndex;
-      activeSequence.priority = activeSequence.pausedPriority;
-      // When resuming, restore original timing so gaps remain accurate
-      activeSequence.startTime = activeSequence.pausedStartTime;
-      activeSequence.startOffset = activeSequence.pausedStartOffset;
-      activeSequence.pausedSeqID = 0xFF;
-      // Recursively call to queue the next tone of the resumed sequence
-      ResumeActiveSequence(currentTime);
-    } else {
-      activeSequence.seqID = 0xFF;
-      activeSequence.isProtected = false;  // Clear protection when sequence finishes
-    }
+    // Sequence is complete
+    activeSequence.seqID = 0xFF;
+    activeSequence.isProtected = false;
     return;
   }
 

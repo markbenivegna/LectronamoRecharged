@@ -50,19 +50,9 @@ struct ActiveSequence {
   byte seqID;              // which sequence is active; 0xFF = empty
   byte currentToneIndex;   // index into sequence's tone array (0 = not started yet)
   byte priority;           // priority of this sequence
-  boolean isPaused;        // interrupted and paused?
   boolean isProtected;     // cannot be interrupted by other sequences
   unsigned long startTime; // CurrentTime when sequence was started
   unsigned long startOffset; // offset from startTime when sequence begins playing
-
-  // Track paused sequences for resumption after interruption
-  byte pausedSeqID;        // sequence that was paused; 0xFF = none
-  byte pausedToneIndex;    // where paused sequence left off
-  byte pausedPriority;     // priority of paused sequence
-  unsigned long pausedTime;        // when the sequence was paused (to calculate elapsed time)
-  unsigned long pausedMinResumeTime; // don't resume until interrupting sequence's tone+silence finish
-  unsigned long pausedStartTime;
-  unsigned long pausedStartOffset;
 };
 
 // These SoundEFfectEntry & Queue functions parcel out FX to the
