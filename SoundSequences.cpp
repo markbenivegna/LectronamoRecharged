@@ -219,45 +219,24 @@ unsigned int PlaySoundSequence(byte seqID, unsigned long startOffset, byte prior
 
   unsigned int maxGap = 0;
 
-  // Read and queue each step from PROGMEM
+  // Calculate total duration first
   for (int i = 0; ; i++) {
-    // Read step from PROGMEM
     SoundStep step;
     memcpy_P(&step, &seqPtr[i], sizeof(SoundStep));
-
-    // Check for sentinel
     if (step.tone == 0xFF) {
       break;
     }
-
-    // Look ahead to see if this is the last tone
-    SoundStep nextStep;
-    memcpy_P(&nextStep, &seqPtr[i + 1], sizeof(SoundStep));
-    boolean isLastTone = (nextStep.tone == 0xFF);
-
-    // Queue the tone with priority
-    unsigned long playTime = CurrentTime + startOffset + step.gap_ms;
-    Audio.QueueSound(step.tone, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, playTime, 0xFF, priority);
-
-    // Track max gap for duration calculation
     if (step.gap_ms > maxGap) {
       maxGap = step.gap_ms;
     }
-
-    // Auto-insert silence after this tone (special handling for drain sound's last tone)
-    unsigned int silenceDuration;
-    if (seqID == 27 && isLastTone) {
-      silenceDuration = 400; // SEQ_DRAIN — hold only the last tone longer
-    } else {
-      silenceDuration = 150;
-    }
-    unsigned long silenceTime = playTime + silenceDuration;
-    Audio.QueueSound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, silenceTime, 0xFF, priority);
   }
+
+  // Queue the sequence using the new active sequence system
+  Audio.QueueSequence(seqID, priority, startOffset);
 
   unsigned int silenceDuration = 150;
   unsigned int duration = maxGap + silenceDuration;
 
-  // Return total duration: last tone start + tone decay
+  // Return total duration for caller's timing reference
   return duration;
 }

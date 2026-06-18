@@ -45,6 +45,22 @@ struct SoundEntry {
   byte priority;  // 0-100: higher = more important; 0 = empty slot
 };
 
+struct ActiveSequence {
+  byte seqID;              // which sequence is active; 0xFF = empty
+  byte currentToneIndex;   // index into sequence's tone array (0 = not started yet)
+  byte priority;           // priority of this sequence
+  boolean isPaused;        // interrupted and paused?
+  unsigned long startTime; // CurrentTime when sequence was started
+  unsigned long startOffset; // offset from startTime when sequence begins playing
+
+  // Track paused sequences for resumption after interruption
+  byte pausedSeqID;        // sequence that was paused; 0xFF = none
+  byte pausedToneIndex;    // where paused sequence left off
+  byte pausedPriority;     // priority of paused sequence
+  unsigned long pausedStartTime;
+  unsigned long pausedStartOffset;
+};
+
 // These SoundEFfectEntry & Queue functions parcel out FX to the
 // built-in sound card because it can only handle one sound
 // at a time.
@@ -181,6 +197,7 @@ class AudioHandler
     boolean PlaySound(unsigned short soundIndex, byte audioType, byte overrideVolume=0xFF);
     boolean FadeSound(unsigned short soundIndex, int fadeGain, int numMilliseconds, boolean stopTrack);
     boolean QueueSound(unsigned short soundIndex, byte audioType, unsigned long timeToPlay, byte overrideVolume=0xFF, byte priority=10);
+    boolean QueueSequence(byte seqID, byte priority, unsigned long startOffset);  // queue first tone of sequence
     boolean QueueSoundCardCommand(byte scFunction, byte scRegister, byte scData, unsigned long startTime);
     boolean PlaySoundCardWhenPossible(unsigned short soundEffectNum, unsigned long currentTime, unsigned long requestedPlayTime = 0, unsigned long playUntil = 50, byte priority = 10);
     
@@ -194,6 +211,8 @@ class AudioHandler
     boolean StopAllNotifications(byte priority = 10);
     boolean StopAllSoundFX();
     boolean StopAllAudio();
+
+    void ClearSoundQueue();
 
   private:
     AudioSoundtrack *curSoundtrack;
@@ -219,6 +238,7 @@ class AudioHandler
     unsigned short currentBackgroundTrack;
 
     SoundEntry soundQueue[SOUND_QUEUE_SIZE];
+    ActiveSequence activeSequence;  // currently playing sequence and state
 
 #if defined(RPU_OS_USE_WTYPE_1_SOUND) || defined(RPU_OS_USE_WTYPE_2_SOUND)
     SoundEffectEntry CurrentSoundPlaying;
@@ -240,7 +260,6 @@ class AudioHandler
     void DuckCurrentSoundEffects();
 
     int SpaceLeftOnNotificationStack();
-    void ClearSoundQueue();
     void ClearSoundCardQueue();
     void ClearNotificationStack(byte priority = 10);
     void InitSoundEffectQueue();
@@ -251,6 +270,7 @@ class AudioHandler
     byte GetTopNotificationPriority();
     boolean ServiceSoundCardQueue(unsigned long currentTime);
     boolean ServiceSoundQueue(unsigned long currentTime);
+    void ResumeActiveSequence(unsigned long currentTime);  // queue next tone from active sequence
 
     unsigned long nextVoiceNotificationPlayTime;
     unsigned long backgroundSongEndTime;

@@ -45,6 +45,9 @@
 
 #include <Arduino.h>
 #include "AudioHandler.h"
+#include "SoundSequences.h"
+
+extern unsigned long CurrentTime;
 
 
 #if defined(RPU_OS_USE_WAV_TRIGGER) || defined(RPU_OS_USE_WAV_TRIGGER_1p3)
@@ -499,6 +502,18 @@ AudioHandler::AudioHandler() {
   ClearSoundQueue();
   ClearSoundCardQueue();
   ClearNotificationStack();
+
+  activeSequence.seqID = 0xFF;
+  activeSequence.currentToneIndex = 0;
+  activeSequence.priority = 0;
+  activeSequence.isPaused = false;
+  activeSequence.startTime = 0;
+  activeSequence.startOffset = 0;
+  activeSequence.pausedSeqID = 0xFF;
+  activeSequence.pausedToneIndex = 0;
+  activeSequence.pausedPriority = 0;
+  activeSequence.pausedStartTime = 0;
+  activeSequence.pausedStartOffset = 0;
   currentBackgroundTrack = BACKGROUND_TRACK_NONE;
   musicStopped = true;
   soundtrackRandomOrder = true;
@@ -891,6 +906,17 @@ void AudioHandler::ClearSoundQueue() {
     soundQueue[count].playTime = 0;
     soundQueue[count].priority = 0;
   }
+  activeSequence.seqID = 0xFF;
+  activeSequence.currentToneIndex = 0;
+  activeSequence.priority = 0;
+  activeSequence.isPaused = false;
+  activeSequence.startTime = 0;
+  activeSequence.startOffset = 0;
+  activeSequence.pausedSeqID = 0xFF;
+  activeSequence.pausedToneIndex = 0;
+  activeSequence.pausedPriority = 0;
+  activeSequence.pausedStartTime = 0;
+  activeSequence.pausedStartOffset = 0;
 }
 
 
@@ -956,22 +982,6 @@ boolean AudioHandler::FadeSound(unsigned short soundIndex, int fadeGain, int num
 
 
 boolean AudioHandler::QueueSound(unsigned short soundIndex, byte audioType, unsigned long timeToPlay, byte overrideVolume, byte priority) {
-  // If this is a high-priority sound (priority > 10), interrupt lower-priority sounds that overlap in time
-  // Interrupt if the queued sound plays within 500ms of when this sound starts (covers full sequence durations)
-  // This allows sequential sounds (bumper + score 250ms later) but stops overlapping sequences
-  if (priority > 10) {
-    for (int count = 0; count < SOUND_QUEUE_SIZE; count++) {
-      if (soundQueue[count].playTime > 0 && soundQueue[count].priority < priority) {
-        // Interrupt if this sound plays within 100ms BEFORE or 500ms AFTER the new sound
-        // This catches overlapping sequences: if both play within ~100ms of each other, higher priority wins
-        if (soundQueue[count].playTime > (timeToPlay - 100) && soundQueue[count].playTime < (timeToPlay + 500)) {
-          soundQueue[count].playTime = 0;
-          soundQueue[count].priority = 0;
-        }
-      }
-    }
-  }
-
   for (int count=0; count<SOUND_QUEUE_SIZE; count++) {
     if (soundQueue[count].playTime==0) {
       soundQueue[count].soundIndex = soundIndex;
@@ -984,6 +994,112 @@ boolean AudioHandler::QueueSound(unsigned short soundIndex, byte audioType, unsi
   }
 
   return false;
+}
+
+
+boolean AudioHandler::QueueSequence(byte seqID, byte priority, unsigned long startOffset) {
+  // Bounds check
+  if (seqID >= (sizeof(SoundSequenceTable) / sizeof(SoundSequenceTable[0]))) {
+    return false;
+  }
+
+  // Get sequence pointer from PROGMEM
+  const SoundStep* seqPtr = (const SoundStep*)pgm_read_ptr(&SoundSequenceTable[seqID]);
+  if (!seqPtr) {
+    return false;
+  }
+
+  // Read first step
+  SoundStep firstStep;
+  memcpy_P(&firstStep, &seqPtr[0], sizeof(SoundStep));
+  if (firstStep.tone == 0xFF) {
+    return false;  // Empty sequence
+  }
+
+  // Check if this should interrupt the active sequence
+  if (activeSequence.seqID != 0xFF) {
+    // There's an active sequence
+    if (priority > activeSequence.priority) {
+      // New sequence has higher priority; save current and interrupt
+      activeSequence.pausedSeqID = activeSequence.seqID;
+      activeSequence.pausedToneIndex = activeSequence.currentToneIndex;
+      activeSequence.pausedPriority = activeSequence.priority;
+      activeSequence.pausedStartTime = activeSequence.startTime;
+      activeSequence.pausedStartOffset = activeSequence.startOffset;
+
+      // Clear any queued tones from the interrupted sequence
+      for (int count=0; count<SOUND_QUEUE_SIZE; count++) {
+        if (soundQueue[count].playTime != 0 && soundQueue[count].priority == activeSequence.priority) {
+          soundQueue[count].playTime = 0;
+          soundQueue[count].priority = 0;
+        }
+      }
+    } else {
+      // Lower or equal priority; queue to global queue instead
+      unsigned long playTime = CurrentTime + startOffset + firstStep.gap_ms;
+      return QueueSound(firstStep.tone, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, playTime, 0xFF, priority);
+    }
+  }
+
+  // Start this sequence as active
+  unsigned long playTime = CurrentTime + startOffset + firstStep.gap_ms;
+  if (!QueueSound(firstStep.tone, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, playTime, 0xFF, priority)) {
+    return false;
+  }
+
+  activeSequence.seqID = seqID;
+  activeSequence.currentToneIndex = 1;  // Next tone to queue
+  activeSequence.priority = priority;
+  activeSequence.isPaused = false;
+  activeSequence.startTime = CurrentTime;
+  activeSequence.startOffset = startOffset;
+
+  return true;
+}
+
+
+void AudioHandler::ResumeActiveSequence(unsigned long currentTime) {
+  // If no active sequence, nothing to do
+  if (activeSequence.seqID == 0xFF) {
+    return;
+  }
+
+  // Get sequence pointer
+  const SoundStep* seqPtr = (const SoundStep*)pgm_read_ptr(&SoundSequenceTable[activeSequence.seqID]);
+  if (!seqPtr) {
+    activeSequence.seqID = 0xFF;
+    return;
+  }
+
+  // Read the next step
+  SoundStep step;
+  memcpy_P(&step, &seqPtr[activeSequence.currentToneIndex], sizeof(SoundStep));
+
+  // Check for end of sequence (sentinel)
+  if (step.tone == 0xFF) {
+    // This sequence is complete; restore paused sequence if any
+    if (activeSequence.pausedSeqID != 0xFF) {
+      activeSequence.seqID = activeSequence.pausedSeqID;
+      activeSequence.currentToneIndex = activeSequence.pausedToneIndex;
+      activeSequence.priority = activeSequence.pausedPriority;
+      // When resuming, reset timing so sequence plays from now (resumption point)
+      activeSequence.startTime = currentTime;
+      activeSequence.startOffset = 0;
+      activeSequence.pausedSeqID = 0xFF;
+      // Recursively call to queue the next tone of the resumed sequence
+      ResumeActiveSequence(currentTime);
+    } else {
+      activeSequence.seqID = 0xFF;
+    }
+    return;
+  }
+
+  // Queue the next tone
+  // For normal playback, use original timing; for resumed sequences, tones play immediately
+  unsigned long playTime = activeSequence.startTime + activeSequence.startOffset + step.gap_ms;
+  if (QueueSound(step.tone, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, playTime, 0xFF, activeSequence.priority)) {
+    activeSequence.currentToneIndex++;
+  }
 }
 
 
@@ -1055,12 +1171,31 @@ boolean AudioHandler::PlaySoundCardWhenPossible(unsigned short soundEffectNum, u
 
 boolean AudioHandler::ServiceSoundQueue(unsigned long currentTime) {
   boolean soundCommandSent = false;
+
+  // Find the earliest ready sound to play
+  int earliestIndex = -1;
+  unsigned long earliestTime = currentTime + 1000000;
   for (int count=0; count<SOUND_QUEUE_SIZE; count++) {
-    if (soundQueue[count].playTime!=0 && soundQueue[count].playTime<currentTime) {
-      PlaySound(soundQueue[count].soundIndex, soundQueue[count].audioType, soundQueue[count].overrideVolume);
-      soundQueue[count].playTime = 0;
-      soundCommandSent = true;
+    if (soundQueue[count].playTime!=0 && soundQueue[count].playTime <= currentTime) {
+      if (soundQueue[count].playTime < earliestTime) {
+        earliestTime = soundQueue[count].playTime;
+        earliestIndex = count;
+      }
     }
+  }
+
+  // Process only the earliest sound
+  if (earliestIndex >= 0) {
+    char buf[64];
+    sprintf(buf, "SND: %d pri=%d @ %lu ms\n", soundQueue[earliestIndex].soundIndex, soundQueue[earliestIndex].priority, currentTime);
+    Serial.write(buf);
+    PlaySound(soundQueue[earliestIndex].soundIndex, soundQueue[earliestIndex].audioType, soundQueue[earliestIndex].overrideVolume);
+    soundQueue[earliestIndex].playTime = 0;
+    soundQueue[earliestIndex].priority = 0;
+    soundCommandSent = true;
+
+    // After playing a sound, check if we should resume the active sequence
+    ResumeActiveSequence(currentTime);
   }
 
   return soundCommandSent;
