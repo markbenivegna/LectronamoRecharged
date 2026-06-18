@@ -197,7 +197,7 @@ class AudioHandler
     boolean PlaySound(unsigned short soundIndex, byte audioType, byte overrideVolume=0xFF);
     boolean FadeSound(unsigned short soundIndex, int fadeGain, int numMilliseconds, boolean stopTrack);
     boolean QueueSound(unsigned short soundIndex, byte audioType, unsigned long timeToPlay, byte overrideVolume=0xFF, byte priority=10);
-    boolean QueueSequence(byte seqID, byte priority, unsigned long startOffset);  // queue first tone of sequence
+    boolean QueueSequence(byte seqID, unsigned long startOffset);  // queue sequence; interrupts current if playing
     boolean QueueSoundCardCommand(byte scFunction, byte scRegister, byte scData, unsigned long startTime);
     boolean PlaySoundCardWhenPossible(unsigned short soundEffectNum, unsigned long currentTime, unsigned long requestedPlayTime = 0, unsigned long playUntil = 50, byte priority = 10);
     

@@ -997,7 +997,7 @@ boolean AudioHandler::QueueSound(unsigned short soundIndex, byte audioType, unsi
 }
 
 
-boolean AudioHandler::QueueSequence(byte seqID, byte priority, unsigned long startOffset) {
+boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
   // Bounds check
   if (seqID >= NUM_SOUND_SEQUENCES) {
     return false;
@@ -1016,38 +1016,30 @@ boolean AudioHandler::QueueSequence(byte seqID, byte priority, unsigned long sta
     return false;  // Empty sequence
   }
 
-  // Check if this should interrupt the active sequence
+  // If there's an active sequence, save it as paused (interrupt-and-pause)
   if (activeSequence.seqID != 0xFF) {
-    // There's an active sequence
-    if (priority > activeSequence.priority) {
-      // New sequence has higher priority; save current and interrupt
-      activeSequence.pausedSeqID = activeSequence.seqID;
-      activeSequence.pausedToneIndex = activeSequence.currentToneIndex;
-      activeSequence.pausedPriority = activeSequence.priority;
-      activeSequence.pausedStartTime = activeSequence.startTime;
-      activeSequence.pausedStartOffset = activeSequence.startOffset;
+    activeSequence.pausedSeqID = activeSequence.seqID;
+    activeSequence.pausedToneIndex = activeSequence.currentToneIndex;
+    activeSequence.pausedPriority = activeSequence.priority;
+    activeSequence.pausedStartTime = activeSequence.startTime;
+    activeSequence.pausedStartOffset = activeSequence.startOffset;
 
-      // Clear any queued tones from the interrupted sequence
-      for (int count=0; count<SOUND_QUEUE_SIZE; count++) {
-        if (soundQueue[count].playTime != 0 && soundQueue[count].priority == activeSequence.priority) {
-          soundQueue[count].playTime = 0;
-          soundQueue[count].priority = 0;
-        }
+    // Clear any queued tones from the interrupted sequence
+    for (int count=0; count<SOUND_QUEUE_SIZE; count++) {
+      if (soundQueue[count].playTime != 0 && soundQueue[count].priority == activeSequence.priority) {
+        soundQueue[count].playTime = 0;
+        soundQueue[count].priority = 0;
       }
-    } else {
-      // Lower or equal priority; queue to global queue instead
-      unsigned long playTime = CurrentTime + startOffset + firstStep.gap_ms;
-      return QueueSound(firstStep.tone, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, playTime, 0xFF, priority);
     }
   }
 
   // Start this sequence as active
   unsigned long playTime = CurrentTime + startOffset + firstStep.gap_ms;
-  if (!QueueSound(firstStep.tone, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, playTime, 0xFF, priority)) {
+  if (!QueueSound(firstStep.tone, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, playTime, 0xFF, 50)) {
     return false;
   }
 
-  // Auto-insert silence after this tone (same as old PlaySoundSequence)
+  // Auto-insert silence after this tone
   unsigned int silenceDuration = 150;
   if (seqID == 27) {  // SEQ_DRAIN special case
     // Check if this is the last tone
@@ -1058,11 +1050,11 @@ boolean AudioHandler::QueueSequence(byte seqID, byte priority, unsigned long sta
     }
   }
   unsigned long silenceTime = playTime + silenceDuration;
-  QueueSound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, silenceTime, 0xFF, priority);
+  QueueSound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, silenceTime, 0xFF, 50);
 
   activeSequence.seqID = seqID;
   activeSequence.currentToneIndex = 1;  // Next tone to queue
-  activeSequence.priority = priority;
+  activeSequence.priority = 50;  // Default priority for all sequences now
   activeSequence.isPaused = false;
   activeSequence.startTime = CurrentTime;
   activeSequence.startOffset = startOffset;
@@ -1108,9 +1100,8 @@ void AudioHandler::ResumeActiveSequence(unsigned long currentTime) {
   }
 
   // Queue the next tone
-  // For normal playback, use original timing; for resumed sequences, tones play immediately
   unsigned long playTime = activeSequence.startTime + activeSequence.startOffset + step.gap_ms;
-  if (QueueSound(step.tone, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, playTime, 0xFF, activeSequence.priority)) {
+  if (QueueSound(step.tone, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, playTime, 0xFF, 50)) {
     // Auto-insert silence after this tone
     unsigned int silenceDuration = 150;
     if (activeSequence.seqID == 27) {  // SEQ_DRAIN special case
@@ -1122,7 +1113,7 @@ void AudioHandler::ResumeActiveSequence(unsigned long currentTime) {
       }
     }
     unsigned long silenceTime = playTime + silenceDuration;
-    QueueSound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, silenceTime, 0xFF, activeSequence.priority);
+    QueueSound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, silenceTime, 0xFF, 50);
 
     activeSequence.currentToneIndex++;
   }
