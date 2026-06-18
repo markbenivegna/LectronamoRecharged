@@ -3235,10 +3235,7 @@ void HandleGamePlaySwitches(byte switchHit) {
             CurrentScores[CurrentPlayer] += popScore;
             // Only play sound during active ball play, not during match/bonus sequences
             if (MachineState == MACHINE_STATE_NORMAL_GAMEPLAY) {
-                // Score first, then pop bumper sound
-                byte scoreSeqID = (popScore == 1000) ? SEQ_SCORE_1000 : SEQ_SCORE_100;
-                unsigned int scoreDuration = PlaySoundSequence(scoreSeqID, 0);
-                PlaySoundSequence(SEQ_POP_BUMPER, scoreDuration + 50);
+                PlaySoundSequence(SEQ_POP_BUMPER, 0);
             }
             ValidateAndRegisterPlayfieldSwitch();
             break;
