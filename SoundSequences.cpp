@@ -22,8 +22,8 @@ extern unsigned long CurrentTime;
 // Sentinel: {0xFF, 0}
 
 // Score sequences — each plays the appropriate tone(s) with 200ms base spacing
-// Silence automatically inserted after each tone at gap_ms + 150
-// Note: 200ms gap ensures tones don't queue until previous silence (150ms) finishes
+// Silence automatically inserted after each tone at gap_ms + 75ms (Dick's timing)
+// Note: 200ms gap ensures tones don't queue until previous silence (75ms) finishes
 const SoundStep SEQ_SCORE_100_Data[] PROGMEM = {
   {SND_100_POINTS, 0},
   {0xFF, 0}
@@ -199,7 +199,7 @@ const SoundStep* const SoundSequenceTable[] PROGMEM = {
   SEQ_FANFARE_5BANK_Data     // 31
 };
 
-unsigned int PlaySoundSequence(byte seqID, unsigned long startOffset, byte priority) {
+unsigned int PlaySoundSequence(byte seqID, unsigned long startOffset) {
   // Bounds check
   if (seqID >= NUM_SOUND_SEQUENCES) {
     char buf[64];
@@ -231,10 +231,11 @@ unsigned int PlaySoundSequence(byte seqID, unsigned long startOffset, byte prior
     }
   }
 
-  // Queue the sequence (priority parameter ignored; all sequences interrupt equally)
-  Audio.QueueSequence(seqID, startOffset);
+  // Queue the sequence with standard priority (50)
+  // No priority checking: all sequences interrupt equally based on timing
+  Audio.QueueSequence(seqID, 50, startOffset);
 
-  unsigned int silenceDuration = 150;
+  unsigned int silenceDuration = 75;  // Dick's timing: 75ms silences
   unsigned int duration = maxGap + silenceDuration;
 
   // Return total duration for caller's timing reference
