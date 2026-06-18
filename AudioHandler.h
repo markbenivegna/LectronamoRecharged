@@ -53,6 +53,13 @@ struct ActiveSequence {
   boolean isProtected;     // cannot be interrupted by other sequences
   unsigned long startTime; // CurrentTime when sequence was started
   unsigned long startOffset; // offset from startTime when sequence begins playing
+  // Paused sequence (saved when interrupted by another protected sequence)
+  byte pausedSeqID;        // 0xFF = no paused sequence
+  byte pausedCurrentToneIndex;
+  byte pausedPriority;
+  boolean pausedIsProtected;
+  unsigned long pausedStartTime;
+  unsigned long pausedStartOffset;
 };
 
 // These SoundEFfectEntry & Queue functions parcel out FX to the

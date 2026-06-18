@@ -509,6 +509,12 @@ AudioHandler::AudioHandler() {
   activeSequence.startTime = 0;
   activeSequence.startOffset = 0;
   activeSequence.isProtected = false;
+  activeSequence.pausedSeqID = 0xFF;
+  activeSequence.pausedCurrentToneIndex = 0;
+  activeSequence.pausedPriority = 0;
+  activeSequence.pausedIsProtected = false;
+  activeSequence.pausedStartTime = 0;
+  activeSequence.pausedStartOffset = 0;
   currentBackgroundTrack = BACKGROUND_TRACK_NONE;
   musicStopped = true;
   soundtrackRandomOrder = true;
@@ -907,6 +913,12 @@ void AudioHandler::ClearSoundQueue() {
   activeSequence.startTime = 0;
   activeSequence.startOffset = 0;
   activeSequence.isProtected = false;
+  activeSequence.pausedSeqID = 0xFF;
+  activeSequence.pausedCurrentToneIndex = 0;
+  activeSequence.pausedPriority = 0;
+  activeSequence.pausedIsProtected = false;
+  activeSequence.pausedStartTime = 0;
+  activeSequence.pausedStartOffset = 0;
 }
 
 
@@ -1009,12 +1021,15 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
 
   // If there's an active sequence, check if it's protected
   if (activeSequence.seqID != 0xFF) {
-    // Protected sequences cannot be interrupted (drop targets, fanfares, special events)
-    if (activeSequence.isProtected) {
-      return false;  // Don't queue this sequence; protected sequence is playing
+    // Check if new sequence is spinner (unprotected)
+    boolean newSeqIsSpinner = (seqID == 0 || seqID == 3);
+
+    // Only block spinner from interrupting protected sequences
+    if (activeSequence.isProtected && newSeqIsSpinner) {
+      return false;  // Don't queue spinner while protected sequence is playing
     }
 
-    // Not protected; interrupt it and queue the new sequence
+    // Allow all other interrupts (protected->protected, unprotected->unprotected, unprotected->protected)
   }
 
   // Start this sequence as active
@@ -1046,12 +1061,57 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
     soundQueue[silenceIndex].seqID = seqID;
   }
 
+  // If there's an active sequence, save it as paused before we overwrite it
+  if (activeSequence.seqID != 0xFF) {
+    activeSequence.pausedSeqID = activeSequence.seqID;
+    activeSequence.pausedCurrentToneIndex = activeSequence.currentToneIndex;
+    activeSequence.pausedPriority = activeSequence.priority;
+    activeSequence.pausedIsProtected = activeSequence.isProtected;
+    activeSequence.pausedStartTime = activeSequence.startTime;
+    activeSequence.pausedStartOffset = activeSequence.startOffset;
+  }
+
+  // For protected sequences, queue all remaining tones immediately to prevent interruption
+  boolean isProtectedSeq = (seqID != 0 && seqID != 3);
+  byte currentToneIdx = 1;
+
+  if (isProtectedSeq) {
+    // Loop through and queue all remaining tones
+    SoundStep step;
+    while (true) {
+      memcpy_P(&step, &seqPtr[currentToneIdx], sizeof(SoundStep));
+      if (step.tone == 0xFF) break;  // End of sequence
+
+      // Queue this tone
+      unsigned long tonePlayTime = CurrentTime + startOffset + step.gap_ms;
+      int idx = QueueSound(step.tone, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, tonePlayTime, 0xFF, 50);
+      if (idx >= 0) {
+        soundQueue[idx].seqID = seqID;
+      }
+
+      // Queue silence after this tone
+      silenceDuration = 75;
+      if (seqID == 27) {  // SEQ_DRAIN: check if next is sentinel
+        SoundStep nextStep;
+        memcpy_P(&nextStep, &seqPtr[currentToneIdx + 1], sizeof(SoundStep));
+        if (nextStep.tone == 0xFF) {
+          silenceDuration = 400;
+        }
+      }
+      unsigned long toneSilenceTime = tonePlayTime + silenceDuration;
+      int silIdx = QueueSound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, toneSilenceTime, 0xFF, 50);
+      if (silIdx >= 0) {
+        soundQueue[silIdx].seqID = seqID;
+      }
+
+      currentToneIdx++;
+    }
+  }
+
   activeSequence.seqID = seqID;
-  activeSequence.currentToneIndex = 1;  // Next tone to queue
+  activeSequence.currentToneIndex = currentToneIdx;  // Point to sentinel (or next tone if unprotected)
   activeSequence.priority = 50;  // Default priority for all sequences now
-  activeSequence.isPaused = false;
-  // Protect all sequences EXCEPT spinner (seqID 0 and 3) — only spinner can be interrupted
-  activeSequence.isProtected = (seqID != 0 && seqID != 3);
+  activeSequence.isProtected = isProtectedSeq;
   activeSequence.startTime = CurrentTime;
   activeSequence.startOffset = startOffset;
 
@@ -1078,9 +1138,24 @@ void AudioHandler::ResumeActiveSequence(unsigned long currentTime) {
 
   // Check for end of sequence (sentinel)
   if (step.tone == 0xFF) {
-    // Sequence is complete
-    activeSequence.seqID = 0xFF;
-    activeSequence.isProtected = false;
+    // Sequence is complete. Check if there's a paused sequence to restore
+    if (activeSequence.pausedSeqID != 0xFF) {
+      // Restore paused sequence
+      activeSequence.seqID = activeSequence.pausedSeqID;
+      activeSequence.currentToneIndex = activeSequence.pausedCurrentToneIndex;
+      activeSequence.priority = activeSequence.pausedPriority;
+      activeSequence.isProtected = activeSequence.pausedIsProtected;
+      activeSequence.startTime = activeSequence.pausedStartTime;
+      activeSequence.startOffset = activeSequence.pausedStartOffset;
+      // Clear paused fields
+      activeSequence.pausedSeqID = 0xFF;
+      // Recursively resume the restored sequence (queue its next tone)
+      ResumeActiveSequence(currentTime);
+    } else {
+      // No paused sequence, just clear active
+      activeSequence.seqID = 0xFF;
+      activeSequence.isProtected = false;
+    }
     return;
   }
 
