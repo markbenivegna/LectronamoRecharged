@@ -52,4 +52,7 @@ struct SoundStep {
 // Returns: total duration of sequence in ms (for chaining)
 unsigned int PlaySoundSequence(byte seqID, unsigned long startOffset = 0, byte priority = PRIORITY_SCORE);
 
+// Extern declarations for sequence table access
+extern const SoundStep* const SoundSequenceTable[] PROGMEM;
+
 #endif
