@@ -201,7 +201,7 @@ const SoundStep* const SoundSequenceTable[] PROGMEM = {
 
 unsigned int PlaySoundSequence(byte seqID, unsigned long startOffset, byte priority) {
   // Bounds check
-  if (seqID >= (sizeof(SoundSequenceTable) / sizeof(SoundSequenceTable[0]))) {
+  if (seqID >= NUM_SOUND_SEQUENCES) {
     char buf[64];
     sprintf(buf, "SEQ: Invalid seqID %d\n", seqID);
     Serial.write(buf);
@@ -231,8 +231,8 @@ unsigned int PlaySoundSequence(byte seqID, unsigned long startOffset, byte prior
     }
   }
 
-  // Queue the sequence using the new active sequence system
-  Audio.QueueSequence(seqID, priority, startOffset);
+  // Queue the sequence (priority parameter ignored; all sequences interrupt equally)
+  Audio.QueueSequence(seqID, startOffset);
 
   unsigned int silenceDuration = 150;
   unsigned int duration = maxGap + silenceDuration;
