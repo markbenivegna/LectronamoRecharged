@@ -999,7 +999,7 @@ boolean AudioHandler::QueueSound(unsigned short soundIndex, byte audioType, unsi
 
 boolean AudioHandler::QueueSequence(byte seqID, byte priority, unsigned long startOffset) {
   // Bounds check
-  if (seqID >= (sizeof(SoundSequenceTable) / sizeof(SoundSequenceTable[0]))) {
+  if (seqID >= NUM_SOUND_SEQUENCES) {
     return false;
   }
 

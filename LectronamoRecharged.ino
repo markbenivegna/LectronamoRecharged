@@ -297,8 +297,10 @@ unsigned long LastSwitchHitTime;
 unsigned long BallSaveEndTime;
 unsigned long SaucerClosedStart = 0;
 unsigned long KickerClosedStart = 0;
+unsigned long KickerEjectTime = 0;
 
 #define STUCK_BALL_SETTLE_TIME_MS 500
+#define KICKER_EJECT_LOCKOUT_MS 1000
 
 /*********************************************************************
 
@@ -1853,7 +1855,8 @@ void PlaySoundEffect(unsigned int soundEffectNum) {
       sb100Sound = SND_10_POINTS;
       break;
     case SOUND_EFFECT_POP_BUMPER:
-      sb100Sound = SND_POP_BUMPER;
+      // sb100Sound = SND_POP_BUMPER;  // TEMP: disabled to debug
+      return;  // Skip pop bumper sounds
       break;
     case SOUND_EFFECT_TILT_WARNING:
       sb100Sound = SND_1000_POINTS;
@@ -2360,6 +2363,9 @@ int InitGamePlay(boolean curStateChanged) {
     Display_UpdateDisplays(0xFF);
     RPU_EnableSolenoidStack();
     RPU_SetDisableFlippers(false);
+
+    // Clear sound queue at game start
+    Audio.ClearSoundQueue();
   }
 
   boolean showBIP = (CurrentTime / 100) % 2;
@@ -2403,6 +2409,9 @@ int InitNewBall(bool curStateChanged) {
     NumTiltWarnings = 0;
     
     ExtraBallsAvailable[CurrentPlayer] = 1;
+
+    // Clear sound queue at start of ball to remove any stale data
+    Audio.ClearSoundQueue();
 
     // Initialize game-specific start-of-ball lights & variables
     GameModeStartTime = 0;
@@ -2504,7 +2513,9 @@ void CheckForStuckBalls() {
   }
 
   // Check kicker for stuck ball — skip during bonus collect (kicker fires at end of collect)
-  if (!KickerBonusCollect && RPU_ReadSingleSwitchState(SW_KICKER)) {
+  // Also skip for 1 second after eject to let switch fully open
+  boolean inKickerEjectLockout = (KickerEjectTime != 0 && (CurrentTime - KickerEjectTime) < KICKER_EJECT_LOCKOUT_MS);
+  if (!KickerBonusCollect && !inKickerEjectLockout && RPU_ReadSingleSwitchState(SW_KICKER)) {
     if (KickerClosedStart == 0) {
       KickerClosedStart = CurrentTime;
     } else if (KickerClosedStart != 1) {
@@ -2872,6 +2883,7 @@ int CountdownBonus(boolean curStateChanged) {
       KickerBonusCollect = false;
       CollectBonusViaKicker = false;
       KickerClosedStart = 0;
+      KickerEjectTime = CurrentTime;
       Bonus[CurrentPlayer] = 1;
       RPU_PushToTimedSolenoidStack(SOL_KICKER, 16, CurrentTime + 250, false);
       return MACHINE_STATE_NORMAL_GAMEPLAY;
@@ -3013,8 +3025,10 @@ int HandleSystemSwitches(int curState, byte switchHit) {
     case SW_COIN_1:
     case SW_COIN_2:
     case SW_COIN_3:
-      AddCoinToAudit(SwitchToChuteNum(switchHit));
-      AddCoin(SwitchToChuteNum(switchHit));
+      if (!FreePlayMode) {
+        AddCoinToAudit(SwitchToChuteNum(switchHit));
+        AddCoin(SwitchToChuteNum(switchHit));
+      }
       break;
     case SW_CREDIT_RESET:
       if (MachineState == MACHINE_STATE_MATCH_MODE) {
@@ -3206,9 +3220,9 @@ void HandleGamePlaySwitches(byte switchHit) {
             // 100 pts on 5-ball, 1,000 pts on 3-ball (per original rules)
             int popScore = (BallsPerGame == 3 ? 1000 : 100) * PlayfieldMultiplier;
             CurrentScores[CurrentPlayer] += popScore;
-            PlaySoundSequence(SEQ_POP_BUMPER, 0, 40);
-            byte scoreSeqID = (popScore == 1000) ? SEQ_SCORE_1000 : SEQ_SCORE_100;
-            PlaySoundSequence(scoreSeqID, 250, PRIORITY_SCORE);
+            // PlaySoundSequence(SEQ_POP_BUMPER, 0, 40);  // TEMP: disabled to test
+            // byte scoreSeqID = (popScore == 1000) ? SEQ_SCORE_1000 : SEQ_SCORE_100;
+            // PlaySoundSequence(scoreSeqID, 250, PRIORITY_SCORE);  // TEMP: disabled entire pop bumper sound
             ValidateAndRegisterPlayfieldSwitch();
             break;
         }

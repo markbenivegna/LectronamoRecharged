@@ -48,6 +48,8 @@ struct SoundStep {
 #define SEQ_FANFARE_ASCENDING  30
 #define SEQ_FANFARE_5BANK      31
 
+#define NUM_SOUND_SEQUENCES    32  // size of SoundSequenceTable
+
 // Play a named sound sequence, optionally offset from CurrentTime
 // Returns: total duration of sequence in ms (for chaining)
 unsigned int PlaySoundSequence(byte seqID, unsigned long startOffset = 0, byte priority = PRIORITY_SCORE);
