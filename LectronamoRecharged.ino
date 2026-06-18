@@ -3235,7 +3235,10 @@ void HandleGamePlaySwitches(byte switchHit) {
             CurrentScores[CurrentPlayer] += popScore;
             // Only play sound during active ball play, not during match/bonus sequences
             if (MachineState == MACHINE_STATE_NORMAL_GAMEPLAY) {
-                PlaySoundSequence(SEQ_POP_BUMPER, 0);
+                // Score first, then pop bumper sound
+                byte scoreSeqID = (popScore == 1000) ? SEQ_SCORE_1000 : SEQ_SCORE_100;
+                unsigned int scoreDuration = PlaySoundSequence(scoreSeqID, 0);
+                PlaySoundSequence(SEQ_POP_BUMPER, scoreDuration + 50);
             }
             ValidateAndRegisterPlayfieldSwitch();
             break;
@@ -3371,25 +3374,14 @@ void HandleGamePlaySwitches(byte switchHit) {
         case SW_RIGHT_OUTLANE:
         case SW_LEFT_OUTLANE: {
             CurrentScores[CurrentPlayer] += SCORE_OUTLANE * PlayfieldMultiplier;
-            if (Bonus[CurrentPlayer] < 19) {
-              // Bonus not full: play advance sound
-              if (DEBUG_MESSAGES) Serial.print("Outlane: Bonus="); Serial.print(Bonus[CurrentPlayer]); Serial.println(" < 19 → ADVANCE");
-              PlaySoundSequence(SEQ_ADVANCE_3, 0);
-              AddToBonus(3);
-              // Drain feedback after advance finishes (with silence gap)
-              {
-                unsigned int duration = PlaySoundSequence(SEQ_DRAIN, 0);
-                protectedSoundUntilTime = CurrentTime + duration + 100;
-              }
-            } else {
-              // Bonus full (19): play score sound
-              if (DEBUG_MESSAGES) Serial.print("Outlane: Bonus="); Serial.print(Bonus[CurrentPlayer]); Serial.println(" >= 19 → SCORE");
-              PlaySoundSequence(SEQ_SCORE_3000, 0);
-              // Drain feedback after score finishes (with silence gap)
-              {
-                unsigned int duration = PlaySoundSequence(SEQ_DRAIN, 0);
-                protectedSoundUntilTime = CurrentTime + duration + 100;
-              }
+            AddToBonus(3);
+            // Only play sounds during normal gameplay
+            if (MachineState == MACHINE_STATE_NORMAL_GAMEPLAY) {
+              // Always: score 3000, then advance +3, then drain
+              if (DEBUG_MESSAGES) Serial.print("Outlane: Bonus="); Serial.print(Bonus[CurrentPlayer]); Serial.println(" → SCORE + ADVANCE + DRAIN");
+              unsigned int scoreDuration = PlaySoundSequence(SEQ_SCORE_3000, 0);
+              unsigned int advanceDuration = PlaySoundSequence(SEQ_ADVANCE_3, scoreDuration + 50);
+              unsigned int drainDuration = PlaySoundSequence(SEQ_DRAIN, scoreDuration + advanceDuration + 100);
             }
             ValidateAndRegisterPlayfieldSwitch();
             break;
