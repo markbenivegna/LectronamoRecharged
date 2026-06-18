@@ -43,6 +43,7 @@ struct SoundEntry {
   byte overrideVolume;
   unsigned long playTime;
   byte priority;  // 0-100: higher = more important; 0 = empty slot
+  byte seqID;     // which sequence this sound belongs to (0xFF = not part of sequence)
 };
 
 struct ActiveSequence {
@@ -50,6 +51,7 @@ struct ActiveSequence {
   byte currentToneIndex;   // index into sequence's tone array (0 = not started yet)
   byte priority;           // priority of this sequence
   boolean isPaused;        // interrupted and paused?
+  boolean isProtected;     // cannot be interrupted by other sequences
   unsigned long startTime; // CurrentTime when sequence was started
   unsigned long startOffset; // offset from startTime when sequence begins playing
 
@@ -57,6 +59,8 @@ struct ActiveSequence {
   byte pausedSeqID;        // sequence that was paused; 0xFF = none
   byte pausedToneIndex;    // where paused sequence left off
   byte pausedPriority;     // priority of paused sequence
+  unsigned long pausedTime;        // when the sequence was paused (to calculate elapsed time)
+  unsigned long pausedMinResumeTime; // don't resume until interrupting sequence's tone+silence finish
   unsigned long pausedStartTime;
   unsigned long pausedStartOffset;
 };
@@ -196,14 +200,18 @@ class AudioHandler
 
     boolean PlaySound(unsigned short soundIndex, byte audioType, byte overrideVolume=0xFF);
     boolean FadeSound(unsigned short soundIndex, int fadeGain, int numMilliseconds, boolean stopTrack);
-    boolean QueueSound(unsigned short soundIndex, byte audioType, unsigned long timeToPlay, byte overrideVolume=0xFF, byte priority=10);
-    boolean QueueSequence(byte seqID, unsigned long startOffset);  // queue sequence; interrupts current if playing
+    int QueueSound(unsigned short soundIndex, byte audioType, unsigned long timeToPlay, byte overrideVolume=0xFF, byte priority=10);  // returns queue index, or -1 if failed
+    boolean QueueSequence(byte seqID, unsigned long startOffset);  // queue sequence; interrupts current, clears only interrupted sequence's sounds
     boolean QueueSoundCardCommand(byte scFunction, byte scRegister, byte scData, unsigned long startTime);
     boolean PlaySoundCardWhenPossible(unsigned short soundEffectNum, unsigned long currentTime, unsigned long requestedPlayTime = 0, unsigned long playUntil = 50, byte priority = 10);
     
     boolean QueuePrioritizedNotification(unsigned short notificationIndex, unsigned short notificationLength, byte priority, unsigned long currentTime);
     
     boolean Update(unsigned long currentTime);
+
+    boolean IsProtectedSequencePlaying() {
+      return (activeSequence.seqID != 0xFF && activeSequence.isProtected);
+    }
 
     boolean StopSound(unsigned short soundIndex);
     boolean StopCurrentNotification(byte priority = 10);
