@@ -3233,9 +3233,10 @@ void HandleGamePlaySwitches(byte switchHit) {
             // 100 pts on 5-ball, 1,000 pts on 3-ball (per original rules)
             int popScore = (BallsPerGame == 3 ? 1000 : 100) * PlayfieldMultiplier;
             CurrentScores[CurrentPlayer] += popScore;
-            // PlaySoundSequence(SEQ_POP_BUMPER, 0, 40);  // TEMP: disabled to test
-            // byte scoreSeqID = (popScore == 1000) ? SEQ_SCORE_1000 : SEQ_SCORE_100;
-            // PlaySoundSequence(scoreSeqID, 250);  // TEMP: disabled entire pop bumper sound
+            // Only play sound during active ball play, not during match/bonus sequences
+            if (MachineState == MACHINE_STATE_NORMAL_GAMEPLAY) {
+                PlaySoundSequence(SEQ_POP_BUMPER, 0);
+            }
             ValidateAndRegisterPlayfieldSwitch();
             break;
         }
