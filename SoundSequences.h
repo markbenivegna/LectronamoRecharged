@@ -8,13 +8,11 @@
  *
  * Provides named sound sequences that chain tones + silences cleanly,
  * eliminating overlap and scattered QueueSound calls throughout the codebase.
+ *
+ * Uses interrupt-and-mute: one active sequence, one muted sequence.
+ * New sound interrupts active (if no large offset), active resumes when new finishes.
+ * Timing: 75ms silences, 200ms spacing between tones (matches original SB-100).
  */
-
-// Sound priority tiers (higher = more important)
-#define PRIORITY_CRITICAL  95  // Tilt, game over, special events
-#define PRIORITY_ADVANCE   75  // Bonus advances, multiplier achievements
-#define PRIORITY_SCORE     50  // Score sequences, bumper feedback
-#define PRIORITY_AMBIENT   20  // Drain feedback, fanfares
 
 // Sound sequence entry (stored in PROGMEM)
 struct SoundStep {
@@ -52,7 +50,7 @@ struct SoundStep {
 
 // Play a named sound sequence, optionally offset from CurrentTime
 // Returns: total duration of sequence in ms (for chaining)
-unsigned int PlaySoundSequence(byte seqID, unsigned long startOffset = 0, byte priority = PRIORITY_SCORE);
+unsigned int PlaySoundSequence(byte seqID, unsigned long startOffset = 0);
 
 // Extern declarations for sequence table access
 extern const SoundStep* const SoundSequenceTable[] PROGMEM;

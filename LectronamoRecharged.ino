@@ -2847,7 +2847,7 @@ int CountdownBonus(boolean curStateChanged) {
       // Only give sound & score if this isn't a tilt
       if (NumTiltWarnings <= MaxTiltWarnings) {
         // Play bonus countdown sound via sequence (includes silence padding to prevent collisions)
-        PlaySoundSequence(SEQ_BONUS_COUNT, 0, PRIORITY_CRITICAL);
+        PlaySoundSequence(SEQ_BONUS_COUNT, 0);
         BonusSoundIncrement += 1;
         CurrentScores[CurrentPlayer] += BonusCountdownMultipleSteps ? ((unsigned long)TotalBonusX * 1000) : 1000;
       }
@@ -2956,7 +2956,7 @@ int ShowMatchSequence(boolean curStateChanged) {
       MatchDigit += 1;
       if (MatchDigit > 9) MatchDigit = 0;
       //PlaySoundEffect(10+(MatchDigit%2));
-      PlaySoundSequence(SEQ_MATCH_SPIN, 0, PRIORITY_SCORE);
+      PlaySoundSequence(SEQ_MATCH_SPIN, 0);
       RPU_SetDisplayBallInPlay((int)MatchDigit * 10);
       MatchDelay += 50 + 4 * NumMatchSpins;
       NumMatchSpins += 1;
@@ -3064,15 +3064,15 @@ int HandleSystemSwitches(int curState, byte switchHit) {
               NumberOfBallSavesRemaining = 0;
             }
             RPU_SetLampState(LAMP_HEAD_TILT, 1);
-            PlaySoundSequence(SEQ_TILT, 0, PRIORITY_CRITICAL);
+            PlaySoundSequence(SEQ_TILT, 0);
           } else {
-            PlaySoundSequence(SEQ_TILT_WARNING, 0, PRIORITY_CRITICAL);
+            PlaySoundSequence(SEQ_TILT_WARNING, 0);
           }
         }
       } else {
         // Tilt before ball is plunged -- show a timer in ManageGameMode if desired
         if ( CurrentTime > (LastTiltWarningTime + TILT_WARNING_DEBOUNCE_TIME) ) {
-          PlaySoundSequence(SEQ_TILT_WARNING, 0, PRIORITY_CRITICAL);
+          PlaySoundSequence(SEQ_TILT_WARNING, 0);
         }
         LastTiltWarningTime = CurrentTime;
       }
@@ -3113,7 +3113,7 @@ void Handle3BankCompletion() {
         if (DEBUG_MESSAGES) Serial.write("Regular 3-bank completion - playing scoring sounds!\n");
         CurrentScores[CurrentPlayer] += SCORE_3BANK_COMPLETION * PlayfieldMultiplier;
         // Offset 3-bank sound to play after individual target hit sound completes (550ms)
-        PlaySoundSequence(SEQ_SCORE_6000, 600, PRIORITY_SCORE);
+        PlaySoundSequence(SEQ_SCORE_6000, 0);
     }
 }
 
@@ -3125,13 +3125,13 @@ void Handle5BankCompletion() {
 
     if (fiveBankCompleteCount[CurrentPlayer] == 1) {
         // 1st: score and reset
-        PlaySoundSequence(SEQ_SCORE_10000, 0, PRIORITY_SCORE);
+        PlaySoundSequence(SEQ_SCORE_10000, 0);
     } else if (fiveBankCompleteCount[CurrentPlayer] == 2) {
         // 2nd: extra ball lane available (if enabled) + special lamp lights
         if (ExtraBallLaneEnabled) {
             ExtraBallLaneAvailable[CurrentPlayer] = true;
         }
-        PlaySoundSequence(SEQ_SCORE_10000, 0, PRIORITY_SCORE);
+        PlaySoundSequence(SEQ_SCORE_10000, 0);
     } else if (fiveBankCompleteCount[CurrentPlayer] >= 3) {
         // 3rd: award special via AwardSpecial() — respects SpecialAwardType, SpecialOpenEnded, SpecialCollected
         boolean specialAwarded = false;
@@ -3141,9 +3141,9 @@ void Handle5BankCompletion() {
         }
         fiveBankCompleteCount[CurrentPlayer] = 0;
         if (specialAwarded) {
-            PlaySoundSequence(SEQ_FANFARE_5BANK, 0, PRIORITY_ADVANCE);
+            PlaySoundSequence(SEQ_FANFARE_5BANK, 0);
         } else {
-            PlaySoundSequence(SEQ_BONUS_COUNT, 0, PRIORITY_CRITICAL);
+            PlaySoundSequence(SEQ_BONUS_COUNT, 0);
         }
     }
 }
@@ -3181,7 +3181,7 @@ void HandleGamePlaySwitches(byte switchHit) {
 
             // Play sound only if NOT in sweep window
             if (!inSweepWindow) {
-                PlaySoundSequence(SEQ_SCORE_500, 0, PRIORITY_SCORE);
+                PlaySoundSequence(SEQ_SCORE_500, 0);
             }
             ValidateAndRegisterPlayfieldSwitch();
             break;
@@ -3194,7 +3194,7 @@ void HandleGamePlaySwitches(byte switchHit) {
         case SW_TARGET_5_5BANK:
             FiveBank.HandleDropTargetHit(switchHit);
             CurrentScores[CurrentPlayer] += SCORE_DROP_TARGET_BASE * PlayfieldMultiplier;
-            PlaySoundSequence(SEQ_SCORE_500, 0, PRIORITY_SCORE);
+            PlaySoundSequence(SEQ_SCORE_500, 0);
             ValidateAndRegisterPlayfieldSwitch();
             break;
 
@@ -3206,7 +3206,7 @@ void HandleGamePlaySwitches(byte switchHit) {
             CurrentScores[CurrentPlayer] += spinnerScore * PlayfieldMultiplier;
             if (CurrentTime > (lastSpinnerSoundTime + 150)) {
                 byte seqID = (spinnerScore == SCORE_SPINNER_LIT) ? SEQ_SCORE_1000 : SEQ_SCORE_100;
-                PlaySoundSequence(seqID, 0, PRIORITY_ADVANCE);
+                PlaySoundSequence(seqID, 0);
                 lastSpinnerSoundTime = CurrentTime;
             }
             if (spinnerHitCount[CurrentPlayer] % 4 == 0) { AddToBonus(1); }
@@ -3222,14 +3222,14 @@ void HandleGamePlaySwitches(byte switchHit) {
             CurrentScores[CurrentPlayer] += popScore;
             // PlaySoundSequence(SEQ_POP_BUMPER, 0, 40);  // TEMP: disabled to test
             // byte scoreSeqID = (popScore == 1000) ? SEQ_SCORE_1000 : SEQ_SCORE_100;
-            // PlaySoundSequence(scoreSeqID, 250, PRIORITY_SCORE);  // TEMP: disabled entire pop bumper sound
+            // PlaySoundSequence(scoreSeqID, 250);  // TEMP: disabled entire pop bumper sound
             ValidateAndRegisterPlayfieldSwitch();
             break;
         }
 
         case SW_RIGHT_INLANE:
             CurrentScores[CurrentPlayer] += 3000L * PlayfieldMultiplier;
-            PlaySoundSequence(SEQ_SCORE_3000, 0, PRIORITY_SCORE);
+            PlaySoundSequence(SEQ_SCORE_3000, 0);
             if (DEBUG_MESSAGES) {
                 char buf[64];
                 sprintf(buf, "RIGHT_INLANE: 5bank=%d EBEnabled=%d EBAvail=%d\n",
@@ -3237,7 +3237,7 @@ void HandleGamePlaySwitches(byte switchHit) {
                 Serial.write(buf);
             }
             if (ExtraBallLaneAvailable[CurrentPlayer] && !ExtraBallCollectedThisBall[CurrentPlayer]) {
-                PlaySoundSequence(SEQ_FANFARE_ASCENDING, 400, PRIORITY_ADVANCE);
+                PlaySoundSequence(SEQ_FANFARE_ASCENDING, 400);
                 AwardExtraBall();
                 ExtraBallCollectedThisBall[CurrentPlayer] = true;
                 ExtraBallLaneAvailable[CurrentPlayer] = false;
@@ -3251,22 +3251,22 @@ void HandleGamePlaySwitches(byte switchHit) {
             if (isArcSurgeActive[CurrentPlayer]) {
                 CurrentScores[CurrentPlayer] += SCORE_ARC_SURGE_T1 * PlayfieldMultiplier;
                 arcSurgeT1Hit[CurrentPlayer] = true;
-                PlaySoundSequence(SEQ_SCORE_10000, 0, PRIORITY_SCORE);
+                PlaySoundSequence(SEQ_SCORE_10000, 0);
                 // Arc Surge stays active - saucer completes the combo
             } else if (isSaucerLit[CurrentPlayer]) {
                 CurrentScores[CurrentPlayer] += 5000L * PlayfieldMultiplier;
                 if (Bonus[CurrentPlayer] < 19) {
                   if (DEBUG_MESSAGES) Serial.print("T1 lit: Bonus="); Serial.print(Bonus[CurrentPlayer]); Serial.println(" < 19 → ADVANCE");
-                  PlaySoundSequence(SEQ_ADVANCE_3, 0, PRIORITY_ADVANCE);
+                  PlaySoundSequence(SEQ_ADVANCE_3, 0);
                   AddToBonus(3);
                 } else {
                   if (DEBUG_MESSAGES) Serial.print("T1 lit: Bonus="); Serial.print(Bonus[CurrentPlayer]); Serial.println(" >= 19 → SCORE");
-                  PlaySoundSequence(SEQ_SCORE_5000, 0, PRIORITY_SCORE);
+                  PlaySoundSequence(SEQ_SCORE_5000, 0);
                 }
             } else {
                 CurrentScores[CurrentPlayer] += 1000L * PlayfieldMultiplier;
                 AddToBonus(1);
-                PlaySoundSequence(SEQ_SCORE_1000, 0, PRIORITY_SCORE);
+                PlaySoundSequence(SEQ_SCORE_1000, 0);
             }
             ValidateAndRegisterPlayfieldSwitch();
             break;
@@ -3276,7 +3276,7 @@ void HandleGamePlaySwitches(byte switchHit) {
                 CurrentScores[CurrentPlayer] += SCORE_ARC_SURGE_SUPER * PlayfieldMultiplier;
                 AddToBonus(3);
                 if (DEBUG_MESSAGES) Serial.write("ARC SURGE COMPLETE - playing fanfare\n");
-                PlaySoundSequence(SEQ_FANFARE_ASCENDING, 300, PRIORITY_ADVANCE);
+                PlaySoundSequence(SEQ_FANFARE_ASCENDING, 300);
                 isArcSurgeActive[CurrentPlayer] = false;
                 arcSurgeT1Hit[CurrentPlayer] = false;
                 arcSurgeCompleteTime = CurrentTime;
@@ -3287,40 +3287,40 @@ void HandleGamePlaySwitches(byte switchHit) {
                     CurrentScores[CurrentPlayer] += SCORE_SKILL_SHOT * PlayfieldMultiplier;
                     if (Bonus[CurrentPlayer] < 19) {
                       if (DEBUG_MESSAGES) Serial.print("Saucer (Arc no T1): Bonus="); Serial.print(Bonus[CurrentPlayer]); Serial.println(" < 19 → ADVANCE");
-                      PlaySoundSequence(SEQ_ADVANCE_3, 0, PRIORITY_ADVANCE);
+                      PlaySoundSequence(SEQ_ADVANCE_3, 0);
                       AddToBonus(3);
                     } else {
                       if (DEBUG_MESSAGES) Serial.print("Saucer (Arc no T1): Bonus="); Serial.print(Bonus[CurrentPlayer]); Serial.println(" >= 19 → SCORE");
-                      PlaySoundSequence(SEQ_SCORE_5000, 0, PRIORITY_SCORE);
+                      PlaySoundSequence(SEQ_SCORE_5000, 0);
                     }
                     if (!SaucerLightPersists) isSaucerLit[CurrentPlayer] = false;
                 } else {
                     CurrentScores[CurrentPlayer] += 500L * PlayfieldMultiplier;
                     AddToBonus(1);
-                    PlaySoundSequence(SEQ_SCORE_500, 0, PRIORITY_SCORE);
+                    PlaySoundSequence(SEQ_SCORE_500, 0);
                 }
              } else if (!firstHitMade[CurrentPlayer]) { // Skill shot
                  CurrentScores[CurrentPlayer] += SCORE_SKILL_SHOT * PlayfieldMultiplier;
                  AddToBonus(3);
-                 PlaySoundSequence(SEQ_FANFARE_ASCENDING, 300, PRIORITY_ADVANCE);
+                 PlaySoundSequence(SEQ_FANFARE_ASCENDING, 300);
                  SkillShotAnimationStart = CurrentTime;
             } else if (isSaucerLit[CurrentPlayer]) {
                  CurrentScores[CurrentPlayer] += SCORE_SKILL_SHOT * PlayfieldMultiplier;
                  if (Bonus[CurrentPlayer] < 19) {
                    // Bonus not full: play advance sound only (spaced out)
                    if (DEBUG_MESSAGES) Serial.print("Saucer (lit): Bonus="); Serial.print(Bonus[CurrentPlayer]); Serial.println(" < 19 → ADVANCE");
-                   PlaySoundSequence(SEQ_ADVANCE_3, 0, PRIORITY_ADVANCE);
+                   PlaySoundSequence(SEQ_ADVANCE_3, 0);
                    AddToBonus(3);
                  } else {
                    // Bonus full (19): play score sound instead
                    if (DEBUG_MESSAGES) Serial.print("Saucer (lit): Bonus="); Serial.print(Bonus[CurrentPlayer]); Serial.println(" >= 19 → SCORE");
-                   PlaySoundSequence(SEQ_SCORE_5000, 0, PRIORITY_SCORE);
+                   PlaySoundSequence(SEQ_SCORE_5000, 0);
                  }
                  if (!SaucerLightPersists) isSaucerLit[CurrentPlayer] = false;
             } else {
                  CurrentScores[CurrentPlayer] += 500L * PlayfieldMultiplier;
                  AddToBonus(1);
-                 PlaySoundSequence(SEQ_SCORE_500, 0, PRIORITY_SCORE);
+                 PlaySoundSequence(SEQ_SCORE_500, 0);
             }
             RPU_PushToTimedSolenoidStack(SOL_SAUCER, SaucerSolenoidStrength, CurrentTime + 500, false);
             ValidateAndRegisterPlayfieldSwitch();
@@ -3330,27 +3330,27 @@ void HandleGamePlaySwitches(byte switchHit) {
             isSaucerLit[CurrentPlayer] = true;
             CurrentScores[CurrentPlayer] += SCORE_STANDUP_TARGET * PlayfieldMultiplier;
             AddToBonus(1);
-            PlaySoundSequence(SEQ_SCORE_5000, 0, PRIORITY_SCORE);
+            PlaySoundSequence(SEQ_SCORE_5000, 0);
             ValidateAndRegisterPlayfieldSwitch();
             break;
 
         case SW_RIGHT_SLINGSHOT:
         case SW_LEFT_SLINGSHOT:
             CurrentScores[CurrentPlayer] += 100L * PlayfieldMultiplier;
-            PlaySoundSequence(SEQ_SCORE_100, 0, PRIORITY_SCORE);
+            PlaySoundSequence(SEQ_SCORE_100, 0);
             ValidateAndRegisterPlayfieldSwitch();
             break;
 
         case SW_ADV_BONUS_300:
             CurrentScores[CurrentPlayer] += 300L * PlayfieldMultiplier;
             AddToBonus(1);
-            PlaySoundSequence(SEQ_SCORE_300, 0, PRIORITY_SCORE);
+            PlaySoundSequence(SEQ_SCORE_300, 0);
             ValidateAndRegisterPlayfieldSwitch();
             break;
 
         case SW_SCORE_10:
             CurrentScores[CurrentPlayer] += 10L * PlayfieldMultiplier;
-            PlaySoundSequence(SEQ_SCORE_100, 0, PRIORITY_SCORE);
+            PlaySoundSequence(SEQ_SCORE_100, 0);
             ValidateAndRegisterPlayfieldSwitch();
             break;
 
@@ -3360,16 +3360,16 @@ void HandleGamePlaySwitches(byte switchHit) {
             if (Bonus[CurrentPlayer] < 19) {
               // Bonus not full: play advance sound
               if (DEBUG_MESSAGES) Serial.print("Outlane: Bonus="); Serial.print(Bonus[CurrentPlayer]); Serial.println(" < 19 → ADVANCE");
-              PlaySoundSequence(SEQ_ADVANCE_3, 0, PRIORITY_ADVANCE);
+              PlaySoundSequence(SEQ_ADVANCE_3, 0);
               AddToBonus(3);
               // Drain feedback after advance finishes (with silence gap)
-              PlaySoundSequence(SEQ_DRAIN, 750, PRIORITY_ADVANCE);
+              PlaySoundSequence(SEQ_DRAIN, 0);
             } else {
               // Bonus full (19): play score sound
               if (DEBUG_MESSAGES) Serial.print("Outlane: Bonus="); Serial.print(Bonus[CurrentPlayer]); Serial.println(" >= 19 → SCORE");
-              PlaySoundSequence(SEQ_SCORE_3000, 0, PRIORITY_SCORE);
+              PlaySoundSequence(SEQ_SCORE_3000, 0);
               // Drain feedback after score finishes (with silence gap)
-              PlaySoundSequence(SEQ_DRAIN, 600, PRIORITY_ADVANCE);
+              PlaySoundSequence(SEQ_DRAIN, 0);
             }
             ValidateAndRegisterPlayfieldSwitch();
             break;
@@ -3378,7 +3378,7 @@ void HandleGamePlaySwitches(byte switchHit) {
         case SW_ROLLOVER_BUTTON:
             CurrentScores[CurrentPlayer] += SCORE_SPINNER_BASE * PlayfieldMultiplier;
             isLeftReturnLaneLit[CurrentPlayer] = true;
-            PlaySoundSequence(SEQ_SCORE_100, 0, PRIORITY_SCORE);
+            PlaySoundSequence(SEQ_SCORE_100, 0);
             ValidateAndRegisterPlayfieldSwitch();
             break;
 
@@ -3386,10 +3386,10 @@ void HandleGamePlaySwitches(byte switchHit) {
             if (isLeftReturnLaneLit[CurrentPlayer]) {
                 CurrentScores[CurrentPlayer] += 9000L * PlayfieldMultiplier;
                 isLeftReturnLaneLit[CurrentPlayer] = false;
-                PlaySoundSequence(SEQ_SCORE_9000, 0, PRIORITY_SCORE);
+                PlaySoundSequence(SEQ_SCORE_9000, 0);
             } else {
                 CurrentScores[CurrentPlayer] += 3000L * PlayfieldMultiplier;
-                PlaySoundSequence(SEQ_SCORE_3000, 0, PRIORITY_SCORE);
+                PlaySoundSequence(SEQ_SCORE_3000, 0);
             }
             ValidateAndRegisterPlayfieldSwitch();
             break;
