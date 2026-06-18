@@ -1047,6 +1047,19 @@ boolean AudioHandler::QueueSequence(byte seqID, byte priority, unsigned long sta
     return false;
   }
 
+  // Auto-insert silence after this tone (same as old PlaySoundSequence)
+  unsigned int silenceDuration = 150;
+  if (seqID == 27) {  // SEQ_DRAIN special case
+    // Check if this is the last tone
+    SoundStep nextStep;
+    memcpy_P(&nextStep, &seqPtr[1], sizeof(SoundStep));
+    if (nextStep.tone == 0xFF) {
+      silenceDuration = 400;
+    }
+  }
+  unsigned long silenceTime = playTime + silenceDuration;
+  QueueSound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, silenceTime, 0xFF, priority);
+
   activeSequence.seqID = seqID;
   activeSequence.currentToneIndex = 1;  // Next tone to queue
   activeSequence.priority = priority;
@@ -1098,6 +1111,19 @@ void AudioHandler::ResumeActiveSequence(unsigned long currentTime) {
   // For normal playback, use original timing; for resumed sequences, tones play immediately
   unsigned long playTime = activeSequence.startTime + activeSequence.startOffset + step.gap_ms;
   if (QueueSound(step.tone, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, playTime, 0xFF, activeSequence.priority)) {
+    // Auto-insert silence after this tone
+    unsigned int silenceDuration = 150;
+    if (activeSequence.seqID == 27) {  // SEQ_DRAIN special case
+      // Check if this is the last tone
+      SoundStep nextStep;
+      memcpy_P(&nextStep, &seqPtr[activeSequence.currentToneIndex + 1], sizeof(SoundStep));
+      if (nextStep.tone == 0xFF) {
+        silenceDuration = 400;
+      }
+    }
+    unsigned long silenceTime = playTime + silenceDuration;
+    QueueSound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, silenceTime, 0xFF, activeSequence.priority);
+
     activeSequence.currentToneIndex++;
   }
 }
