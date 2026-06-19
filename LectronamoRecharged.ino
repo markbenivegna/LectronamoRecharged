@@ -349,6 +349,8 @@ unsigned long BonusAnimationStart;
 byte BonusBefore;
 unsigned long SkillShotAnimationStart;
 unsigned long protectedSoundUntilTime = 0;  // Grace period for protected sequences (drop targets, drain, etc.)
+byte pendingCompletionSeqID = 0xFF;  // 0xFF = no pending completion sound
+unsigned long pendingCompletionTime = 0;  // When to queue the pending completion sound
 unsigned long LastTimeBallServed;
 unsigned long LastSpinnerHitTime = 0;
 
@@ -3130,13 +3132,17 @@ void Handle5BankCompletion() {
 
     if (fiveBankCompleteCount[CurrentPlayer] == 1) {
         // 1st: score and reset
-        PlaySoundSequence(SEQ_SCORE_10000, 0);
+        // Queue SCORE_10000 after SCORE_500 completes (defer until grace period expires)
+        pendingCompletionSeqID = SEQ_SCORE_10000;
+        pendingCompletionTime = protectedSoundUntilTime;
     } else if (fiveBankCompleteCount[CurrentPlayer] == 2) {
         // 2nd: extra ball lane available (if enabled) + special lamp lights
         if (ExtraBallLaneEnabled) {
             ExtraBallLaneAvailable[CurrentPlayer] = true;
         }
-        PlaySoundSequence(SEQ_SCORE_10000, 0);
+        // Queue SCORE_10000 after SCORE_500 completes (defer until grace period expires)
+        pendingCompletionSeqID = SEQ_SCORE_10000;
+        pendingCompletionTime = protectedSoundUntilTime;
     } else if (fiveBankCompleteCount[CurrentPlayer] >= 3) {
         // 3rd: award special via AwardSpecial() — respects SpecialAwardType, SpecialOpenEnded, SpecialCollected
         boolean specialAwarded = false;
@@ -3146,9 +3152,13 @@ void Handle5BankCompletion() {
         }
         fiveBankCompleteCount[CurrentPlayer] = 0;
         if (specialAwarded) {
-            PlaySoundSequence(SEQ_FANFARE_5BANK, 0);
+            // Queue fanfare after SCORE_500 completes (defer until grace period expires)
+            pendingCompletionSeqID = SEQ_FANFARE_5BANK;
+            pendingCompletionTime = protectedSoundUntilTime;
         } else {
-            PlaySoundSequence(SEQ_BONUS_COUNT, 0);
+            // Queue bonus count after SCORE_500 completes (defer until grace period expires)
+            pendingCompletionSeqID = SEQ_BONUS_COUNT;
+            pendingCompletionTime = protectedSoundUntilTime;
         }
     }
 }
@@ -3510,6 +3520,13 @@ int RunGamePlayMode(int curState, boolean curStateChanged) {
   if (FiveBank.CheckIfBankCleared() && CurrentTime > (lastFiveBankClear + 750)) {
     lastFiveBankClear = CurrentTime;
     Handle5BankCompletion();
+  }
+
+  // Check if pending completion sound should be queued (after SCORE_500 finishes)
+  // Add 200ms buffer to ensure SCORE_500 is fully cleared from active sequence
+  if (pendingCompletionSeqID != 0xFF && CurrentTime >= (pendingCompletionTime + 200)) {
+    PlaySoundSequence(pendingCompletionSeqID, 0);
+    pendingCompletionSeqID = 0xFF;  // Clear the flag
   }
 
   if (CreditResetPressStarted) {

@@ -1131,22 +1131,33 @@ void AudioHandler::ResumeActiveSequence(unsigned long currentTime) {
   if (step.tone == 0xFF) {
     // Sequence is complete. Check if there's a paused sequence to restore
     if (activeSequence.pausedSeqID != 0xFF) {
-      // Restore paused sequence
-      activeSequence.seqID = activeSequence.pausedSeqID;
-      activeSequence.currentToneIndex = activeSequence.pausedCurrentToneIndex;
-      activeSequence.priority = activeSequence.pausedPriority;
-      activeSequence.isProtected = activeSequence.pausedIsProtected;
-      activeSequence.startTime = activeSequence.pausedStartTime;
-      activeSequence.startOffset = activeSequence.pausedStartOffset;
-      // Clear paused fields
+      // Before restoring, check if paused sequence has also finished
+      const SoundStep* pausedSeqPtr = (const SoundStep*)pgm_read_ptr(&SoundSequenceTable[activeSequence.pausedSeqID]);
+      if (pausedSeqPtr) {
+        SoundStep pausedStep;
+        memcpy_P(&pausedStep, &pausedSeqPtr[activeSequence.pausedCurrentToneIndex], sizeof(SoundStep));
+        // If paused sequence is also at sentinel, it's already done — don't resume it
+        if (pausedStep.tone != 0xFF) {
+          // Restore paused sequence
+          activeSequence.seqID = activeSequence.pausedSeqID;
+          activeSequence.currentToneIndex = activeSequence.pausedCurrentToneIndex;
+          activeSequence.priority = activeSequence.pausedPriority;
+          activeSequence.isProtected = activeSequence.pausedIsProtected;
+          activeSequence.startTime = activeSequence.pausedStartTime;
+          activeSequence.startOffset = activeSequence.pausedStartOffset;
+          // Clear paused fields
+          activeSequence.pausedSeqID = 0xFF;
+          // Recursively resume the restored sequence (queue its next tone)
+          ResumeActiveSequence(currentTime);
+          return;
+        }
+      }
+      // Paused sequence is done or invalid, just clear it
       activeSequence.pausedSeqID = 0xFF;
-      // Recursively resume the restored sequence (queue its next tone)
-      ResumeActiveSequence(currentTime);
-    } else {
-      // No paused sequence, just clear active
-      activeSequence.seqID = 0xFF;
-      activeSequence.isProtected = false;
     }
+    // Clear active sequence
+    activeSequence.seqID = 0xFF;
+    activeSequence.isProtected = false;
     return;
   }
 
