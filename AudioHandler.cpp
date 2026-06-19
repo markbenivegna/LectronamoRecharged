@@ -1019,18 +1019,8 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
     return false;  // Empty sequence
   }
 
-  // If there's an active sequence, check if it's protected
-  if (activeSequence.seqID != 0xFF) {
-    // Check if new sequence is spinner (unprotected)
-    boolean newSeqIsSpinner = (seqID == 0 || seqID == 3);
-
-    // Only block spinner from interrupting protected sequences
-    if (activeSequence.isProtected && newSeqIsSpinner) {
-      return false;  // Don't queue spinner while protected sequence is playing
-    }
-
-    // Allow all other interrupts (protected->protected, unprotected->unprotected, unprotected->protected)
-  }
+  // All sequences can interrupt each other (paused/resumed via interrupt system)
+  // Spinner is gated separately via protectedSoundUntilTime check in handler
 
   // Start this sequence as active
   unsigned long playTime = CurrentTime + startOffset + firstStep.gap_ms;
@@ -1072,7 +1062,8 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
   }
 
   // For protected sequences, queue all remaining tones immediately to prevent interruption
-  boolean isProtectedSeq = (seqID != 0 && seqID != 3);
+  // All sequences are protected; spinner has its own protectedSoundUntilTime gate to prevent unwanted queueing
+  boolean isProtectedSeq = true;
   byte currentToneIdx = 1;
 
   if (isProtectedSeq) {
