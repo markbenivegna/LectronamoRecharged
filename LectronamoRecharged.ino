@@ -3391,7 +3391,7 @@ void HandleGamePlaySwitches(byte switchHit) {
               if (DEBUG_MESSAGES) Serial.print("Outlane: Bonus="); Serial.print(Bonus[CurrentPlayer]); Serial.println(" → SCORE + ADVANCE + DRAIN");
               unsigned int scoreDuration = PlaySoundSequence(SEQ_SCORE_3000, 0);
               unsigned int advanceDuration = PlaySoundSequence(SEQ_ADVANCE_3, scoreDuration + 50);
-              unsigned int drainDuration = PlaySoundSequence(SEQ_DRAIN, scoreDuration + advanceDuration + 100);
+              unsigned int drainDuration = PlaySoundSequence(SEQ_DRAIN, scoreDuration + advanceDuration + 300);
             }
             ValidateAndRegisterPlayfieldSwitch();
             break;
