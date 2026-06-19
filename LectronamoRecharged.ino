@@ -3264,7 +3264,7 @@ void HandleGamePlaySwitches(byte switchHit) {
                 Serial.write(buf);
             }
             if (ExtraBallLaneAvailable[CurrentPlayer] && !ExtraBallCollectedThisBall[CurrentPlayer]) {
-                PlaySoundSequence(SEQ_FANFARE_ASCENDING, 400);
+                PlaySoundSequence(SEQ_FANFARE_ASCENDING, 600);
                 AwardExtraBall();
                 ExtraBallCollectedThisBall[CurrentPlayer] = true;
                 ExtraBallLaneAvailable[CurrentPlayer] = false;
