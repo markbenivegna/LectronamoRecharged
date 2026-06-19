@@ -3117,8 +3117,9 @@ void Handle3BankCompletion() {
     } else {
         if (DEBUG_MESSAGES) Serial.write("Regular 3-bank completion - playing scoring sounds!\n");
         CurrentScores[CurrentPlayer] += SCORE_3BANK_COMPLETION * PlayfieldMultiplier;
-        // Queue SCORE_500 from individual target first, then SCORE_6000 after it completes (~550ms)
-        PlaySoundSequence(SEQ_SCORE_6000, 600);
+        // SCORE_500 duration: 800ms (max gap) + 75ms (Dick's silence) = 875ms
+        // Queue SCORE_6000 after SCORE_500 completes with buffer
+        PlaySoundSequence(SEQ_SCORE_6000, 975);
     }
 }
 
