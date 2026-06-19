@@ -3117,8 +3117,8 @@ void Handle3BankCompletion() {
     } else {
         if (DEBUG_MESSAGES) Serial.write("Regular 3-bank completion - playing scoring sounds!\n");
         CurrentScores[CurrentPlayer] += SCORE_3BANK_COMPLETION * PlayfieldMultiplier;
-        // Offset 3-bank sound to play after individual target hit sound completes (550ms)
-        PlaySoundSequence(SEQ_SCORE_6000, 0);
+        // Queue SCORE_500 from individual target first, then SCORE_6000 after it completes (~550ms)
+        PlaySoundSequence(SEQ_SCORE_6000, 600);
     }
 }
 
