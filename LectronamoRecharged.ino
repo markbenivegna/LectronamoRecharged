@@ -351,8 +351,6 @@ unsigned long SkillShotAnimationStart;
 unsigned long protectedSoundUntilTime = 0;  // Grace period for protected sequences (drop targets, drain, etc.)
 byte pendingCompletionSeqID = 0xFF;  // 0xFF = no pending completion sound
 unsigned long pendingCompletionTime = 0;  // When to queue the pending completion sound
-byte pendingFanfareSeqID = 0xFF;  // 0xFF = no pending fanfare
-unsigned long pendingFanfareTime = 0;  // When to queue the pending fanfare
 unsigned long LastTimeBallServed;
 unsigned long LastSpinnerHitTime = 0;
 
@@ -3258,8 +3256,7 @@ void HandleGamePlaySwitches(byte switchHit) {
 
         case SW_RIGHT_INLANE:
             CurrentScores[CurrentPlayer] += 3000L * PlayfieldMultiplier;
-            unsigned int scoreDuration = PlaySoundSequence(SEQ_SCORE_3000, 0);
-            protectedSoundUntilTime = CurrentTime + scoreDuration + 100;  // Set grace period for this score
+            PlaySoundSequence(SEQ_SCORE_3000, 0);
             if (DEBUG_MESSAGES) {
                 char buf[64];
                 sprintf(buf, "RIGHT_INLANE: 5bank=%d EBEnabled=%d EBAvail=%d\n",
@@ -3267,9 +3264,7 @@ void HandleGamePlaySwitches(byte switchHit) {
                 Serial.write(buf);
             }
             if (ExtraBallLaneAvailable[CurrentPlayer] && !ExtraBallCollectedThisBall[CurrentPlayer]) {
-                // Defer fanfare queuing until SCORE_3000 completes (+ 200ms buffer like other deferred sounds)
-                pendingFanfareSeqID = SEQ_FANFARE_ASCENDING;
-                pendingFanfareTime = protectedSoundUntilTime + 200;
+                PlaySoundSequence(SEQ_FANFARE_ASCENDING, 400);
                 AwardExtraBall();
                 ExtraBallCollectedThisBall[CurrentPlayer] = true;
                 ExtraBallLaneAvailable[CurrentPlayer] = false;
@@ -3396,7 +3391,7 @@ void HandleGamePlaySwitches(byte switchHit) {
               if (DEBUG_MESSAGES) Serial.print("Outlane: Bonus="); Serial.print(Bonus[CurrentPlayer]); Serial.println(" → SCORE + ADVANCE + DRAIN");
               unsigned int scoreDuration = PlaySoundSequence(SEQ_SCORE_3000, 0);
               unsigned int advanceDuration = PlaySoundSequence(SEQ_ADVANCE_3, scoreDuration + 50);
-              unsigned int drainDuration = PlaySoundSequence(SEQ_DRAIN, scoreDuration + advanceDuration + 300);
+              unsigned int drainDuration = PlaySoundSequence(SEQ_DRAIN, scoreDuration + advanceDuration + 100);
             }
             ValidateAndRegisterPlayfieldSwitch();
             break;
@@ -3532,12 +3527,6 @@ int RunGamePlayMode(int curState, boolean curStateChanged) {
   if (pendingCompletionSeqID != 0xFF && CurrentTime >= (pendingCompletionTime + 200)) {
     PlaySoundSequence(pendingCompletionSeqID, 0);
     pendingCompletionSeqID = 0xFF;  // Clear the flag
-  }
-
-  // Check if pending fanfare should be queued (after score finishes)
-  if (pendingFanfareSeqID != 0xFF && CurrentTime >= pendingFanfareTime) {
-    PlaySoundSequence(pendingFanfareSeqID, 0);
-    pendingFanfareSeqID = 0xFF;  // Clear the flag
   }
 
   if (CreditResetPressStarted) {
