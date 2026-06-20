@@ -367,8 +367,6 @@ unsigned long arcSurgeTimerStart[RPU_NUMBER_OF_PLAYERS_ALLOWED];
 unsigned long arcSurgeCompleteTime = 0;
 unsigned long threeBankSweepStartTime[RPU_NUMBER_OF_PLAYERS_ALLOWED];
 unsigned long threeBankSweepAnimationStart[RPU_NUMBER_OF_PLAYERS_ALLOWED];
-unsigned long lastPopBumperSoundTime = 0;
-unsigned long lastSaucerSoundTime = 0;
 
 DropTargetBank ThreeBank(3, 1, DROP_TARGET_TYPE_STRN_1, 8);
 DropTargetBank FiveBank(5, 1, DROP_TARGET_TYPE_STRN_1, 8);
@@ -3264,14 +3262,10 @@ void HandleGamePlaySwitches(byte switchHit) {
             CurrentScores[CurrentPlayer] += popScore;
             // Only play sound during active ball play, not during match/bonus sequences
             if (MachineState == MACHINE_STATE_NORMAL_GAMEPLAY) {
-                // Debounce: prevent duplicate score sounds from rapid hits (< 50ms apart)
-                if (CurrentTime - lastPopBumperSoundTime >= 50) {
-                    // Pop bumper first, then score sound with offset to let pop finish
-                    PlaySoundSequence(SEQ_POP_BUMPER, 0);
-                    byte scoreSeqID = (popScore == 1000) ? SEQ_SCORE_1000 : SEQ_SCORE_100;
-                    PlaySoundSequence(scoreSeqID, 250);
-                    lastPopBumperSoundTime = CurrentTime;
-                }
+                // Pop bumper first, then score sound with offset to let pop finish
+                PlaySoundSequence(SEQ_POP_BUMPER, 0);
+                byte scoreSeqID = (popScore == 1000) ? SEQ_SCORE_1000 : SEQ_SCORE_100;
+                PlaySoundSequence(scoreSeqID, 250);
             }
             ValidateAndRegisterPlayfieldSwitch();
             break;
@@ -3321,16 +3315,12 @@ void HandleGamePlaySwitches(byte switchHit) {
             ValidateAndRegisterPlayfieldSwitch();
             break;
 
-        case SW_SAUCER: { // Saucer / Eject Pocket
-             // Debounce: prevent duplicate saucer sounds from rapid cascades (< 50ms apart)
-             boolean playSaucerSound = (CurrentTime - lastSaucerSoundTime >= 50);
-             if (playSaucerSound) lastSaucerSoundTime = CurrentTime;
-
+        case SW_SAUCER: // Saucer / Eject Pocket
              if (isArcSurgeActive[CurrentPlayer] && arcSurgeT1Hit[CurrentPlayer]) { // Arc Surge combo complete (both T1 and saucer hit)
                 CurrentScores[CurrentPlayer] += SCORE_ARC_SURGE_SUPER * PlayfieldMultiplier;
                 AddToBonus(3);
                 if (DEBUG_MESSAGES) Serial.write("ARC SURGE COMPLETE - playing fanfare\n");
-                if (playSaucerSound) PlaySoundSequence(SEQ_FANFARE_ASCENDING, 300);
+                PlaySoundSequence(SEQ_FANFARE_ASCENDING, 300);
                 isArcSurgeActive[CurrentPlayer] = false;
                 arcSurgeT1Hit[CurrentPlayer] = false;
                 arcSurgeCompleteTime = CurrentTime;
@@ -3341,45 +3331,44 @@ void HandleGamePlaySwitches(byte switchHit) {
                     CurrentScores[CurrentPlayer] += SCORE_SKILL_SHOT * PlayfieldMultiplier;
                     if (Bonus[CurrentPlayer] < 19) {
                       if (DEBUG_MESSAGES) Serial.print("Saucer (Arc no T1): Bonus="); Serial.print(Bonus[CurrentPlayer]); Serial.println(" < 19 → ADVANCE");
-                      if (playSaucerSound) PlaySoundSequence(SEQ_ADVANCE_3, 0);
+                      PlaySoundSequence(SEQ_ADVANCE_3, 0);
                       AddToBonus(3);
                     } else {
                       if (DEBUG_MESSAGES) Serial.print("Saucer (Arc no T1): Bonus="); Serial.print(Bonus[CurrentPlayer]); Serial.println(" >= 19 → SCORE");
-                      if (playSaucerSound) PlaySoundSequence(SEQ_SCORE_5000, 0);
+                      PlaySoundSequence(SEQ_SCORE_5000, 0);
                     }
                     if (!SaucerLightPersists) isSaucerLit[CurrentPlayer] = false;
                 } else {
                     CurrentScores[CurrentPlayer] += 500L * PlayfieldMultiplier;
                     AddToBonus(1);
-                    if (playSaucerSound) PlaySoundSequence(SEQ_SCORE_500, 0);
+                    PlaySoundSequence(SEQ_SCORE_500, 0);
                 }
              } else if (!firstHitMade[CurrentPlayer]) { // Skill shot
                  CurrentScores[CurrentPlayer] += SCORE_SKILL_SHOT * PlayfieldMultiplier;
                  AddToBonus(3);
-                 if (playSaucerSound) PlaySoundSequence(SEQ_FANFARE_ASCENDING, 300);
+                 PlaySoundSequence(SEQ_FANFARE_ASCENDING, 300);
                  SkillShotAnimationStart = CurrentTime;
             } else if (isSaucerLit[CurrentPlayer]) {
                  CurrentScores[CurrentPlayer] += SCORE_SKILL_SHOT * PlayfieldMultiplier;
                  if (Bonus[CurrentPlayer] < 19) {
                    // Bonus not full: play advance sound only (spaced out)
                    if (DEBUG_MESSAGES) Serial.print("Saucer (lit): Bonus="); Serial.print(Bonus[CurrentPlayer]); Serial.println(" < 19 → ADVANCE");
-                   if (playSaucerSound) PlaySoundSequence(SEQ_ADVANCE_3, 0);
+                   PlaySoundSequence(SEQ_ADVANCE_3, 0);
                    AddToBonus(3);
                  } else {
                    // Bonus full (19): play score sound instead
                    if (DEBUG_MESSAGES) Serial.print("Saucer (lit): Bonus="); Serial.print(Bonus[CurrentPlayer]); Serial.println(" >= 19 → SCORE");
-                   if (playSaucerSound) PlaySoundSequence(SEQ_SCORE_5000, 0);
+                   PlaySoundSequence(SEQ_SCORE_5000, 0);
                  }
                  if (!SaucerLightPersists) isSaucerLit[CurrentPlayer] = false;
             } else {
                  CurrentScores[CurrentPlayer] += 500L * PlayfieldMultiplier;
                  AddToBonus(1);
-                 if (playSaucerSound) PlaySoundSequence(SEQ_SCORE_500, 0);
+                 PlaySoundSequence(SEQ_SCORE_500, 0);
             }
             RPU_PushToTimedSolenoidStack(SOL_SAUCER, SaucerSolenoidStrength, CurrentTime + 500, false);
             ValidateAndRegisterPlayfieldSwitch();
             break;
-        }
 
         case SW_STANDUP_TARGET:
             isSaucerLit[CurrentPlayer] = true;

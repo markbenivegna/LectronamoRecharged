@@ -1019,6 +1019,14 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
     return false;  // Empty sequence
   }
 
+  // Duplicate detection: check if this sequence is already queued
+  for (int i = 0; i < SOUND_QUEUE_SIZE; i++) {
+    if (soundQueue[i].seqID == seqID && soundQueue[i].playTime > CurrentTime) {
+      // Sequence already queued and hasn't finished playing
+      return false;
+    }
+  }
+
   // All sequences can interrupt each other (paused/resumed via interrupt system)
   // Spinner is gated separately via protectedSoundUntilTime check in handler
 
