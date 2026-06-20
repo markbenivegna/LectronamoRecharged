@@ -21,7 +21,7 @@
 // switch test not showing switches in player displays
 // player up lamps versus number of player lamps
 
-#define GAME_MAJOR_VERSION  2025
+#define GAME_MAJOR_VERSION  2026
 #define GAME_MINOR_VERSION  1
 #define DEBUG_MESSAGES  1
 
