@@ -3343,7 +3343,7 @@ void HandleGamePlaySwitches(byte switchHit) {
                     AddToBonus(1);
                     PlaySoundSequence(SEQ_SCORE_500, 0);
                 }
-             } else if (!firstHitMade[CurrentPlayer]) { // Skill shot
+             } else if (!firstHitMade[CurrentPlayer] && !BonusCollectionInProgress) { // Skill shot (not during bonus collect)
                  CurrentScores[CurrentPlayer] += SCORE_SKILL_SHOT * PlayfieldMultiplier;
                  AddToBonus(3);
                  PlaySoundSequence(SEQ_FANFARE_ASCENDING, 300);
