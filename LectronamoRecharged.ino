@@ -285,7 +285,7 @@ unsigned long BonusCollectionEndTime = 0;
 boolean ExtraBallLaneEnabled = true;
 byte SpecialAwardType = 2;
 
-unsigned long CurrentScores[RPU_NUMBER_OF_PLAYERS_ALLOWED];
+unsigned int CurrentScores[RPU_NUMBER_OF_PLAYERS_ALLOWED];
 unsigned long BallFirstSwitchHitTime = 0;
 unsigned long BallTimeInTrough = 0;
 unsigned long GameModeStartTime = 0;
@@ -360,9 +360,9 @@ boolean isLeftReturnLaneLit[RPU_NUMBER_OF_PLAYERS_ALLOWED];
 boolean ExtraBallCollectedThisBall[RPU_NUMBER_OF_PLAYERS_ALLOWED];
 boolean ExtraBallLaneAvailable[RPU_NUMBER_OF_PLAYERS_ALLOWED];
 boolean firstHitMade[RPU_NUMBER_OF_PLAYERS_ALLOWED];
-int threeBankCompleteCount[RPU_NUMBER_OF_PLAYERS_ALLOWED];
-int fiveBankCompleteCount[RPU_NUMBER_OF_PLAYERS_ALLOWED];
-int spinnerHitCount[RPU_NUMBER_OF_PLAYERS_ALLOWED];
+byte threeBankCompleteCount[RPU_NUMBER_OF_PLAYERS_ALLOWED];
+byte fiveBankCompleteCount[RPU_NUMBER_OF_PLAYERS_ALLOWED];
+byte spinnerHitCount[RPU_NUMBER_OF_PLAYERS_ALLOWED];
 unsigned long arcSurgeTimerStart[RPU_NUMBER_OF_PLAYERS_ALLOWED];
 unsigned long arcSurgeCompleteTime = 0;
 unsigned long threeBankSweepStartTime[RPU_NUMBER_OF_PLAYERS_ALLOWED];
@@ -2555,11 +2555,12 @@ int ManageGameMode() {
   CheckForStuckBalls();
 
   // Game start melody: 4-note ascending chime played twice while ball is in shooter lane (ball 1, player 1 only)
+  // Matches boot melody timing (150ms spacing)
   if (CurrentBallInPlay == 1 && CurrentPlayer == 0 &&
       GameStartMelodyStep < 9 && BallFirstSwitchHitTime == 0 &&
       GameStartNotificationTime > 0) {
     unsigned long elapsed = CurrentTime - GameStartNotificationTime;
-    byte targetStep = (byte)(elapsed / 200);
+    byte targetStep = (byte)(elapsed / 150);
     if (targetStep > 9) targetStep = 9;
     while (GameStartMelodyStep < targetStep) {
       if (GameStartMelodyStep < 8) {
@@ -2961,6 +2962,16 @@ int ShowMatchSequence(boolean curStateChanged) {
     RPU_SetLampState(LAMP_HEAD_MATCH, 1, 0);
     RPU_SetDisableFlippers(true);
     ScoreMatches = 0;
+
+    // Play reverse melody (descending chime) at end of game before match sequence
+    static const byte reverseNotes[4] = {SND_10000_POINTS, SND_1000_POINTS, SND_100_POINTS, SND_10_POINTS};
+    for (byte rep = 0; rep < 2; rep++) {
+      for (byte i = 0; i < 4; i++) {
+        Audio.PlaySound(reverseNotes[i], AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS);
+        for (int j = 0; j < 15; j++) { Audio.Update(millis()); delay(10); }
+      }
+    }
+    Audio.PlaySound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS);
   }
 
   if (NumMatchSpins < 40) {
