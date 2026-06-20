@@ -280,7 +280,7 @@ boolean KickerBonusCollect = false;
 boolean SaucerLightPersists = true;
 boolean SpecialOpenEnded = false;
 boolean BonusCountdownMultipleSteps = false;
-boolean BonusCollectionInProgress = false;
+boolean CollectBonusViaKicker = false;
 unsigned long BonusCollectionEndTime = 0;
 boolean ExtraBallLaneEnabled = true;
 byte SpecialAwardType = 2;
@@ -2575,11 +2575,11 @@ int ManageGameMode() {
 
   // Ball search: fire solenoids if no switch hit for 25 seconds while ball is on playfield
   // Skip ball search during bonus collection (give ball time to settle)
-  if (BonusCollectionInProgress && CurrentTime > BonusCollectionEndTime) {
-    BonusCollectionInProgress = false;
+  if (CollectBonusViaKicker && CurrentTime > BonusCollectionEndTime) {
+    CollectBonusViaKicker = false;
   }
 
-  if (BallFirstSwitchHitTime != 0 && NumTiltWarnings <= MaxTiltWarnings && !BonusCollectionInProgress) {
+  if (BallFirstSwitchHitTime != 0 && NumTiltWarnings <= MaxTiltWarnings && !CollectBonusViaKicker) {
     unsigned long timeSinceSwitch = CurrentTime - LastSwitchHitTime;
     if (timeSinceSwitch > 25000UL) {
       if (BallSearchAttempts < 12 &&
@@ -2830,7 +2830,7 @@ int CountdownBonus(boolean curStateChanged) {
 
     CountdownStartTime = CurrentTime;
     LastCountdownReportTime = CurrentTime;
-    BonusCollectionInProgress = true;
+    CollectBonusViaKicker = true;
     BonusCollectionEndTime = CurrentTime + 35000; // Disable ball search for 35 seconds (covers full bonus countdown including multiplier levels)
     ShowBonusLamps();
     ShowBonusXLamps();
@@ -3280,7 +3280,7 @@ void HandleGamePlaySwitches(byte switchHit) {
                     fiveBankCompleteCount[CurrentPlayer], ExtraBallLaneEnabled, ExtraBallsAvailable[CurrentPlayer]);
                 Serial.write(buf);
             }
-            if (ExtraBallLaneAvailable[CurrentPlayer] && !ExtraBallCollectedThisBall[CurrentPlayer]) {
+            if (ExtraBallLaneAvailable[CurrentPlayer] && !ExtraBallCollectedThisBall[CurrentPlayer] && !CollectBonusViaKicker) {
                 PlaySoundSequence(SEQ_FANFARE_ASCENDING, 600);
                 AwardExtraBall();
                 ExtraBallCollectedThisBall[CurrentPlayer] = true;
@@ -3316,7 +3316,7 @@ void HandleGamePlaySwitches(byte switchHit) {
             break;
 
         case SW_SAUCER: // Saucer / Eject Pocket
-             if (isArcSurgeActive[CurrentPlayer] && arcSurgeT1Hit[CurrentPlayer]) { // Arc Surge combo complete (both T1 and saucer hit)
+             if (isArcSurgeActive[CurrentPlayer] && arcSurgeT1Hit[CurrentPlayer] && !CollectBonusViaKicker) { // Arc Surge combo complete (both T1 and saucer hit)
                 CurrentScores[CurrentPlayer] += SCORE_ARC_SURGE_SUPER * PlayfieldMultiplier;
                 AddToBonus(3);
                 if (DEBUG_MESSAGES) Serial.write("ARC SURGE COMPLETE - playing fanfare\n");
@@ -3343,7 +3343,7 @@ void HandleGamePlaySwitches(byte switchHit) {
                     AddToBonus(1);
                     PlaySoundSequence(SEQ_SCORE_500, 0);
                 }
-             } else if (!firstHitMade[CurrentPlayer] && !BonusCollectionInProgress) { // Skill shot (not during bonus collect)
+             } else if (!firstHitMade[CurrentPlayer] && !CollectBonusViaKicker) { // Skill shot (not during bonus collect)
                  CurrentScores[CurrentPlayer] += SCORE_SKILL_SHOT * PlayfieldMultiplier;
                  AddToBonus(3);
                  PlaySoundSequence(SEQ_FANFARE_ASCENDING, 300);
