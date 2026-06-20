@@ -1027,10 +1027,11 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
     return false;  // Empty sequence
   }
 
-  // Duplicate detection: check if this sequence is already queued
+  // Duplicate detection: check if ANY sequence is currently playing
+  // Prevent overlapping sequences that would collide in the audio output
   for (int i = 0; i < SOUND_QUEUE_SIZE; i++) {
-    if (soundQueue[i].seqID == seqID && soundQueue[i].playTime > CurrentTime) {
-      // Sequence already queued and hasn't finished playing
+    if (soundQueue[i].playTime > 0 && soundQueue[i].playTime > CurrentTime && soundQueue[i].seqID != 0xFF) {
+      // Another sequence is still queued and hasn't played yet - reject new sequence
       return false;
     }
   }
