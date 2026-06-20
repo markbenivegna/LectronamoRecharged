@@ -3321,7 +3321,7 @@ void HandleGamePlaySwitches(byte switchHit) {
             ValidateAndRegisterPlayfieldSwitch();
             break;
 
-        case SW_SAUCER: // Saucer / Eject Pocket
+        case SW_SAUCER: { // Saucer / Eject Pocket
              // Debounce: prevent duplicate saucer sounds from rapid cascades (< 50ms apart)
              boolean playSaucerSound = (CurrentTime - lastSaucerSoundTime >= 50);
              if (playSaucerSound) lastSaucerSoundTime = CurrentTime;
@@ -3379,6 +3379,7 @@ void HandleGamePlaySwitches(byte switchHit) {
             RPU_PushToTimedSolenoidStack(SOL_SAUCER, SaucerSolenoidStrength, CurrentTime + 500, false);
             ValidateAndRegisterPlayfieldSwitch();
             break;
+        }
 
         case SW_STANDUP_TARGET:
             isSaucerLit[CurrentPlayer] = true;
