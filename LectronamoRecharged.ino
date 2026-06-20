@@ -285,7 +285,7 @@ unsigned long BonusCollectionEndTime = 0;
 boolean ExtraBallLaneEnabled = true;
 byte SpecialAwardType = 2;
 
-unsigned int CurrentScores[RPU_NUMBER_OF_PLAYERS_ALLOWED];
+unsigned long CurrentScores[RPU_NUMBER_OF_PLAYERS_ALLOWED];
 unsigned long BallFirstSwitchHitTime = 0;
 unsigned long BallTimeInTrough = 0;
 unsigned long GameModeStartTime = 0;
