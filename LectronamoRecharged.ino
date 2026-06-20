@@ -709,17 +709,15 @@ byte SolenoidConvertDisplayNumberToTestStrength(byte displayNumber) {
 ////////////////////////////////////////////////////////////////////////////
 
 void setup() {
+  // Initialize Serial early to prevent audio initialization issues
+  Serial.begin(115200);
 
   if (DEBUG_MESSAGES) {
-    // If debug is on, set up the Serial port for communication
-    Serial.begin(115200);
     Serial.write("Starting\n");
   }
 
-  // Set up the Audio handler — SB-100 only for now
-  CurrentTime = millis();
-  Audio.InitDevices(AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS);
-  Audio.StopAllAudio();
+  // Give hardware time to stabilize
+  delay(500);
 
   // Configure drop target banks
   ThreeBank.DefineSwitch(0, SW_TARGET_1_3BANK);
@@ -787,6 +785,12 @@ void setup() {
 
   RPU_DisableSolenoidStack();
   RPU_SetDisableFlippers(true);
+
+  // Now initialize audio after RPU is ready
+  CurrentTime = millis();
+  Audio.InitDevices(AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS);
+  Audio.StopAllAudio();
+  Audio.ClearSoundQueue();
 
   // Read parameters from EEProm
   ReadStoredParameters();
