@@ -803,14 +803,10 @@ void setup() {
 
   CurrentTime = millis();
 
-  // 4-note ascending chime x2 on boot
-  for (byte rep = 0; rep < 2; rep++) {
-    Audio.PlaySound(SND_10000_POINTS, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS); delay(200);
-    Audio.PlaySound(SND_1000_POINTS,  AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS); delay(200);
-    Audio.PlaySound(SND_100_POINTS,   AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS); delay(200);
-    Audio.PlaySound(SND_10_POINTS,    AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS); delay(200);
-  }
-  Audio.PlaySound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS);
+  // Play startup boot melody using protected sequence (proper timing, no burst)
+  unsigned int startupDuration = PlaySoundSequence(SEQ_STARTUP, 0);
+  // Play it a second time after first completes with buffer
+  PlaySoundSequence(SEQ_STARTUP, startupDuration + 100);
   OperatorSwitchPressStarted = 0;
   InOperatorMenu = false;
   Menus.SetNavigationButtons(SWITCH_STACK_EMPTY, SWITCH_STACK_EMPTY, SW_CREDIT_RESET, SW_SELF_TEST_SWITCH);
