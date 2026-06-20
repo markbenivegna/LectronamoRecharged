@@ -1027,13 +1027,25 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
     return false;  // Empty sequence
   }
 
-  // Duplicate detection: check if ANY sequence is currently playing
-  // Prevent overlapping sequences that would collide in the audio output
+  // Allow multiple sequences to be queued as long as they don't overlap in time
+  // Find the latest playTime of any existing sequence to detect actual collisions
+  unsigned long maxExistingPlayTime = 0;
   for (int i = 0; i < SOUND_QUEUE_SIZE; i++) {
     if (soundQueue[i].playTime > 0 && soundQueue[i].playTime > CurrentTime && soundQueue[i].seqID != 0xFF) {
-      // Another sequence is still queued and hasn't played yet - reject new sequence
-      return false;
+      // Track the latest time any existing sequence event is scheduled
+      if (soundQueue[i].playTime > maxExistingPlayTime) {
+        maxExistingPlayTime = soundQueue[i].playTime;
+      }
     }
+  }
+
+  // Calculate when this new sequence will actually start playing
+  unsigned long newSeqStartTime = CurrentTime + startOffset + firstStep.gap_ms;
+
+  // Only reject if sequences would overlap (new sequence starts before old sequence ends)
+  // This allows chained sequences like SCORE → ADVANCE → DRAIN with proper spacing
+  if (maxExistingPlayTime > 0 && newSeqStartTime < maxExistingPlayTime) {
+    return false;  // True overlap - reject
   }
 
   // All sequences can interrupt each other (paused/resumed via interrupt system)
