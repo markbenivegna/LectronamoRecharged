@@ -280,7 +280,6 @@ boolean KickerBonusCollect = false;
 boolean SaucerLightPersists = true;
 boolean SpecialOpenEnded = false;
 boolean BonusCountdownMultipleSteps = false;
-boolean CollectBonusViaKicker = false;
 unsigned long BonusCollectionEndTime = 0;
 boolean ExtraBallLaneEnabled = true;
 byte SpecialAwardType = 2;
@@ -2956,22 +2955,13 @@ int ShowMatchSequence(boolean curStateChanged) {
 
   if (curStateChanged) {
     MatchSequenceStartTime = CurrentTime;
-    MatchDelay = 1500;
+    PlaySoundSequence(23);
+    MatchDelay = 2500;
     MatchDigit = CurrentTime % 10;
     NumMatchSpins = 0;
     RPU_SetLampState(LAMP_HEAD_MATCH, 1, 0);
     RPU_SetDisableFlippers(true);
     ScoreMatches = 0;
-
-    // Play reverse melody (descending chime) at end of game before match sequence
-    static const byte reverseNotes[4] = {SND_10000_POINTS, SND_1000_POINTS, SND_100_POINTS, SND_10_POINTS};
-    for (byte rep = 0; rep < 2; rep++) {
-      for (byte i = 0; i < 4; i++) {
-        Audio.PlaySound(reverseNotes[i], AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS);
-        for (int j = 0; j < 15; j++) { Audio.Update(millis()); delay(10); }
-      }
-    }
-    Audio.PlaySound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS);
   }
 
   if (NumMatchSpins < 40) {
@@ -3316,7 +3306,9 @@ void HandleGamePlaySwitches(byte switchHit) {
             break;
 
         case SW_SAUCER: // Saucer / Eject Pocket
-             if (isArcSurgeActive[CurrentPlayer] && arcSurgeT1Hit[CurrentPlayer] && !CollectBonusViaKicker) { // Arc Surge combo complete (both T1 and saucer hit)
+             if (MachineState != MACHINE_STATE_NORMAL_GAMEPLAY) break;  // Only handle during normal gameplay
+
+             if (isArcSurgeActive[CurrentPlayer] && arcSurgeT1Hit[CurrentPlayer]) { // Arc Surge combo complete (both T1 and saucer hit)
                 CurrentScores[CurrentPlayer] += SCORE_ARC_SURGE_SUPER * PlayfieldMultiplier;
                 AddToBonus(3);
                 if (DEBUG_MESSAGES) Serial.write("ARC SURGE COMPLETE - playing fanfare\n");
@@ -3483,7 +3475,6 @@ int RunGamePlayMode(int curState, boolean curStateChanged) {
 
       if (CurrentBallInPlay > BallsPerGame) {
         CheckHighScores();
-        PlaySoundEffect(SOUND_EFFECT_GAME_OVER);
         for (int count = 0; count < CurrentNumPlayers; count++) {
           RPU_SetDisplay(count, CurrentScores[count], true, 2);
         }
@@ -3514,7 +3505,8 @@ int RunGamePlayMode(int curState, boolean curStateChanged) {
     if (NumTiltWarnings <= MaxTiltWarnings &&
         switchHit != SW_CREDIT_BUTTON &&
         switchHit != SW_SLAM_TILT &&
-        switchHit != SW_TILT) {
+        switchHit != SW_TILT &&
+        (curState == MACHINE_STATE_NORMAL_GAMEPLAY || curState == MACHINE_STATE_COUNTDOWN_BONUS)) {
       HandleGamePlaySwitches(switchHit);
     }
   }
@@ -3618,7 +3610,15 @@ void loop() {
 
   CurrentTime = millis();
   int newMachineState = MachineState;
-  
+
+  // Debug: send 'G' for game over, 'S' for startup, 'D' for drain
+  if (Serial.available()) {
+    char cmd = Serial.read();
+    if (cmd == 'G') PlaySoundSequence(23);
+    else if (cmd == 'S') PlaySoundSequence(26);
+    else if (cmd == 'D') PlaySoundSequence(27);
+  }
+
 #ifdef DEBUG_SHOW_LOOPS_PER_SECOND
   NumLoops += 1;
   if (LastLoopReportTime==0) LastLoopReportTime = CurrentTime;
