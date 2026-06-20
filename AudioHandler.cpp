@@ -992,6 +992,14 @@ int AudioHandler::QueueSound(unsigned short soundIndex, byte audioType, unsigned
       soundQueue[count].overrideVolume = overrideVolume;
       soundQueue[count].priority = priority;
       soundQueue[count].seqID = 0xFF;  // Mark as not part of sequence yet
+
+      // Debug: log direct queue call
+      if (soundIndex != 0) {
+        char buf[80];
+        sprintf(buf, "QUEUE DIRECT: tone=0x%X pri=%d @ %lu ms (idx=%d)\n", soundIndex, priority, timeToPlay, count);
+        Serial.write(buf);
+      }
+
       return count;  // Return the index
     }
   }
