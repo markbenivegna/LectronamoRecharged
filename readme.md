@@ -31,10 +31,37 @@ The project is currently in the **Lite Version** stage. All core game rules, sco
 | `LampAnimations.h` | Attract mode lamp animation data (6 animations) |
 | `RPU_Config.h` | RPU framework configuration (architecture, hardware rev, sound board) |
 | `RPU.h / RPU.cpp` | RPU hardware abstraction library |
-| `AudioHandler.h / .cpp` | Audio routing layer |
+| `AudioHandler.h / .cpp` | Audio routing layer — manages SB-100 sound board queue and playback |
+| `SoundSequences.h / .cpp` | Unified sound sequencer — queues multi-step audio sequences with precise timing |
 | `DisplayHandler.h / .cpp` | Display management layer |
 | `OperatorMenus.h / .cpp` | Operator adjustment and diagnostics menus |
 | `DropTargets.h` | Drop target bank management |
+
+### Audio System: PlaySoundSequence
+
+The game uses a **unified sound sequencing architecture** to handle all audio on the Stern SB-100 sound board (single-tone-at-a-time, 6-tone bitmask).
+
+**Core Concept:**
+- `PlaySoundSequence(seqID)` — queues a named sequence of tones with precise millisecond timing
+- All tones in a sequence are queued upfront to prevent interruption during critical gameplay moments
+- Sequences are defined in `SoundSequences.cpp` with PROGMEM storage (conserves RAM)
+
+**Sequence Types:**
+| Sequence | Purpose | Tones | Spacing |
+|----------|---------|-------|---------|
+| Score (100, 300, 500, 1000, etc.) | Hit scoring | 1–9 tones | 200ms gaps |
+| Advance Bonus (1, 3) | Bonus multiplier advance | 1–3 tones | 200ms gaps |
+| Game Over | End-of-ball melody | 8 tones (10→100→1K→10K×2) | 150ms gaps |
+| Match Spin | Match digit animation audio | 1 tone | Per-spin |
+| Drain / Fanfare | Dramatic events | 3–4 tones | Varied |
+
+**Why This Matters:**
+- Prevents tones from overlapping or cutting each other off
+- Eliminates "phantom sounds" from orphaned audio events
+- Ensures accurate timing for synchronized lamp animations
+- Single point of control for all game audio
+
+---
 
 ---
 
