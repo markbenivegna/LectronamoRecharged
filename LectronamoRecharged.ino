@@ -3417,19 +3417,20 @@ void HandleGamePlaySwitches(byte switchHit) {
         case SW_LEFT_OUTLANE: {
             CurrentScores[CurrentPlayer] += SCORE_OUTLANE * PlayfieldMultiplier;
             AddToBonus(3);
+            ValidateAndRegisterPlayfieldSwitch();
             // Only play sounds during normal gameplay
             if (MachineState == MACHINE_STATE_NORMAL_GAMEPLAY) {
               // Always: score 3000, then advance +3, then drain (unless ball saved)
               if (DEBUG_MESSAGES) Serial.print("Outlane: Bonus="); Serial.print(Bonus[CurrentPlayer]); Serial.println(" → SCORE + ADVANCE + DRAIN");
               unsigned int scoreDuration = PlaySoundSequence(SEQ_SCORE_3000, 0);
               unsigned int advanceDuration = PlaySoundSequence(SEQ_ADVANCE_3, scoreDuration + 50);
-              // Don't play drain sound if ball save is active
-              boolean isBallSaveActive = (BallSaveEndTime && CurrentTime < (BallSaveEndTime + BALL_SAVE_GRACE_PERIOD));
+              // Don't play drain sound if ball save is active (check from first switch hit, now set by ValidateAndRegisterPlayfieldSwitch)
+              boolean isBallSaveActive = (BallFirstSwitchHitTime != 0 &&
+                                          CurrentTime < (BallFirstSwitchHitTime + ((unsigned long)BallSaveNumSeconds * 1000) + BALL_SAVE_GRACE_PERIOD));
               if (!isBallSaveActive) {
                 unsigned int drainDuration = PlaySoundSequence(SEQ_DRAIN, scoreDuration + advanceDuration + 300);
               }
             }
-            ValidateAndRegisterPlayfieldSwitch();
             break;
         }
 
