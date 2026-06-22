@@ -2586,10 +2586,11 @@ void CheckForStuckBalls() {
   }
 
   // Check kicker for stuck ball — skip during bonus collect (kicker fires at end of collect)
-  // Use switch-release based lockout: don't fire stuck-ball kicker until the switch has fully
-  // released and stayed released for KICKER_RELEASE_DEBOUNCE_MS (prevents double-fire from bounce/eject)
+  // Use dual lockout: either the eject is recent OR the switch hasn't fully released yet
+  // This prevents double-fire from bounces during eject motion
   boolean switchOpen = !RPU_ReadSingleSwitchState(SW_KICKER);
-  boolean inKickerEjectLockout = (KickerSwitchReleaseTime != 0 &&
+  boolean inKickerEjectLockout = (KickerEjectTime != 0 && (CurrentTime - KickerEjectTime) < 500) ||
+                                  (KickerSwitchReleaseTime != 0 &&
                                    (CurrentTime - KickerSwitchReleaseTime) < KICKER_RELEASE_DEBOUNCE_MS);
 
   if (switchOpen) {
