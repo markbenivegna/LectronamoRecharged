@@ -1013,9 +1013,7 @@ void ShowBonusLamps() {
 
       numLampsLit = prevLampsLit + animLamps;
       if (numLampsLit > 19) numLampsLit = 19;  // Cap at 10 + 9
-      if (DEBUG_MESSAGES && elapsed < 100) Serial.print("BONUS LAMPS: bonus="); Serial.print(bonusValue); Serial.print(" before="); Serial.print(BonusBefore); Serial.print(" anim="); Serial.println(numLampsLit);
     } else if (BonusAnimationStart) {
-      if (DEBUG_MESSAGES) Serial.print("BONUS LAMPS (end): bonus="); Serial.print(bonusValue); Serial.print(" final lamps="); Serial.println(numLampsLit);
       BonusAnimationStart = 0;
     }
 
@@ -1043,12 +1041,6 @@ void ShowBonusXLamps() {
   int flashPeriod = isAnimating ? 175 : 0;
 
   // Debug disabled - clean output for sound testing
-  // if (DEBUG_MESSAGES && isAnimating) {
-  //   char buf[64];
-  //   sprintf(buf, "BONUS MULTIPLIER: %dX (2X=%d, 3X=%d, 5X=%d)\n", BonusX[CurrentPlayer], state.lamp2X, state.lamp3X, state.lamp5X);
-  //   Serial.write(buf);
-  // }
-
   RPU_SetLampState(LAMP_2X, state.lamp2X, 0, flashPeriod);
   RPU_SetLampState(LAMP_3X, state.lamp3X, 0, flashPeriod);
   RPU_SetLampState(LAMP_5X, state.lamp5X, 0, flashPeriod);
@@ -1099,14 +1091,6 @@ void ShowThreeBankTargetLamps() {
   }
 
   if (DEBUG_MESSAGES) {
-    static unsigned long lastDebugTime = 0;
-    if (CurrentTime > lastDebugTime + 2000) {
-      char buf[80];
-      // Debug disabled - clean output for sound testing
-      // sprintf(buf, "3-BANK TARGET: Current=%dX, Target=%dX\n", BonusX[CurrentPlayer], (BonusX[CurrentPlayer] >= 10) ? 10 : targetMultiplier);
-      // Serial.write(buf);
-      lastDebugTime = CurrentTime;
-    }
   }
 
   // At max (10X), turn off target lamps; otherwise show next target with 500ms pulse
@@ -2186,9 +2170,6 @@ int RunAttractMode(int curState, boolean curStateChanged) {
     RPU_TurnOffAllLamps();
     RPU_SetDisableFlippers(true);
     AttractLastPlayfieldPhase = 255;
-    if (DEBUG_MESSAGES) {
-      // Serial.write("Entering Attract Mode\n\r");
-    }
     AttractLastHeadMode = 0;
     RPU_SetDisplayCredits(Credits, !FreePlayMode);
     Display_ClearOverride(0xFF);
@@ -2202,16 +2183,10 @@ int RunAttractMode(int curState, boolean curStateChanged) {
 
   if (CurrentTime > (AttractModeStartTime + 5000) && !AttractCheckedForTrappedBall) {
     AttractCheckedForTrappedBall = true;
-    if (DEBUG_MESSAGES) {
-      // Serial.write("In Attract for 10 seconds - make sure there are no balls trapped\n");
-    }
-
     if (RPU_ReadSingleSwitchState(SW_SAUCER)) {
       RPU_PushToSolenoidStack(SOL_SAUCER, SaucerSolenoidStrength, true);
     }
   }
-
-  //RPU_SetLampState(LAMP_APRON_CREDITS, (FreePlayMode || Credits) ? true : false, 0, 200);
 
   // Alternate displays between high score and blank
   if (CurrentTime < 16000) {
@@ -2330,8 +2305,6 @@ void SetGameMode(byte newGameMode) {
   if (DEBUG_MESSAGES) {
     char buf[128];
     // Debug disabled - clean output for sound testing
-    // sprintf(buf, "Game Mode = %d\n", newGameMode);
-    // Serial.write(buf);
   }
 }
 
@@ -2750,9 +2723,6 @@ int ManageGameMode() {
       if (GameModeStartTime == 0) {
         GameModeStartTime = CurrentTime;
         DisplaysNeedRefreshing = true;
-        if (DEBUG_MESSAGES) {
-          // Serial.write("Entering unstructured play\n");
-        }
         SetGeneralIlluminationOn(true);
         unsigned short songNum = SOUND_EFFECT_BACKGROUND_SONG_1;
         if (CurrentBallInPlay>1 && CurrentBallInPlay<5) songNum = SOUND_EFFECT_BACKGROUND_SONG_2 + (CurrentTime%3);
@@ -3738,10 +3708,6 @@ void loop() {
   if (LastLoopReportTime==0) LastLoopReportTime = CurrentTime;
   if (CurrentTime>(LastLoopReportTime+1000)) {
     LastLoopReportTime = CurrentTime;
-    char buf[128];
-    // Debug disabled - clean output for sound testing
-    // sprintf(buf, "Loop running at %lu Hz (alive for %d seconds)\n", NumLoops, (int)(CurrentTime/1000));
-    // Serial.write(buf);
     NumLoops = 0;
   }
 #endif
@@ -3765,12 +3731,6 @@ void loop() {
     }
   
     if (newMachineState != MachineState) {
-      if (DEBUG_MESSAGES) {
-        char buf[64];
-        // Debug disabled - clean output for sound testing
-        // sprintf(buf, "STATE: %d -> %d @ %lu ms\n", MachineState, newMachineState, CurrentTime);
-        // Serial.write(buf);
-      }
       MachineState = newMachineState;
       MachineStateChanged = true;
     } else {
