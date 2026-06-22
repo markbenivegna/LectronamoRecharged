@@ -52,6 +52,13 @@ struct SoundStep {
 // Returns: total duration of sequence in ms (for chaining)
 unsigned int PlaySoundSequence(byte seqID, unsigned long startOffset = 0);
 
+// Get sequence metadata for display sync
+// Returns: number of tones (excluding silence/sentinel)
+byte GetSequenceToneCount(byte seqID);
+
+// Returns: gap in ms between consecutive tones (assumes uniform spacing)
+unsigned int GetSequenceToneSpacing(byte seqID);
+
 // Extern declarations for sequence table access
 extern const SoundStep* const SoundSequenceTable[] PROGMEM;
 

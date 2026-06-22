@@ -252,3 +252,41 @@ unsigned int PlaySoundSequence(byte seqID, unsigned long startOffset) {
   // Return total duration for caller's timing reference
   return duration;
 }
+
+byte GetSequenceToneCount(byte seqID) {
+  // Bounds check
+  if (seqID >= NUM_SOUND_SEQUENCES) return 0;
+
+  // Get PROGMEM pointer
+  const SoundStep* seqPtr = (const SoundStep*)pgm_read_ptr(&SoundSequenceTable[seqID]);
+  if (!seqPtr) return 0;
+
+  byte count = 0;
+  for (int i = 0; ; i++) {
+    SoundStep step;
+    memcpy_P(&step, &seqPtr[i], sizeof(SoundStep));
+    if (step.tone == 0xFF) break;  // Sentinel marks end
+    count++;
+  }
+  return count;
+}
+
+unsigned int GetSequenceToneSpacing(byte seqID) {
+  // Bounds check
+  if (seqID >= NUM_SOUND_SEQUENCES) return 0;
+
+  // Get PROGMEM pointer
+  const SoundStep* seqPtr = (const SoundStep*)pgm_read_ptr(&SoundSequenceTable[seqID]);
+  if (!seqPtr) return 0;
+
+  // Get first two tones to determine spacing
+  SoundStep step0, step1;
+  memcpy_P(&step0, &seqPtr[0], sizeof(SoundStep));
+  if (step0.tone == 0xFF) return 0;  // Single tone, no spacing
+
+  memcpy_P(&step1, &seqPtr[1], sizeof(SoundStep));
+  if (step1.tone == 0xFF) return 0;  // Only one tone
+
+  // Return gap between first and second tone
+  return step1.gap_ms - step0.gap_ms;
+}
