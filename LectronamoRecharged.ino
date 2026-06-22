@@ -2959,7 +2959,7 @@ int ShowMatchSequence(boolean curStateChanged) {
   if (curStateChanged) {
     MatchSequenceStartTime = CurrentTime;
     PlaySoundSequence(23);
-    MatchDelay = 2500;
+    MatchDelay = 2800;
     MatchDigit = CurrentTime % 10;
     NumMatchSpins = 0;
     RPU_SetLampState(LAMP_HEAD_MATCH, 1, 0);
