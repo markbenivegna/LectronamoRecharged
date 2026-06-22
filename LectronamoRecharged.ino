@@ -2952,19 +2952,39 @@ unsigned long MatchDelay = 150;
 byte MatchDigit = 0;
 byte NumMatchSpins = 0;
 byte ScoreMatches = 0;
+boolean GameOverMelodyPlayed = false;
 
 int ShowMatchSequence(boolean curStateChanged) {
   if (!MatchFeature) return MACHINE_STATE_ATTRACT;
 
   if (curStateChanged) {
     MatchSequenceStartTime = CurrentTime;
-    PlaySoundSequence(23);
-    MatchDelay = 2800;
+    GameOverMelodyPlayed = false;
+    MatchDelay = 2500;
     MatchDigit = CurrentTime % 10;
     NumMatchSpins = 0;
     RPU_SetLampState(LAMP_HEAD_MATCH, 1, 0);
     RPU_SetDisableFlippers(true);
     ScoreMatches = 0;
+  }
+
+  // Play game over melody on first entry (hardcoded like boot startup for matching timing)
+  if (!GameOverMelodyPlayed) {
+    GameOverMelodyPlayed = true;
+    for (byte rep = 0; rep < 2; rep++) {
+      Audio.PlaySound(SND_10_POINTS, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS);
+      for (int i = 0; i < 15; i++) { Audio.Update(millis()); delay(10); }
+
+      Audio.PlaySound(SND_100_POINTS, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS);
+      for (int i = 0; i < 15; i++) { Audio.Update(millis()); delay(10); }
+
+      Audio.PlaySound(SND_1000_POINTS, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS);
+      for (int i = 0; i < 15; i++) { Audio.Update(millis()); delay(10); }
+
+      Audio.PlaySound(SND_10000_POINTS, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS);
+      for (int i = 0; i < 15; i++) { Audio.Update(millis()); delay(10); }
+    }
+    Audio.PlaySound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS);
   }
 
   if (NumMatchSpins < 40) {
