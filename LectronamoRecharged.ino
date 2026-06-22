@@ -2907,7 +2907,6 @@ int CountdownBonus(boolean curStateChanged) {
 
     if (DEBUG_MESSAGES) Serial.write("Count down over, moving to ball over\n");
     if (LastBonusSoundPlayed != 0) Audio.StopSound(LastBonusSoundPlayed);
-    Audio.QueueSound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, CurrentTime + 500);
     return MACHINE_STATE_BALL_OVER;
   }
 
