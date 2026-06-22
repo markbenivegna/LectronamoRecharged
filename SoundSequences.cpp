@@ -165,20 +165,20 @@ const SoundStep SEQ_DRAIN_Data[] PROGMEM = {
   {0xFF, 0}
 };
 
-// Fanfare sequences
+// Fanfare sequences (all 150ms spacing for consistent feel)
 const SoundStep SEQ_FANFARE_ASCENDING_Data[] PROGMEM = {
-  {SND_10_POINTS, 0},
-  {SND_100_POINTS, 150},
-  {SND_1000_POINTS, 300},
-  {SND_10000_POINTS, 450},
+  {SND_100_POINTS, 0},
+  {SND_1000_POINTS, 150},
+  {SND_100_POINTS, 300},
+  {SND_10_POINTS, 450},
   {0xFF, 0}
 };
 
 const SoundStep SEQ_FANFARE_5BANK_Data[] PROGMEM = {
   {SND_10000_POINTS, 0},
-  {SND_1000_POINTS, 350},
-  {SND_100_POINTS, 700},
-  {SND_10_POINTS, 1050},
+  {SND_1000_POINTS, 150},
+  {SND_100_POINTS, 300},
+  {SND_10_POINTS, 450},
   {0xFF, 0}
 };
 
