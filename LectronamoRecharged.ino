@@ -311,9 +311,11 @@ unsigned long BallSaveEndTime;
 unsigned long SaucerClosedStart = 0;
 unsigned long KickerClosedStart = 0;
 unsigned long KickerEjectTime = 0;
+unsigned long KickerSwitchReleaseTime = 0;
 
 #define STUCK_BALL_SETTLE_TIME_MS 500
 #define KICKER_EJECT_LOCKOUT_MS 1000
+#define KICKER_RELEASE_DEBOUNCE_MS 100
 
 /*********************************************************************
 
@@ -2584,8 +2586,23 @@ void CheckForStuckBalls() {
   }
 
   // Check kicker for stuck ball — skip during bonus collect (kicker fires at end of collect)
-  // Also skip while switch is still pressed (ball still on switch during/after eject)
-  boolean inKickerEjectLockout = (KickerEjectTime != 0 && RPU_ReadSingleSwitchState(SW_KICKER));
+  // Use switch-release based lockout: don't fire stuck-ball kicker until the switch has fully
+  // released and stayed released for KICKER_RELEASE_DEBOUNCE_MS (prevents double-fire from bounce/eject)
+  boolean switchOpen = !RPU_ReadSingleSwitchState(SW_KICKER);
+  boolean inKickerEjectLockout = (KickerSwitchReleaseTime != 0 &&
+                                   (CurrentTime - KickerSwitchReleaseTime) < KICKER_RELEASE_DEBOUNCE_MS);
+
+  if (switchOpen) {
+    // Switch is open; track when it released
+    if (KickerSwitchReleaseTime == 0) {
+      KickerSwitchReleaseTime = CurrentTime;
+    }
+  } else {
+    // Switch is closed; reset release timer (it hasn't fully released yet)
+    KickerSwitchReleaseTime = 0;
+  }
+
+  // Stuck-ball detector: fire kicker if held closed for 500ms, but only if eject lockout is clear
   if (!KickerBonusCollect && !inKickerEjectLockout && RPU_ReadSingleSwitchState(SW_KICKER)) {
     if (KickerClosedStart == 0) {
       KickerClosedStart = CurrentTime;
@@ -2593,14 +2610,12 @@ void CheckForStuckBalls() {
       if (CurrentTime > (KickerClosedStart + STUCK_BALL_SETTLE_TIME_MS)) {
         KickerClosedStart = 1;
         RPU_PushToSolenoidStack(SOL_KICKER, 16, true);
+        // Mark the eject so future stuck-ball checks know we just fired
+        KickerEjectTime = CurrentTime;
       }
     }
   } else {
     KickerClosedStart = 0;
-    // Clear eject lockout once switch opens (ball has left)
-    if (!RPU_ReadSingleSwitchState(SW_KICKER)) {
-      KickerEjectTime = 0;
-    }
   }
 }
 
@@ -2962,6 +2977,9 @@ int CountdownBonus(boolean curStateChanged) {
       KickerEjectTime = CurrentTime;
       Bonus[CurrentPlayer] = 1;
       RPU_PushToTimedSolenoidStack(SOL_KICKER, 16, CurrentTime + 250, false);
+      // Arm lockout at the moment solenoid fires (250ms from now) so it blocks bounces
+      // when switch closes ~120ms later. This prevents stuck-ball detector from double-firing.
+      KickerSwitchReleaseTime = CurrentTime + 250;
       return MACHINE_STATE_NORMAL_GAMEPLAY;
     }
 
@@ -3374,16 +3392,12 @@ void HandleGamePlaySwitches(byte switchHit) {
                 PlaySoundSequence(SEQ_SCORE_10000, 0);
                 // Arc Surge stays active - saucer completes the combo
             } else if (isSaucerLit[CurrentPlayer]) {
-                if (Bonus[CurrentPlayer] < 19) {
-                  if (DEBUG_MESSAGES) Serial.print("T1 lit: Bonus="); Serial.print(Bonus[CurrentPlayer]); Serial.println(" < 19 → ADVANCE");
-                  QueuePendingScoreUpdate(CurrentPlayer, 5000L * PlayfieldMultiplier, SEQ_ADVANCE_3);
-                  PlaySoundSequence(SEQ_ADVANCE_3, 0);
-                  AddToBonus(3);
-                } else {
-                  if (DEBUG_MESSAGES) Serial.print("T1 lit: Bonus="); Serial.print(Bonus[CurrentPlayer]); Serial.println(" >= 19 → SCORE");
-                  QueuePendingScoreUpdate(CurrentPlayer, 5000L * PlayfieldMultiplier, SEQ_SCORE_5000);
-                  PlaySoundSequence(SEQ_SCORE_5000, 0);
-                }
+                // Lit T1: always play SCORE_5000 + ADVANCE_3 (5000 pts + 3 bonus advances)
+                if (DEBUG_MESSAGES) Serial.print("T1 lit: Bonus="); Serial.print(Bonus[CurrentPlayer]); Serial.println(" → 5000 + ADVANCE_3");
+                QueuePendingScoreUpdate(CurrentPlayer, 5000L * PlayfieldMultiplier, SEQ_SCORE_5000);
+                unsigned int scoreDuration = PlaySoundSequence(SEQ_SCORE_5000, 0);
+                PlaySoundSequence(SEQ_ADVANCE_3, scoreDuration + 50);
+                AddToBonus(3);
             } else {
                 CurrentScores[CurrentPlayer] += 1000L * PlayfieldMultiplier;
                 AddToBonus(1);
@@ -3428,18 +3442,12 @@ void HandleGamePlaySwitches(byte switchHit) {
                  PlaySoundSequence(SEQ_FANFARE_ASCENDING, 300);
                  SkillShotAnimationStart = CurrentTime;
             } else if (isSaucerLit[CurrentPlayer]) {
-                 if (Bonus[CurrentPlayer] < 19) {
-                   // Bonus not full: play advance sound only (spaced out)
-                   if (DEBUG_MESSAGES) Serial.print("Saucer (lit): Bonus="); Serial.print(Bonus[CurrentPlayer]); Serial.println(" < 19 → ADVANCE");
-                   QueuePendingScoreUpdate(CurrentPlayer, SCORE_SKILL_SHOT * PlayfieldMultiplier, SEQ_ADVANCE_3);
-                   PlaySoundSequence(SEQ_ADVANCE_3, 0);
-                   AddToBonus(3);
-                 } else {
-                   // Bonus full (19): play score sound instead
-                   if (DEBUG_MESSAGES) Serial.print("Saucer (lit): Bonus="); Serial.print(Bonus[CurrentPlayer]); Serial.println(" >= 19 → SCORE");
-                   QueuePendingScoreUpdate(CurrentPlayer, 5000L * PlayfieldMultiplier, SEQ_SCORE_5000);
-                   PlaySoundSequence(SEQ_SCORE_5000, 0);
-                 }
+                 // Lit saucer: always play SCORE_5000 + ADVANCE_3 (5000 pts + 3 bonus advances)
+                 if (DEBUG_MESSAGES) Serial.print("Saucer (lit): Bonus="); Serial.print(Bonus[CurrentPlayer]); Serial.println(" → 5000 + ADVANCE_3");
+                 QueuePendingScoreUpdate(CurrentPlayer, SCORE_SKILL_SHOT * PlayfieldMultiplier, SEQ_SCORE_5000);
+                 unsigned int scoreDuration = PlaySoundSequence(SEQ_SCORE_5000, 0);
+                 PlaySoundSequence(SEQ_ADVANCE_3, scoreDuration + 50);
+                 AddToBonus(3);
                  if (!SaucerLightPersists) isSaucerLit[CurrentPlayer] = false;
             } else {
                  QueuePendingScoreUpdate(CurrentPlayer, 500L * PlayfieldMultiplier, SEQ_SCORE_500);

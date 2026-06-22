@@ -1039,12 +1039,31 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
     }
   }
 
+  // Also check activeSequence to catch race condition where new sequence queues
+  // before previous sequence's tones are fully written to soundQueue
+  if (activeSequence.seqID != 0xFF && activeSequence.seqID < NUM_SOUND_SEQUENCES) {
+    const SoundStep* activeSeqPtr = (const SoundStep*)pgm_read_ptr(&SoundSequenceTable[activeSequence.seqID]);
+    if (activeSeqPtr) {
+      // Find when active sequence completely finishes (tone + silence for last tone)
+      for (int i = 0; ; i++) {
+        SoundStep step;
+        memcpy_P(&step, &activeSeqPtr[i], sizeof(SoundStep));
+        if (step.tone == 0xFF) break;
+        // Tone plays at gap_ms, silence at gap_ms+75 for 75ms duration, ends at gap_ms+150
+        unsigned long silenceEndTime = activeSequence.startTime + activeSequence.startOffset + step.gap_ms + 150;
+        if (silenceEndTime > maxExistingPlayTime) {
+          maxExistingPlayTime = silenceEndTime;
+        }
+      }
+    }
+  }
+
   // Calculate when this new sequence will actually start playing
   unsigned long newSeqStartTime = CurrentTime + startOffset + firstStep.gap_ms;
 
-  // Only reject if sequences would overlap (new sequence starts before old sequence ends)
+  // Only reject if sequences would overlap (new sequence starts before or at same time as old sequence ends)
   // This allows chained sequences like SCORE → ADVANCE → DRAIN with proper spacing
-  if (maxExistingPlayTime > 0 && newSeqStartTime < maxExistingPlayTime) {
+  if (maxExistingPlayTime > 0 && newSeqStartTime <= maxExistingPlayTime) {
     return false;  // True overlap - reject
   }
 
