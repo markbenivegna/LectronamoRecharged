@@ -285,6 +285,19 @@ boolean ExtraBallLaneEnabled = true;
 byte SpecialAwardType = 2;
 
 unsigned long CurrentScores[RPU_NUMBER_OF_PLAYERS_ALLOWED];
+
+// Pending score updates - synced with audio playback
+struct PendingScoreUpdate {
+  byte playerNum;
+  unsigned long scoreIncrement;      // Amount to add per tone
+  unsigned long nextUpdateTime;      // When the next increment should apply
+  unsigned long updateIntervalMs;    // Gap between tones
+  byte remainingIncrements;          // How many tones are left
+  boolean isActive;
+};
+#define MAX_PENDING_SCORE_UPDATES 4   // One per player at a time
+PendingScoreUpdate PendingScores[MAX_PENDING_SCORE_UPDATES];
+
 unsigned long BallFirstSwitchHitTime = 0;
 unsigned long BallTimeInTrough = 0;
 unsigned long GameModeStartTime = 0;
@@ -699,10 +712,75 @@ byte SolenoidConvertDisplayNumberToTestStrength(byte displayNumber) {
 
 ////////////////////////////////////////////////////////////////////////////
 //
+////////////////////////////////////////////////////////////////////////////
+// Score Display Sync Helpers
+////////////////////////////////////////////////////////////////////////////
+
+void QueuePendingScoreUpdate(byte playerNum, unsigned long scoreValue, byte seqID, unsigned long startOffsetMs = 0) {
+  byte toneCount = GetSequenceToneCount(seqID);
+  if (toneCount == 0) {
+    // Single-tone sequence or no sequence - add score immediately
+    CurrentScores[playerNum] += scoreValue;
+    return;
+  }
+
+  unsigned int toneSpacing = GetSequenceToneSpacing(seqID);
+  if (toneSpacing == 0) {
+    // No spacing (single tone) - add immediately
+    CurrentScores[playerNum] += scoreValue;
+    return;
+  }
+
+  // Multi-tone sequence - queue incremental updates
+  unsigned long scoreIncrement = scoreValue / toneCount;
+
+  // Find an inactive pending score slot
+  for (byte i = 0; i < MAX_PENDING_SCORE_UPDATES; i++) {
+    if (!PendingScores[i].isActive) {
+      PendingScores[i].playerNum = playerNum;
+      PendingScores[i].scoreIncrement = scoreIncrement;
+      PendingScores[i].nextUpdateTime = CurrentTime + startOffsetMs;  // Start at first tone (with offset)
+      PendingScores[i].updateIntervalMs = toneSpacing;
+      PendingScores[i].remainingIncrements = toneCount;
+      PendingScores[i].isActive = true;
+      return;
+    }
+  }
+
+  // No inactive slots - queue is full. This shouldn't happen in normal play.
+  // As a fallback, add the score immediately.
+  if (DEBUG_MESSAGES) {
+    char buf[64];
+    sprintf(buf, "PendingScore queue full for player %d - adding %lu immediately\n", playerNum, scoreValue);
+    Serial.write(buf);
+  }
+  CurrentScores[playerNum] += scoreValue;
+}
+
+void ProcessPendingScoreUpdates() {
+  for (byte i = 0; i < MAX_PENDING_SCORE_UPDATES; i++) {
+    if (PendingScores[i].isActive && PendingScores[i].playerNum == CurrentPlayer) {
+      if (CurrentTime >= PendingScores[i].nextUpdateTime) {
+        // Apply this increment
+        CurrentScores[PendingScores[i].playerNum] += PendingScores[i].scoreIncrement;
+        PendingScores[i].remainingIncrements--;
+
+        if (PendingScores[i].remainingIncrements > 0) {
+          // Schedule next increment
+          PendingScores[i].nextUpdateTime = CurrentTime + PendingScores[i].updateIntervalMs;
+        } else {
+          // All increments applied
+          PendingScores[i].isActive = false;
+        }
+      }
+    }
+  }
+}
+
 //  Setup
 //    Arduino calls this function at power up and reset.
-//    It's used to initialize the hardware and 
-//    certain variables and structures used by 
+//    It's used to initialize the hardware and
+//    certain variables and structures used by
 //    the code.
 //
 ////////////////////////////////////////////////////////////////////////////
@@ -2557,6 +2635,9 @@ int ManageGameMode() {
 
   CheckForStuckBalls();
 
+  // Process any pending score updates (synced with audio playback)
+  ProcessPendingScoreUpdates();
+
   // Game start melody: 4-note ascending chime played twice while ball is in shooter lane (ball 1, player 1 only)
   // Matches boot melody timing (150ms spacing)
   if (CurrentBallInPlay == 1 && CurrentPlayer == 0 &&
@@ -3147,11 +3228,14 @@ void Handle3BankCompletion() {
 
     if (isSweep) {
         if (DEBUG_MESSAGES) Serial.write("3-BANK SWEEP DETECTED!\n");
-        CurrentScores[CurrentPlayer] += SCORE_3BANK_SWEEP_BONUS * PlayfieldMultiplier;
+        QueuePendingScoreUpdate(CurrentPlayer, SCORE_3BANK_SWEEP_BONUS * PlayfieldMultiplier, SEQ_SCORE_10000, 1075);
+        // Last drop target plays SEQ_SCORE_500 (5 tones x 200ms = ~1000ms)
+        // Queue 10K tone after drop sounds finish + buffer
+        PlaySoundSequence(SEQ_SCORE_10000, 1075);
         threeBankSweepAnimationStart[CurrentPlayer] = CurrentTime;
     } else {
         if (DEBUG_MESSAGES) Serial.write("Regular 3-bank completion - playing scoring sounds!\n");
-        CurrentScores[CurrentPlayer] += SCORE_3BANK_COMPLETION * PlayfieldMultiplier;
+        QueuePendingScoreUpdate(CurrentPlayer, SCORE_3BANK_COMPLETION * PlayfieldMultiplier, SEQ_SCORE_6000, 975);
         // SCORE_500 duration: 800ms (max gap) + 75ms (Dick's silence) = 875ms
         // Queue SCORE_6000 after SCORE_500 completes with buffer
         PlaySoundSequence(SEQ_SCORE_6000, 975);
@@ -3159,7 +3243,7 @@ void Handle3BankCompletion() {
 }
 
 void Handle5BankCompletion() {
-    CurrentScores[CurrentPlayer] += SCORE_5BANK_COMPLETION * PlayfieldMultiplier;
+    QueuePendingScoreUpdate(CurrentPlayer, SCORE_5BANK_COMPLETION * PlayfieldMultiplier, SEQ_SCORE_10000, 975);
     FiveBank.ResetDropTargets(CurrentTime + 500);
 
     fiveBankCompleteCount[CurrentPlayer]++;
@@ -3223,7 +3307,7 @@ void HandleGamePlaySwitches(byte switchHit) {
                 threeBankSweepStartTime[CurrentPlayer] = CurrentTime;
 
             ThreeBank.HandleDropTargetHit(switchHit);
-            CurrentScores[CurrentPlayer] += SCORE_DROP_TARGET_BASE * PlayfieldMultiplier;
+            QueuePendingScoreUpdate(CurrentPlayer, SCORE_DROP_TARGET_BASE * PlayfieldMultiplier, SEQ_SCORE_500);
 
             // Play sound only if NOT in sweep window
             if (!inSweepWindow) {
@@ -3240,7 +3324,7 @@ void HandleGamePlaySwitches(byte switchHit) {
         case SW_TARGET_4_5BANK:
         case SW_TARGET_5_5BANK:
             FiveBank.HandleDropTargetHit(switchHit);
-            CurrentScores[CurrentPlayer] += SCORE_DROP_TARGET_BASE * PlayfieldMultiplier;
+            QueuePendingScoreUpdate(CurrentPlayer, SCORE_DROP_TARGET_BASE * PlayfieldMultiplier, SEQ_SCORE_500);
             {
                 unsigned int duration = PlaySoundSequence(SEQ_SCORE_500, 0);
                 protectedSoundUntilTime = CurrentTime + duration + 100;  // Grace period after protected sound
@@ -3285,7 +3369,7 @@ void HandleGamePlaySwitches(byte switchHit) {
         }
 
         case SW_RIGHT_INLANE:
-            CurrentScores[CurrentPlayer] += 3000L * PlayfieldMultiplier;
+            QueuePendingScoreUpdate(CurrentPlayer, 3000L * PlayfieldMultiplier, SEQ_SCORE_3000);
             PlaySoundSequence(SEQ_SCORE_3000, 0);
             if (DEBUG_MESSAGES) {
                 char buf[64];
@@ -3311,13 +3395,14 @@ void HandleGamePlaySwitches(byte switchHit) {
                 PlaySoundSequence(SEQ_SCORE_10000, 0);
                 // Arc Surge stays active - saucer completes the combo
             } else if (isSaucerLit[CurrentPlayer]) {
-                CurrentScores[CurrentPlayer] += 5000L * PlayfieldMultiplier;
                 if (Bonus[CurrentPlayer] < 19) {
                   if (DEBUG_MESSAGES) Serial.print("T1 lit: Bonus="); Serial.print(Bonus[CurrentPlayer]); Serial.println(" < 19 → ADVANCE");
+                  QueuePendingScoreUpdate(CurrentPlayer, 5000L * PlayfieldMultiplier, SEQ_ADVANCE_3);
                   PlaySoundSequence(SEQ_ADVANCE_3, 0);
                   AddToBonus(3);
                 } else {
                   if (DEBUG_MESSAGES) Serial.print("T1 lit: Bonus="); Serial.print(Bonus[CurrentPlayer]); Serial.println(" >= 19 → SCORE");
+                  QueuePendingScoreUpdate(CurrentPlayer, 5000L * PlayfieldMultiplier, SEQ_SCORE_5000);
                   PlaySoundSequence(SEQ_SCORE_5000, 0);
                 }
             } else {
@@ -3332,7 +3417,7 @@ void HandleGamePlaySwitches(byte switchHit) {
              if (MachineState != MACHINE_STATE_NORMAL_GAMEPLAY) break;  // Only handle during normal gameplay
 
              if (isArcSurgeActive[CurrentPlayer] && arcSurgeT1Hit[CurrentPlayer]) { // Arc Surge combo complete (both T1 and saucer hit)
-                CurrentScores[CurrentPlayer] += SCORE_ARC_SURGE_SUPER * PlayfieldMultiplier;
+                QueuePendingScoreUpdate(CurrentPlayer, SCORE_ARC_SURGE_SUPER * PlayfieldMultiplier, SEQ_FANFARE_ASCENDING, 300);
                 AddToBonus(3);
                 if (DEBUG_MESSAGES) Serial.write("ARC SURGE COMPLETE - playing fanfare\n");
                 PlaySoundSequence(SEQ_FANFARE_ASCENDING, 300);
@@ -3354,30 +3439,31 @@ void HandleGamePlaySwitches(byte switchHit) {
                     }
                     if (!SaucerLightPersists) isSaucerLit[CurrentPlayer] = false;
                 } else {
-                    CurrentScores[CurrentPlayer] += 500L * PlayfieldMultiplier;
+                    QueuePendingScoreUpdate(CurrentPlayer, 500L * PlayfieldMultiplier, SEQ_SCORE_500);
                     AddToBonus(1);
                     PlaySoundSequence(SEQ_SCORE_500, 0);
                 }
              } else if (!firstHitMade[CurrentPlayer] && !CollectBonusViaKicker) { // Skill shot (not during bonus collect)
-                 CurrentScores[CurrentPlayer] += SCORE_SKILL_SHOT * PlayfieldMultiplier;
+                 QueuePendingScoreUpdate(CurrentPlayer, SCORE_SKILL_SHOT * PlayfieldMultiplier, SEQ_FANFARE_ASCENDING, 300);
                  AddToBonus(3);
                  PlaySoundSequence(SEQ_FANFARE_ASCENDING, 300);
                  SkillShotAnimationStart = CurrentTime;
             } else if (isSaucerLit[CurrentPlayer]) {
-                 CurrentScores[CurrentPlayer] += SCORE_SKILL_SHOT * PlayfieldMultiplier;
                  if (Bonus[CurrentPlayer] < 19) {
                    // Bonus not full: play advance sound only (spaced out)
                    if (DEBUG_MESSAGES) Serial.print("Saucer (lit): Bonus="); Serial.print(Bonus[CurrentPlayer]); Serial.println(" < 19 → ADVANCE");
+                   QueuePendingScoreUpdate(CurrentPlayer, SCORE_SKILL_SHOT * PlayfieldMultiplier, SEQ_ADVANCE_3);
                    PlaySoundSequence(SEQ_ADVANCE_3, 0);
                    AddToBonus(3);
                  } else {
                    // Bonus full (19): play score sound instead
                    if (DEBUG_MESSAGES) Serial.print("Saucer (lit): Bonus="); Serial.print(Bonus[CurrentPlayer]); Serial.println(" >= 19 → SCORE");
+                   QueuePendingScoreUpdate(CurrentPlayer, 5000L * PlayfieldMultiplier, SEQ_SCORE_5000);
                    PlaySoundSequence(SEQ_SCORE_5000, 0);
                  }
                  if (!SaucerLightPersists) isSaucerLit[CurrentPlayer] = false;
             } else {
-                 CurrentScores[CurrentPlayer] += 500L * PlayfieldMultiplier;
+                 QueuePendingScoreUpdate(CurrentPlayer, 500L * PlayfieldMultiplier, SEQ_SCORE_500);
                  AddToBonus(1);
                  PlaySoundSequence(SEQ_SCORE_500, 0);
             }
@@ -3387,7 +3473,7 @@ void HandleGamePlaySwitches(byte switchHit) {
 
         case SW_STANDUP_TARGET:
             isSaucerLit[CurrentPlayer] = true;
-            CurrentScores[CurrentPlayer] += SCORE_STANDUP_TARGET * PlayfieldMultiplier;
+            QueuePendingScoreUpdate(CurrentPlayer, SCORE_STANDUP_TARGET * PlayfieldMultiplier, SEQ_SCORE_5000);
             AddToBonus(1);
             PlaySoundSequence(SEQ_SCORE_5000, 0);
             ValidateAndRegisterPlayfieldSwitch();
@@ -3401,7 +3487,7 @@ void HandleGamePlaySwitches(byte switchHit) {
             break;
 
         case SW_ADV_BONUS_300:
-            CurrentScores[CurrentPlayer] += 300L * PlayfieldMultiplier;
+            QueuePendingScoreUpdate(CurrentPlayer, 300L * PlayfieldMultiplier, SEQ_SCORE_300);
             AddToBonus(1);
             PlaySoundSequence(SEQ_SCORE_300, 0);
             ValidateAndRegisterPlayfieldSwitch();
@@ -3415,7 +3501,7 @@ void HandleGamePlaySwitches(byte switchHit) {
 
         case SW_RIGHT_OUTLANE:
         case SW_LEFT_OUTLANE: {
-            CurrentScores[CurrentPlayer] += SCORE_OUTLANE * PlayfieldMultiplier;
+            QueuePendingScoreUpdate(CurrentPlayer, SCORE_OUTLANE * PlayfieldMultiplier, SEQ_SCORE_3000);
             AddToBonus(3);
             ValidateAndRegisterPlayfieldSwitch();
             // Only play sounds during normal gameplay
@@ -3443,11 +3529,11 @@ void HandleGamePlaySwitches(byte switchHit) {
 
         case SW_LEFT_INLANE:
             if (isLeftReturnLaneLit[CurrentPlayer]) {
-                CurrentScores[CurrentPlayer] += 9000L * PlayfieldMultiplier;
+                QueuePendingScoreUpdate(CurrentPlayer, 9000L * PlayfieldMultiplier, SEQ_SCORE_9000);
                 isLeftReturnLaneLit[CurrentPlayer] = false;
                 PlaySoundSequence(SEQ_SCORE_9000, 0);
             } else {
-                CurrentScores[CurrentPlayer] += 3000L * PlayfieldMultiplier;
+                QueuePendingScoreUpdate(CurrentPlayer, 3000L * PlayfieldMultiplier, SEQ_SCORE_3000);
                 PlaySoundSequence(SEQ_SCORE_3000, 0);
             }
             ValidateAndRegisterPlayfieldSwitch();
