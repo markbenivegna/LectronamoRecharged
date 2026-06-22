@@ -2524,8 +2524,8 @@ void CheckForStuckBalls() {
   }
 
   // Check kicker for stuck ball — skip during bonus collect (kicker fires at end of collect)
-  // Also skip for 1 second after eject to let switch fully open
-  boolean inKickerEjectLockout = (KickerEjectTime != 0 && (CurrentTime - KickerEjectTime) < KICKER_EJECT_LOCKOUT_MS);
+  // Also skip while switch is still pressed (ball still on switch during/after eject)
+  boolean inKickerEjectLockout = (KickerEjectTime != 0 && RPU_ReadSingleSwitchState(SW_KICKER));
   if (!KickerBonusCollect && !inKickerEjectLockout && RPU_ReadSingleSwitchState(SW_KICKER)) {
     if (KickerClosedStart == 0) {
       KickerClosedStart = CurrentTime;
@@ -2537,6 +2537,10 @@ void CheckForStuckBalls() {
     }
   } else {
     KickerClosedStart = 0;
+    // Clear eject lockout once switch opens (ball has left)
+    if (!RPU_ReadSingleSwitchState(SW_KICKER)) {
+      KickerEjectTime = 0;
+    }
   }
 }
 
