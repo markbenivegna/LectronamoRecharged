@@ -123,17 +123,6 @@ const SoundStep SEQ_TILT_Data[] PROGMEM = {
   {0xFF, 0}
 };
 
-const SoundStep SEQ_GAME_OVER_Data[] PROGMEM = {
-  {SND_10_POINTS, 0},
-  {SND_100_POINTS, 150},
-  {SND_1000_POINTS, 300},
-  {SND_10000_POINTS, 450},
-  {SND_10_POINTS, 600},
-  {SND_100_POINTS, 750},
-  {SND_1000_POINTS, 900},
-  {SND_10000_POINTS, 1050},
-  {0xFF, 0}
-};
 
 const SoundStep SEQ_MATCH_SPIN_Data[] PROGMEM = {
   {SND_100_POINTS, 0},
@@ -145,17 +134,6 @@ const SoundStep SEQ_BONUS_COUNT_Data[] PROGMEM = {
   {0xFF, 0}
 };
 
-const SoundStep SEQ_STARTUP_Data[] PROGMEM = {
-  {SND_10000_POINTS, 0},
-  {SND_1000_POINTS, 150},
-  {SND_100_POINTS, 300},
-  {SND_10_POINTS, 450},
-  {SND_10000_POINTS, 600},
-  {SND_1000_POINTS, 750},
-  {SND_100_POINTS, 900},
-  {SND_10_POINTS, 1050},
-  {0xFF, 0}
-};
 
 // Drain sound — 3-tone dramatic warning (fast mid, mid, then deep)
 const SoundStep SEQ_DRAIN_Data[] PROGMEM = {
@@ -200,10 +178,10 @@ const SoundStep* const SoundSequenceTable[] PROGMEM = {
   SEQ_POP_BUMPER_Data,       // 20
   SEQ_TILT_WARNING_Data,     // 21
   SEQ_TILT_Data,             // 22
-  SEQ_GAME_OVER_Data,        // 23
+  NULL,                      // 23 (GAME_OVER — hard-coded in ShowMatchSequence)
   SEQ_MATCH_SPIN_Data,       // 24
   SEQ_BONUS_COUNT_Data,      // 25
-  SEQ_STARTUP_Data,          // 26
+  NULL,                      // 26 (STARTUP — hard-coded in setup())
   SEQ_DRAIN_Data,            // 27
   NULL, NULL,                // 28-29 (unused)
   SEQ_FANFARE_ASCENDING_Data, // 30
