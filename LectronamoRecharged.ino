@@ -24,6 +24,7 @@
 #define GAME_MAJOR_VERSION  2026
 #define GAME_MINOR_VERSION  1
 #define DEBUG_MESSAGES  1
+#define DEBUG_SWITCH_LOGGING  1
 
 #if (DEBUG_MESSAGES==1)
 #define DEBUG_SHOW_LOOPS_PER_SECOND
@@ -2331,7 +2332,15 @@ void AddToBonus(byte bonus) {
 }
 
 void PlayBonusAdvanceSound() {
+  if (DEBUG_SWITCH_LOGGING) {
+    Serial.write("BONUS ADVANCE SOUND PLAYED\n");
+  }
   Audio.PlaySound(SND_1000_POINTS, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS);
+  if (DEBUG_SWITCH_LOGGING) {
+    char buf[64];
+    sprintf(buf, "  QUEUED: 0x0 @ +80ms, 0x4 @ +120ms\n");
+    Serial.write(buf);
+  }
   Audio.QueueSound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, CurrentTime + 80);
   Audio.QueueSound(SND_1000_POINTS, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, CurrentTime + 120);
 }
