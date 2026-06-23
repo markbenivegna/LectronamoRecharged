@@ -2589,7 +2589,7 @@ void CheckForStuckBalls() {
   // Use dual lockout: either the eject is recent OR the switch hasn't fully released yet
   // This prevents double-fire from bounces during eject motion
   boolean switchOpen = !RPU_ReadSingleSwitchState(SW_KICKER);
-  boolean inKickerEjectLockout = (KickerEjectTime != 0 && (CurrentTime - KickerEjectTime) < 500) ||
+  boolean inKickerEjectLockout = (KickerEjectTime != 0 && (CurrentTime - KickerEjectTime) < KICKER_EJECT_LOCKOUT_MS) ||
                                   (KickerSwitchReleaseTime != 0 &&
                                    (CurrentTime - KickerSwitchReleaseTime) < KICKER_RELEASE_DEBOUNCE_MS);
 
