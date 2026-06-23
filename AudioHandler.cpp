@@ -1046,10 +1046,31 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
   // Calculate when this new sequence will actually start playing
   unsigned long newSeqStartTime = CurrentTime + startOffset + firstStep.gap_ms;
 
+  // Check if this is a protected sequence (pops get priority over overlaps)
+  boolean isProtectedSequence = (seqID == 20);  // seqID=20 is POP_BUMPER
+
   // Only reject if sequences would overlap (new sequence starts before or at same time as old sequence ends)
   // This allows chained sequences like SCORE → ADVANCE → DRAIN with proper spacing
   if (maxExistingPlayTime > 0 && newSeqStartTime <= maxExistingPlayTime) {
-    return false;  // True overlap - reject
+    if (isProtectedSequence) {
+      // Protected pop bumpers clear the conflicting sequence
+      byte conflictingSeqID = 0xFF;
+      for (int i = 0; i < SOUND_QUEUE_SIZE; i++) {
+        if (soundQueue[i].playTime == maxExistingPlayTime && soundQueue[i].seqID != 0xFF) {
+          conflictingSeqID = soundQueue[i].seqID;
+          break;
+        }
+      }
+      if (conflictingSeqID != 0xFF) {
+        for (int i = 0; i < SOUND_QUEUE_SIZE; i++) {
+          if (soundQueue[i].seqID == conflictingSeqID) {
+            soundQueue[i].priority = 0;  // Mark as empty
+          }
+        }
+      }
+    } else {
+      return false;  // Non-protected sequences rejected on overlap
+    }
   }
 
   // All sequences can interrupt each other (paused/resumed via interrupt system)
