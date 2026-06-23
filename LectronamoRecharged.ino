@@ -308,6 +308,7 @@ unsigned long PlayfieldMultiplier;
 unsigned long LastTimeThroughLoop;
 unsigned long LastSwitchHitTime;
 unsigned long BallSaveEndTime;
+unsigned long BallSavePulseEndTime = 0;  // Time when to stop pulsing after ball save
 unsigned long SaucerClosedStart = 0;
 unsigned long KickerClosedStart = 0;
 unsigned long KickerEjectTime = 0;
@@ -1464,7 +1465,9 @@ void RunOperatorMenu() {
     if (MachineState==MACHINE_STATE_ATTRACT) {
       RPU_SetDisplayBallInPlay(0, true);
     } else {
-      RPU_SetDisplayBallInPlay(CurrentBallInPlay);
+      // Pulse ball display if ball save just happened
+    boolean pulseBallDisplay = (BallSavePulseEndTime && CurrentTime < BallSavePulseEndTime && ((CurrentTime / 150) % 2));
+    RPU_SetDisplayBallInPlay(CurrentBallInPlay, pulseBallDisplay);
     }
     SoundSettingTimeout = 0;
     return;
@@ -2464,7 +2467,9 @@ int InitNewBall(bool curStateChanged) {
     if (CurrentNumPlayers > 1 && (CurrentBallInPlay != 1 || CurrentPlayer != 0) && !SamePlayerShootsAgain) AlertPlayerUp();
     SamePlayerShootsAgain = false;
 
-    RPU_SetDisplayBallInPlay(CurrentBallInPlay);
+    // Pulse ball display if ball save just happened
+    boolean pulseBallDisplay = (BallSavePulseEndTime && CurrentTime < BallSavePulseEndTime && ((CurrentTime / 150) % 2));
+    RPU_SetDisplayBallInPlay(CurrentBallInPlay, pulseBallDisplay);
     RPU_SetLampState(LAMP_HEAD_TILT, 0);
     for (byte count = 0; count < 4; count++) {
       if (count==CurrentPlayer) RPU_SetLampState(PlayerUpLamps[count], 1, 0, 250);
@@ -2841,6 +2846,7 @@ int ManageGameMode() {
 
             RPU_SetLampState(LAMP_SHOOT_AGAIN, 0);
             BallTimeInTrough = CurrentTime;
+            BallSavePulseEndTime = CurrentTime + 1000;  // Pulse for 1 second
             returnState = MACHINE_STATE_NORMAL_GAMEPLAY;
 
             if (NumberOfBallSavesRemaining && NumberOfBallSavesRemaining != 0xFF) {
