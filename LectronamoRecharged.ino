@@ -627,7 +627,6 @@ void QueueDIAGNotification(unsigned short notificationNum) {
   // This is optional, but the machine can play an audio message at boot
   // time to indicate any errors and whether it's going to boot to original
   // or new code.
-  //Audio.QueuePrioritizedNotification(notificationNum, 0, 10, CurrentTime);
   (void)notificationNum;
 }
 
@@ -1224,7 +1223,6 @@ void AddCredit(boolean playSound = false, byte numToAdd = 1) {
     if (Credits > MaximumCredits) Credits = MaximumCredits;
     RPU_WriteByteToEEProm(RPU_CREDITS_EEPROM_BYTE, Credits);
     if (playSound) {
-      //PlaySoundEffect(SOUND_EFFECT_ADD_CREDIT);
       RPU_PushToSolenoidStack(SOL_KNOCKER, KNOCKER_SOLENOID_STRENGTH, true);
     }
     RPU_SetDisplayCredits(Credits, !FreePlayMode);
@@ -1931,8 +1929,7 @@ void PlaySoundEffect(unsigned int soundEffectNum) {
       sb100Sound = SND_10_POINTS;
       break;
     case SOUND_EFFECT_POP_BUMPER:
-      // sb100Sound = SND_POP_BUMPER;  // TEMP: disabled to debug
-      return;  // Skip pop bumper sounds
+      sb100Sound = SND_POP_BUMPER;
       break;
     case SOUND_EFFECT_TILT_WARNING:
       sb100Sound = SND_1000_POINTS;
@@ -2003,9 +2000,6 @@ void QueueNotification(unsigned int soundEffectNum, byte priority) {
   (void)soundEffectNum;
   (void)priority;
   // SB-100 has no voice callouts — uncomment below if WAV trigger is added later
-  // if (CalloutsVolume == 0) return;
-  // Audio.PlaySound(SND_10000_POINTS, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS);
-  // Audio.QueueSound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, CurrentTime + 150);
 }
 
 
@@ -2864,7 +2858,6 @@ int ManageGameMode() {
             if (NumberOfBallsInPlay == 0) {
               Display_ClearOverride(0xFF);
               Audio.StopAllAudio();
-              //PlaySoundEffect(SOUND_EFFECT_BALL_OVER);
               returnState = MACHINE_STATE_COUNTDOWN_BONUS;
             }
           }
@@ -2926,7 +2919,6 @@ int CountdownBonus(boolean curStateChanged) {
     // for a "sound" that will turn off
     // the current background drone or currently
     // playing sound
-    //    PlaySoundEffect(SOUND_EFFECT_STOP_BACKGROUND);
   }
 
   unsigned long countdownDelayTime = (unsigned long)(CountDownDelayTimes[IncrementingBonusXCounter - 1]);
@@ -3070,7 +3062,6 @@ int ShowMatchSequence(boolean curStateChanged) {
     if (CurrentTime > (MatchSequenceStartTime + MatchDelay)) {
       MatchDigit += 1;
       if (MatchDigit > 9) MatchDigit = 0;
-      //PlaySoundEffect(10+(MatchDigit%2));
       PlaySoundSequence(SEQ_MATCH_SPIN, 0);
       RPU_SetDisplayBallInPlay((int)MatchDigit * 10);
       MatchDelay += 50 + 4 * NumMatchSpins;
