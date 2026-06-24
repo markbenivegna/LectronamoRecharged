@@ -24,6 +24,11 @@ extern unsigned long CurrentTime;
 // Score sequences — each plays the appropriate tone(s) with 200ms base spacing
 // Silence automatically inserted after each tone at gap_ms + 75ms (Dick's timing)
 // Note: 200ms gap ensures tones don't queue until previous silence (75ms) finishes
+const SoundStep SEQ_SCORE_10_Data[] PROGMEM = {
+  {SND_10_POINTS, 0},
+  {0xFF, 0}
+};
+
 const SoundStep SEQ_SCORE_100_Data[] PROGMEM = {
   {SND_100_POINTS, 0},
   {0xFF, 0}
@@ -171,7 +176,7 @@ const SoundStep* const SoundSequenceTable[] PROGMEM = {
   SEQ_SCORE_6000_Data,       // 6
   SEQ_SCORE_9000_Data,       // 7
   SEQ_SCORE_10000_Data,      // 8
-  NULL,                      // 9 (unused)
+  SEQ_SCORE_10_Data,         // 9 (10-point score)
   SEQ_ADVANCE_1_Data,        // 10
   SEQ_ADVANCE_3_Data,        // 11
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, // 12-19 (unused)

@@ -3483,7 +3483,7 @@ void HandleGamePlaySwitches(byte switchHit) {
 
         case SW_SCORE_10:
             CurrentScores[CurrentPlayer] += 10L * PlayfieldMultiplier;
-            PlaySoundSequence(SEQ_SCORE_100, 0);
+            PlaySoundSequence(SEQ_SCORE_10, 0);
             ValidateAndRegisterPlayfieldSwitch();
             break;
 
