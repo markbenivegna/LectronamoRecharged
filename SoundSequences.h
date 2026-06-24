@@ -30,6 +30,7 @@ struct SoundStep {
 #define SEQ_SCORE_6000         6
 #define SEQ_SCORE_9000         7
 #define SEQ_SCORE_10000        8
+#define SEQ_SCORE_10           9
 
 #define SEQ_ADVANCE_1          10
 #define SEQ_ADVANCE_3          11
