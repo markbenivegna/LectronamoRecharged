@@ -993,12 +993,6 @@ int AudioHandler::QueueSound(unsigned short soundIndex, byte audioType, unsigned
       soundQueue[count].priority = priority;
       soundQueue[count].seqID = 0xFF;  // Mark as not part of sequence yet
 
-      // Debug: log direct queue call
-      if (soundIndex != 0) {
-        char buf[80];
-        sprintf(buf, "QUEUE DIRECT: tone=0x%X pri=%d @ %lu ms (idx=%d)\n", soundIndex, priority, timeToPlay, count);
-        Serial.write(buf);
-      }
 
       return count;  // Return the index
     }
@@ -1046,31 +1040,10 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
   // Calculate when this new sequence will actually start playing
   unsigned long newSeqStartTime = CurrentTime + startOffset + firstStep.gap_ms;
 
-  // Check if this is a protected sequence (pops get priority over overlaps)
-  boolean isProtectedSequence = (seqID == 20);  // seqID=20 is POP_BUMPER
-
   // Only reject if sequences would overlap (new sequence starts before or at same time as old sequence ends)
   // This allows chained sequences like SCORE → ADVANCE → DRAIN with proper spacing
   if (maxExistingPlayTime > 0 && newSeqStartTime <= maxExistingPlayTime) {
-    if (isProtectedSequence) {
-      // Protected pop bumpers clear the conflicting sequence
-      byte conflictingSeqID = 0xFF;
-      for (int i = 0; i < SOUND_QUEUE_SIZE; i++) {
-        if (soundQueue[i].playTime == maxExistingPlayTime && soundQueue[i].seqID != 0xFF) {
-          conflictingSeqID = soundQueue[i].seqID;
-          break;
-        }
-      }
-      if (conflictingSeqID != 0xFF) {
-        for (int i = 0; i < SOUND_QUEUE_SIZE; i++) {
-          if (soundQueue[i].seqID == conflictingSeqID) {
-            soundQueue[i].priority = 0;  // Mark as empty
-          }
-        }
-      }
-    } else {
-      return false;  // Non-protected sequences rejected on overlap
-    }
+    return false;  // True overlap - reject
   }
 
   // All sequences can interrupt each other (paused/resumed via interrupt system)
@@ -1084,9 +1057,6 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
   }
   // Mark this sound as part of this sequence immediately
   soundQueue[toneIndex].seqID = seqID;
-  char buf[64];
-  sprintf(buf, "SEQ QUEUE: seqID=%d tone queued at idx=%d time=%lu\n", seqID, toneIndex, playTime);
-  Serial.write(buf);
 
   // Auto-insert silence after this tone (Dick's timing: 75ms)
   unsigned int silenceDuration = 75;
@@ -1329,9 +1299,6 @@ boolean AudioHandler::ServiceSoundQueue(unsigned long currentTime) {
 
   // Process only the earliest sound
   if (earliestIndex >= 0) {
-    char buf[64];
-    sprintf(buf, "SND: %d pri=%d @ %lu ms\n", soundQueue[earliestIndex].soundIndex, soundQueue[earliestIndex].priority, currentTime);
-    Serial.write(buf);
     PlaySound(soundQueue[earliestIndex].soundIndex, soundQueue[earliestIndex].audioType, soundQueue[earliestIndex].overrideVolume);
     soundQueue[earliestIndex].playTime = 0;
     soundQueue[earliestIndex].priority = 0;
