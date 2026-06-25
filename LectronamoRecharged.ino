@@ -3490,7 +3490,7 @@ void HandleGamePlaySwitches(byte switchHit) {
               boolean isBallSaveActive = (BallFirstSwitchHitTime != 0 &&
                                           CurrentTime < (BallFirstSwitchHitTime + ((unsigned long)BallSaveNumSeconds * 1000) + BALL_SAVE_GRACE_PERIOD));
               if (!isBallSaveActive) {
-                unsigned int drainDuration = PlaySoundSequence(SEQ_DRAIN, advanceDuration + 50);
+                unsigned int drainDuration = PlaySoundSequence(SEQ_DRAIN, advanceDuration + 200);
               }
             }
             break;
