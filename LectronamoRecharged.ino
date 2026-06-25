@@ -3384,11 +3384,10 @@ void HandleGamePlaySwitches(byte switchHit) {
                 PlaySoundSequence(SEQ_SCORE_10000, 0);
                 // Arc Surge stays active - saucer completes the combo
             } else if (isSaucerLit[CurrentPlayer]) {
-                // Lit T1: always play SCORE_5000 + ADVANCE_3 (5000 pts + 3 bonus advances)
-                if (DEBUG_MESSAGES) Serial.print("T1 lit: Bonus="); Serial.print(Bonus[CurrentPlayer]); Serial.println(" → 5000 + ADVANCE_3");
-                QueuePendingScoreUpdate(CurrentPlayer, 5000L * PlayfieldMultiplier, SEQ_SCORE_5000);
-                unsigned int scoreDuration = PlaySoundSequence(SEQ_SCORE_5000, 0);
-                PlaySoundSequence(SEQ_ADVANCE_3, scoreDuration + 50);
+                // Lit T1: always play ADVANCE_3 (3 bonus advances)
+                if (DEBUG_MESSAGES) Serial.print("T1 lit: Bonus="); Serial.print(Bonus[CurrentPlayer]); Serial.println(" → ADVANCE_3");
+                QueuePendingScoreUpdate(CurrentPlayer, 5000L * PlayfieldMultiplier, SEQ_ADVANCE_3);
+                PlaySoundSequence(SEQ_ADVANCE_3, 0);
                 AddToBonus(3);
             } else {
                 CurrentScores[CurrentPlayer] += 1000L * PlayfieldMultiplier;
@@ -3434,11 +3433,10 @@ void HandleGamePlaySwitches(byte switchHit) {
                  PlaySoundSequence(SEQ_FANFARE_ASCENDING, 300);
                  SkillShotAnimationStart = CurrentTime;
             } else if (isSaucerLit[CurrentPlayer]) {
-                 // Lit saucer: always play SCORE_5000 + ADVANCE_3 (5000 pts + 3 bonus advances)
-                 if (DEBUG_MESSAGES) Serial.print("Saucer (lit): Bonus="); Serial.print(Bonus[CurrentPlayer]); Serial.println(" → 5000 + ADVANCE_3");
-                 QueuePendingScoreUpdate(CurrentPlayer, SCORE_SKILL_SHOT * PlayfieldMultiplier, SEQ_SCORE_5000);
-                 unsigned int scoreDuration = PlaySoundSequence(SEQ_SCORE_5000, 0);
-                 PlaySoundSequence(SEQ_ADVANCE_3, scoreDuration + 50);
+                 // Lit saucer: always play ADVANCE_3 (3 bonus advances)
+                 if (DEBUG_MESSAGES) Serial.print("Saucer (lit): Bonus="); Serial.print(Bonus[CurrentPlayer]); Serial.println(" → ADVANCE_3");
+                 QueuePendingScoreUpdate(CurrentPlayer, SCORE_SKILL_SHOT * PlayfieldMultiplier, SEQ_ADVANCE_3);
+                 PlaySoundSequence(SEQ_ADVANCE_3, 0);
                  AddToBonus(3);
                  if (!SaucerLightPersists) isSaucerLit[CurrentPlayer] = false;
             } else {
@@ -3485,15 +3483,14 @@ void HandleGamePlaySwitches(byte switchHit) {
             ValidateAndRegisterPlayfieldSwitch();
             // Only play sounds during normal gameplay
             if (MachineState == MACHINE_STATE_NORMAL_GAMEPLAY) {
-              // Always: score 3000, then advance +3, then drain (unless ball saved)
-              if (DEBUG_MESSAGES) Serial.print("Outlane: Bonus="); Serial.print(Bonus[CurrentPlayer]); Serial.println(" → SCORE + ADVANCE + DRAIN");
-              unsigned int scoreDuration = PlaySoundSequence(SEQ_SCORE_3000, 0);
-              unsigned int advanceDuration = PlaySoundSequence(SEQ_ADVANCE_3, scoreDuration + 50);
+              // Always: advance +3, then drain (unless ball saved)
+              if (DEBUG_MESSAGES) Serial.print("Outlane: Bonus="); Serial.print(Bonus[CurrentPlayer]); Serial.println(" → ADVANCE + DRAIN");
+              unsigned int advanceDuration = PlaySoundSequence(SEQ_ADVANCE_3, 0);
               // Don't play drain sound if ball save is active (check from first switch hit, now set by ValidateAndRegisterPlayfieldSwitch)
               boolean isBallSaveActive = (BallFirstSwitchHitTime != 0 &&
                                           CurrentTime < (BallFirstSwitchHitTime + ((unsigned long)BallSaveNumSeconds * 1000) + BALL_SAVE_GRACE_PERIOD));
               if (!isBallSaveActive) {
-                unsigned int drainDuration = PlaySoundSequence(SEQ_DRAIN, scoreDuration + advanceDuration + 300);
+                unsigned int drainDuration = PlaySoundSequence(SEQ_DRAIN, advanceDuration + 50);
               }
             }
             break;
