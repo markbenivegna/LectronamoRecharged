@@ -2978,6 +2978,7 @@ int CountdownBonus(boolean curStateChanged) {
 
     if (DEBUG_MESSAGES) Serial.write("Count down over, moving to ball over\n");
     if (LastBonusSoundPlayed != 0) Audio.StopSound(LastBonusSoundPlayed);
+    Audio.ClearSoundQueue();  // Wipe all remaining tones from this ball before moving to next
     return MACHINE_STATE_BALL_OVER;
   }
 
