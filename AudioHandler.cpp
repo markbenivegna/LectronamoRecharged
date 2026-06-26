@@ -1033,19 +1033,11 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
   // BEFORE checking overlap. This ensures old tones are cleared even if this
   // new pop-bumper request gets rejected due to overlap.
   if (seqID == 20) {  // SEQ_POP_BUMPER
-    int clearedCount = 0;
     for (int i = 0; i < SOUND_QUEUE_SIZE; i++) {
       if (soundQueue[i].seqID == 20) {
         soundQueue[i].playTime = 0;
         soundQueue[i].seqID = 0xFF;
-        clearedCount++;
       }
-    }
-    if (clearedCount > 0) {
-      char buf[96];
-      sprintf(buf, "POP_BUMPER: CLEARING %d old tones before queuing new pop-bumper @ CurrentTime=%lu\n",
-              clearedCount, CurrentTime);
-      Serial.write(buf);
     }
   }
 
