@@ -1305,6 +1305,16 @@ boolean AudioHandler::PlaySoundCardWhenPossible(unsigned short soundEffectNum, u
 boolean AudioHandler::ServiceSoundQueue(unsigned long currentTime) {
   boolean soundCommandSent = false;
 
+  // Option 3: Time-based queue cleanup - remove aged-out tones that already played long ago
+  // Only remove tones that are 100ms+ past their playTime to avoid interfering with normal playback
+  for (int i = 0; i < SOUND_QUEUE_SIZE; i++) {
+    if (soundQueue[i].playTime > 0 && soundQueue[i].playTime < (currentTime - 100)) {
+      // This tone should have played 100ms+ ago, it's orphaned - remove it
+      soundQueue[i].playTime = 0;
+      soundQueue[i].seqID = 0xFF;
+    }
+  }
+
   // Check for orphaned/layered pop-bumper tones
   int popBumperCount = 0;
   for (int count=0; count<SOUND_QUEUE_SIZE; count++) {
