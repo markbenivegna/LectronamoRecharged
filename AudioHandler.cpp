@@ -1056,16 +1056,28 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
   // Calculate when this new sequence will actually start playing
   unsigned long newSeqStartTime = CurrentTime + startOffset + firstStep.gap_ms;
 
-  // Only reject if sequences would overlap (new sequence starts before or at same time as old sequence ends)
-  // This allows chained sequences like SCORE → ADVANCE → DRAIN with proper spacing
+  // Handle overlap: if blocking sequence is paused, clear it to prevent orphaned tones from blocking forever
   if (maxExistingPlayTime > 0 && newSeqStartTime <= maxExistingPlayTime) {
-    if (seqID == 20) {  // SEQ_POP_BUMPER
-      char buf[96];
-      sprintf(buf, "POP_BUMPER: OVERLAP REJECTED seqID=20 newSeqStart=%lu maxExistingEnd=%lu blockingSeqID=%d\n",
-              newSeqStartTime, maxExistingPlayTime, blockingSeqID);
-      Serial.write(buf);
+    // Check if the blocking sequence is paused
+    if (blockingSeqID == activeSequence.pausedSeqID) {
+      // Clear orphaned tones from the paused sequence
+      for (int i = 0; i < SOUND_QUEUE_SIZE; i++) {
+        if (soundQueue[i].seqID == blockingSeqID) {
+          soundQueue[i].playTime = 0;
+          soundQueue[i].seqID = 0xFF;
+        }
+      }
+      // Don't reject - allow the new sequence to queue
+    } else {
+      // Active sequence is blocking - legitimate overlap, reject
+      if (seqID == 20) {  // SEQ_POP_BUMPER
+        char buf[96];
+        sprintf(buf, "POP_BUMPER: OVERLAP REJECTED seqID=20 newSeqStart=%lu maxExistingEnd=%lu blockingSeqID=%d\n",
+                newSeqStartTime, maxExistingPlayTime, blockingSeqID);
+        Serial.write(buf);
+      }
+      return false;  // True overlap - reject
     }
-    return false;  // True overlap - reject
   }
 
   // All sequences can interrupt each other (paused/resumed via interrupt system)
