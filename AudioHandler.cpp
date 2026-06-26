@@ -1029,6 +1029,18 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
     return false;  // Empty sequence
   }
 
+  // Pop-bumpers don't support pause/resume, so clear any old pop-bumper tones
+  // BEFORE checking overlap. This ensures old tones are cleared even if this
+  // new pop-bumper request gets rejected due to overlap.
+  if (seqID == 20) {  // SEQ_POP_BUMPER
+    for (int i = 0; i < SOUND_QUEUE_SIZE; i++) {
+      if (soundQueue[i].seqID == 20) {
+        soundQueue[i].playTime = 0;
+        soundQueue[i].seqID = 0xFF;
+      }
+    }
+  }
+
   // Allow multiple sequences to be queued as long as they don't overlap in time
   // Find the latest playTime of any existing sequence to detect actual collisions
   // IMPORTANT: Skip paused sequences - they shouldn't block new sequences from queueing.
@@ -1082,17 +1094,6 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
 
   // All sequences can interrupt each other (paused/resumed via interrupt system)
   // Spinner is gated separately via protectedSoundUntilTime check in handler
-
-  // Pop-bumpers don't support pause/resume, so clear any old pop-bumper tones
-  // before queueing a new one to prevent phantom sounds from orphaned tones
-  if (seqID == 20) {  // SEQ_POP_BUMPER
-    for (int i = 0; i < SOUND_QUEUE_SIZE; i++) {
-      if (soundQueue[i].seqID == 20) {
-        soundQueue[i].playTime = 0;
-        soundQueue[i].seqID = 0xFF;
-      }
-    }
-  }
 
   // Start this sequence as active
   unsigned long playTime = CurrentTime + startOffset + firstStep.gap_ms;
