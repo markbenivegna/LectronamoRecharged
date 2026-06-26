@@ -1014,6 +1014,14 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
     return false;
   }
 
+  // Diagnostic logging for pop-bumper sequences
+  if (seqID == 20) {  // SEQ_POP_BUMPER
+    char buf[96];
+    sprintf(buf, "POP_BUMPER: SEQ QUEUE START seqID=20 @ CurrentTime=%lu startOffset=%lu\n",
+            CurrentTime, startOffset);
+    Serial.write(buf);
+  }
+
   // Read first step
   SoundStep firstStep;
   memcpy_P(&firstStep, &seqPtr[0], sizeof(SoundStep));
@@ -1043,6 +1051,12 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
   // Only reject if sequences would overlap (new sequence starts before or at same time as old sequence ends)
   // This allows chained sequences like SCORE → ADVANCE → DRAIN with proper spacing
   if (maxExistingPlayTime > 0 && newSeqStartTime <= maxExistingPlayTime) {
+    if (seqID == 20) {  // SEQ_POP_BUMPER
+      char buf[96];
+      sprintf(buf, "POP_BUMPER: OVERLAP REJECTED seqID=20 newSeqStart=%lu maxExistingEnd=%lu\n",
+              newSeqStartTime, maxExistingPlayTime);
+      Serial.write(buf);
+    }
     return false;  // True overlap - reject
   }
 
@@ -1102,6 +1116,12 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
       int idx = QueueSound(step.tone, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, tonePlayTime, 0xFF, 50);
       if (idx >= 0) {
         soundQueue[idx].seqID = seqID;
+        if (seqID == 20) {  // SEQ_POP_BUMPER
+          char buf[96];
+          sprintf(buf, "POP_BUMPER: TONE QUEUED idx=%d tone=0x%02X playTime=%lu\n",
+                  idx, step.tone, tonePlayTime);
+          Serial.write(buf);
+        }
       }
 
       // Queue silence after this tone
@@ -1285,6 +1305,20 @@ boolean AudioHandler::PlaySoundCardWhenPossible(unsigned short soundEffectNum, u
 boolean AudioHandler::ServiceSoundQueue(unsigned long currentTime) {
   boolean soundCommandSent = false;
 
+  // Check for orphaned/layered pop-bumper tones
+  int popBumperCount = 0;
+  for (int count=0; count<SOUND_QUEUE_SIZE; count++) {
+    if (soundQueue[count].playTime!=0 && soundQueue[count].playTime > currentTime && soundQueue[count].seqID == 20) {
+      popBumperCount++;
+    }
+  }
+  if (popBumperCount > 1) {
+    char buf[96];
+    sprintf(buf, "POP_BUMPER: WARNING - %d tones in queue (potential phantom layering) @ CurrentTime=%lu\n",
+            popBumperCount, currentTime);
+    Serial.write(buf);
+  }
+
   // Find the earliest ready sound to play
   int earliestIndex = -1;
   unsigned long earliestTime = currentTime + 1000000;
@@ -1299,6 +1333,14 @@ boolean AudioHandler::ServiceSoundQueue(unsigned long currentTime) {
 
   // Process only the earliest sound
   if (earliestIndex >= 0) {
+    // Diagnostic logging for pop-bumper tones
+    if (soundQueue[earliestIndex].seqID == 20) {  // SEQ_POP_BUMPER
+      char buf[96];
+      sprintf(buf, "POP_BUMPER: TONE PLAYED idx=%d tone=0x%02X @ CurrentTime=%lu\n",
+              earliestIndex, soundQueue[earliestIndex].soundIndex, currentTime);
+      Serial.write(buf);
+    }
+
     PlaySound(soundQueue[earliestIndex].soundIndex, soundQueue[earliestIndex].audioType, soundQueue[earliestIndex].overrideVolume);
     soundQueue[earliestIndex].playTime = 0;
     soundQueue[earliestIndex].priority = 0;
