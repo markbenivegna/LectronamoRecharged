@@ -3507,7 +3507,8 @@ void HandleGamePlaySwitches(byte switchHit) {
             if (isLeftReturnLaneLit[CurrentPlayer]) {
                 QueuePendingScoreUpdate(CurrentPlayer, 9000L * PlayfieldMultiplier, SEQ_SCORE_9000);
                 isLeftReturnLaneLit[CurrentPlayer] = false;
-                PlaySoundSequence(SEQ_SCORE_9000, 0);
+                // DISABLED TEMPORARILY: PlaySoundSequence(SEQ_SCORE_9000, 0);  // Long 9-tone sequence was blocking pop-bumpers and causing phantoms in countdown
+                PlaySoundSequence(SEQ_SCORE_3000, 0);  // Play shorter 3000-point sound instead
             } else {
                 QueuePendingScoreUpdate(CurrentPlayer, 3000L * PlayfieldMultiplier, SEQ_SCORE_3000);
                 PlaySoundSequence(SEQ_SCORE_3000, 0);
