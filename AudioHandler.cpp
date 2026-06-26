@@ -1083,6 +1083,17 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
   // All sequences can interrupt each other (paused/resumed via interrupt system)
   // Spinner is gated separately via protectedSoundUntilTime check in handler
 
+  // Pop-bumpers don't support pause/resume, so clear any old pop-bumper tones
+  // before queueing a new one to prevent phantom sounds from orphaned tones
+  if (seqID == 20) {  // SEQ_POP_BUMPER
+    for (int i = 0; i < SOUND_QUEUE_SIZE; i++) {
+      if (soundQueue[i].seqID == 20) {
+        soundQueue[i].playTime = 0;
+        soundQueue[i].seqID = 0xFF;
+      }
+    }
+  }
+
   // Start this sequence as active
   unsigned long playTime = CurrentTime + startOffset + firstStep.gap_ms;
   int toneIndex = QueueSound(firstStep.tone, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, playTime, 0xFF, 50);
