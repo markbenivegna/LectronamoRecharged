@@ -1305,27 +1305,6 @@ boolean AudioHandler::PlaySoundCardWhenPossible(unsigned short soundEffectNum, u
 boolean AudioHandler::ServiceSoundQueue(unsigned long currentTime) {
   boolean soundCommandSent = false;
 
-  // Clean up completed sequences: remove orphaned tones from finished sequences
-  for (byte seqID = 0; seqID < NUM_SOUND_SEQUENCES; seqID++) {
-    // Find the latest (maximum) playTime for this seqID
-    unsigned long maxPlayTimeForSeq = 0;
-    for (int i = 0; i < SOUND_QUEUE_SIZE; i++) {
-      if (soundQueue[i].seqID == seqID && soundQueue[i].playTime > maxPlayTimeForSeq) {
-        maxPlayTimeForSeq = soundQueue[i].playTime;
-      }
-    }
-
-    // If the latest tone for this sequence is in the past, it's complete - clear all its tones
-    if (maxPlayTimeForSeq > 0 && currentTime > maxPlayTimeForSeq) {
-      for (int i = 0; i < SOUND_QUEUE_SIZE; i++) {
-        if (soundQueue[i].seqID == seqID) {
-          soundQueue[i].playTime = 0;
-          soundQueue[i].seqID = 0xFF;
-        }
-      }
-    }
-  }
-
   // Check for orphaned/layered pop-bumper tones
   int popBumperCount = 0;
   for (int count=0; count<SOUND_QUEUE_SIZE; count++) {
