@@ -1029,19 +1029,16 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
     return false;  // Empty sequence
   }
 
-  // Allow multiple sequences to be queued as long as they don't overlap with the ACTIVE sequence
-  // Only check the active sequence, not paused ones - paused sequences' tones shouldn't block new sequences
+  // Allow multiple sequences to be queued as long as they don't overlap in time
+  // Find the latest playTime of any existing sequence to detect actual collisions
   unsigned long maxExistingPlayTime = 0;
   byte blockingSeqID = 0xFF;
-
-  if (activeSequence.seqID != 0xFF) {  // Only if there's an active sequence
-    for (int i = 0; i < SOUND_QUEUE_SIZE; i++) {
-      if (soundQueue[i].seqID == activeSequence.seqID && soundQueue[i].playTime > CurrentTime) {
-        // Track the latest time the active sequence's tones are scheduled
-        if (soundQueue[i].playTime > maxExistingPlayTime) {
-          maxExistingPlayTime = soundQueue[i].playTime;
-          blockingSeqID = soundQueue[i].seqID;
-        }
+  for (int i = 0; i < SOUND_QUEUE_SIZE; i++) {
+    if (soundQueue[i].playTime > 0 && soundQueue[i].playTime > CurrentTime && soundQueue[i].seqID != 0xFF) {
+      // Track the latest time any existing sequence event is scheduled
+      if (soundQueue[i].playTime > maxExistingPlayTime) {
+        maxExistingPlayTime = soundQueue[i].playTime;
+        blockingSeqID = soundQueue[i].seqID;
       }
     }
   }
