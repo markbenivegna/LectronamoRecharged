@@ -1306,13 +1306,7 @@ boolean AudioHandler::ServiceSoundQueue(unsigned long currentTime) {
   boolean soundCommandSent = false;
 
   // Clean up completed sequences: remove orphaned tones from finished sequences
-  // BUT: never clear tones from the active or paused sequence (they may need to resume)
   for (byte seqID = 0; seqID < NUM_SOUND_SEQUENCES; seqID++) {
-    // Skip active and paused sequences - they must keep their tones for interrupt/resume
-    if (seqID == activeSequence.seqID || seqID == activeSequence.pausedSeqID) {
-      continue;
-    }
-
     // Find the latest (maximum) playTime for this seqID
     unsigned long maxPlayTimeForSeq = 0;
     for (int i = 0; i < SOUND_QUEUE_SIZE; i++) {
