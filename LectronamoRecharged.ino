@@ -2537,6 +2537,7 @@ int InitNewBall(bool curStateChanged) {
     Audio.OutputTracksPlaying();
     PlayBackgroundSong(SOUND_EFFECT_BALL_MUSIC_1 + (CurrentBallInPlay-1));
     Audio.OutputTracksPlaying();
+    Audio.ClearSoundQueue();  // Clear any stray tones from skill shot before normal gameplay
   }
 
   return MACHINE_STATE_NORMAL_GAMEPLAY;
@@ -2973,6 +2974,7 @@ int CountdownBonus(boolean curStateChanged) {
       // Arm lockout at the moment solenoid fires (250ms from now) so it blocks bounces
       // when switch closes ~120ms later. This prevents stuck-ball detector from double-firing.
       KickerSwitchReleaseTime = CurrentTime + 250;
+      Audio.ClearSoundQueue();  // Clear bonus countdown tones before resuming normal play
       return MACHINE_STATE_NORMAL_GAMEPLAY;
     }
 
