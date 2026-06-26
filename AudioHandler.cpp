@@ -1061,11 +1061,19 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
     // Pop-bumpers are unblockable - clear whatever is in the way instead of rejecting
     if (seqID == 20) {  // SEQ_POP_BUMPER
       // Clear all tones from the blocking sequence to make room for this pop-bumper
+      int clearedCount = 0;
       for (int i = 0; i < SOUND_QUEUE_SIZE; i++) {
         if (soundQueue[i].seqID == blockingSeqID) {
           soundQueue[i].playTime = 0;
           soundQueue[i].seqID = 0xFF;
+          clearedCount++;
         }
+      }
+      if (clearedCount > 0) {
+        char buf[96];
+        sprintf(buf, "POP_BUMPER: CLEARED BLOCKING seqID=%d (cleared %d tones) @ CurrentTime=%lu\n",
+                blockingSeqID, clearedCount, CurrentTime);
+        Serial.write(buf);
       }
       // Pop-bumper proceeds (not rejected)
     } else if (blockingSeqID == activeSequence.pausedSeqID) {
