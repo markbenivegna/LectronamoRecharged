@@ -1119,12 +1119,14 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
   // Spinner is gated separately via protectedSoundUntilTime check in handler
 
   // Rapid-fire sequences: clear all old tones when queuing a new one. These sequences queue
-  // multiple times per second (bumpers, bonus countdown, scores), causing tones to accumulate
-  // if not cleared. We clear unconditionally because new tones queue immediately after,
-  // ensuring the silence tone is always present.
-  if (seqID == 20 || seqID == 0 || seqID == 2 || seqID == 3 || seqID == 8 || seqID == 25) {
-    // SEQ_POP_BUMPER (20), SEQ_SCORE_100 (0), SEQ_SCORE_500 (2), SEQ_SCORE_1000 (3),
-    // SEQ_SCORE_10000 (8), SEQ_BONUS_COUNT (25)
+  // multiple times per second (bumpers, bonus countdown, all scores, advances), causing tones
+  // to accumulate if not cleared. We clear unconditionally because new tones queue immediately
+  // after, ensuring the silence tone is always present.
+  if (seqID == 0 || seqID == 1 || seqID == 2 || seqID == 3 || seqID == 4 || seqID == 5 ||
+      seqID == 6 || seqID == 7 || seqID == 8 || seqID == 9 || seqID == 11 || seqID == 20 || seqID == 25) {
+    // All rapid-fire sequences: SCORE_100 (0), SCORE_300 (1), SCORE_500 (2), SCORE_1000 (3),
+    // SCORE_3000 (4), SCORE_5000 (5), SCORE_6000 (6), SCORE_9000 (7), SCORE_10000 (8),
+    // SCORE_10 (9), ADVANCE_3 (11), POP_BUMPER (20), BONUS_COUNT (25)
     for (int i = 0; i < SOUND_QUEUE_SIZE; i++) {
       if (soundQueue[i].seqID == seqID && soundQueue[i].playTime > 0) {
         soundQueue[i].playTime = 0;
