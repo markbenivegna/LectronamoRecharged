@@ -1349,10 +1349,11 @@ boolean AudioHandler::ServiceSoundQueue(unsigned long currentTime) {
   boolean soundCommandSent = false;
 
   // Aggressively clear aged pop-bumper tones from queue
-  // Remove any pop-bumper tones more than 100ms past their playTime
+  // Remove any pop-bumper tones more than 500ms past their playTime
+  // (100ms was too aggressive and could clear tones before ServiceSoundQueue played them)
   for (int i = 0; i < SOUND_QUEUE_SIZE; i++) {
     if (soundQueue[i].seqID == 20 && soundQueue[i].playTime > 0) {
-      if (soundQueue[i].playTime < (currentTime - 100)) {
+      if (soundQueue[i].playTime < (currentTime - 500)) {
         soundQueue[i].playTime = 0;
         soundQueue[i].seqID = 0xFF;
       }
