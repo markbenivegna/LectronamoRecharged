@@ -1058,9 +1058,18 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
 
   // Handle overlap: if blocking sequence is paused, clear it to prevent orphaned tones from blocking forever
   if (maxExistingPlayTime > 0 && newSeqStartTime <= maxExistingPlayTime) {
-    // Check if the blocking sequence is paused
-    if (blockingSeqID == activeSequence.pausedSeqID) {
-      // Clear orphaned tones from the paused sequence
+    // Pop-bumpers are unblockable - clear whatever is in the way instead of rejecting
+    if (seqID == 20) {  // SEQ_POP_BUMPER
+      // Clear all tones from the blocking sequence to make room for this pop-bumper
+      for (int i = 0; i < SOUND_QUEUE_SIZE; i++) {
+        if (soundQueue[i].seqID == blockingSeqID) {
+          soundQueue[i].playTime = 0;
+          soundQueue[i].seqID = 0xFF;
+        }
+      }
+      // Pop-bumper proceeds (not rejected)
+    } else if (blockingSeqID == activeSequence.pausedSeqID) {
+      // For other sequences: if blocking sequence is paused, clear it
       for (int i = 0; i < SOUND_QUEUE_SIZE; i++) {
         if (soundQueue[i].seqID == blockingSeqID) {
           soundQueue[i].playTime = 0;
@@ -1069,14 +1078,8 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
       }
       // Don't reject - allow the new sequence to queue
     } else {
-      // Active sequence is blocking - legitimate overlap, reject
-      if (seqID == 20) {  // SEQ_POP_BUMPER
-        char buf[96];
-        sprintf(buf, "POP_BUMPER: OVERLAP REJECTED seqID=20 newSeqStart=%lu maxExistingEnd=%lu blockingSeqID=%d\n",
-                newSeqStartTime, maxExistingPlayTime, blockingSeqID);
-        Serial.write(buf);
-      }
-      return false;  // True overlap - reject
+      // Active sequence is blocking a non-pop-bumper - reject
+      return false;
     }
   }
 
