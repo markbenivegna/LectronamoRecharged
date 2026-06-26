@@ -1020,18 +1020,6 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
     sprintf(buf, "POP_BUMPER: SEQ QUEUE START seqID=20 @ CurrentTime=%lu startOffset=%lu\n",
             CurrentTime, startOffset);
     Serial.write(buf);
-
-    // Dump queue state before attempting to queue new pop-bumper
-    Serial.write("QUEUE_STATE_BEFORE:\n");
-    for (int i = 0; i < SOUND_QUEUE_SIZE; i++) {
-      if (soundQueue[i].playTime != 0) {
-        char qbuf[128];
-        sprintf(qbuf, "  [%d] seqID=%d tone=0x%02X playTime=%lu (in %ld ms)\n",
-                i, soundQueue[i].seqID, soundQueue[i].soundIndex, soundQueue[i].playTime,
-                (long)soundQueue[i].playTime - (long)CurrentTime);
-        Serial.write(qbuf);
-      }
-    }
   }
 
   // Read first step
@@ -1384,18 +1372,6 @@ boolean AudioHandler::ServiceSoundQueue(unsigned long currentTime) {
     sprintf(buf, "POP_BUMPER: WARNING - %d tones in queue (potential phantom layering) @ CurrentTime=%lu\n",
             popBumperCount, currentTime);
     Serial.write(buf);
-
-    // Dump full queue state when we detect multiple pop-bumper tones
-    Serial.write("QUEUE_STATE:\n");
-    for (int i = 0; i < SOUND_QUEUE_SIZE; i++) {
-      if (soundQueue[i].playTime != 0) {
-        char qbuf[128];
-        sprintf(qbuf, "  [%d] seqID=%d tone=0x%02X playTime=%lu (in %ld ms)\n",
-                i, soundQueue[i].seqID, soundQueue[i].soundIndex, soundQueue[i].playTime,
-                (long)soundQueue[i].playTime - (long)currentTime);
-        Serial.write(qbuf);
-      }
-    }
   }
 
   // Find the earliest ready sound to play
