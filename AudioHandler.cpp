@@ -1110,7 +1110,10 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
   }
 
   // If there's an active sequence, save it as paused before we overwrite it
-  if (activeSequence.seqID != 0xFF) {
+  // EXCEPTION: Pop-bumpers are not saved as paused. They're short (80ms) and don't need
+  // resumption. Preventing pop-bumper pause/resume eliminates accumulation of paused
+  // pop-bumper tones in the queue that cause phantom sounds and blocking.
+  if (activeSequence.seqID != 0xFF && activeSequence.seqID != 20) {  // seqID 20 = SEQ_POP_BUMPER
     activeSequence.pausedSeqID = activeSequence.seqID;
     activeSequence.pausedCurrentToneIndex = activeSequence.currentToneIndex;
     activeSequence.pausedPriority = activeSequence.priority;
