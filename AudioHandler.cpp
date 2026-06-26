@@ -1020,6 +1020,10 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
     sprintf(buf, "POP_BUMPER: SEQ QUEUE START seqID=20 @ CurrentTime=%lu startOffset=%lu\n",
             CurrentTime, startOffset);
     Serial.write(buf);
+
+    // DIAGNOSTIC: Disable pop-bumpers to test if they're the source of phantom sounds
+    Serial.write("POP_BUMPER: DISABLED FOR TESTING\n");
+    return false;
   }
 
   // Read first step
