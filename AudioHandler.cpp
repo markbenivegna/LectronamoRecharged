@@ -1014,13 +1014,37 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
     return false;
   }
 
-  // Diagnostic logging for pop-bumper sequences
-  if (seqID == 20) {  // SEQ_POP_BUMPER
-    char buf[96];
-    sprintf(buf, "POP_BUMPER: SEQ QUEUE START seqID=20 @ CurrentTime=%lu startOffset=%lu\n",
-            CurrentTime, startOffset);
-    Serial.write(buf);
+  // Comprehensive sequence logging for ALL sequences (not just pop-bumpers)
+  const char* seqName = "UNKNOWN";
+  switch (seqID) {
+    case 0: seqName = "SCORE_100"; break;
+    case 1: seqName = "SCORE_300"; break;
+    case 2: seqName = "SCORE_500"; break;
+    case 3: seqName = "SCORE_1000"; break;
+    case 4: seqName = "SCORE_3000"; break;
+    case 5: seqName = "SCORE_5000"; break;
+    case 6: seqName = "SCORE_6000"; break;
+    case 7: seqName = "SCORE_9000"; break;
+    case 8: seqName = "SCORE_10000"; break;
+    case 9: seqName = "SCORE_10"; break;
+    case 10: seqName = "ADVANCE_1"; break;
+    case 11: seqName = "ADVANCE_3"; break;
+    case 20: seqName = "POP_BUMPER"; break;
+    case 21: seqName = "TILT_WARNING"; break;
+    case 22: seqName = "TILT"; break;
+    case 23: seqName = "GAME_OVER"; break;
+    case 24: seqName = "MATCH_SPIN"; break;
+    case 25: seqName = "BONUS_COUNT"; break;
+    case 26: seqName = "STARTUP"; break;
+    case 27: seqName = "DRAIN"; break;
+    case 30: seqName = "FANFARE_ASC"; break;
+    case 31: seqName = "FANFARE_5B"; break;
   }
+
+  char buf[96];
+  sprintf(buf, "SEQ: QUEUE %s (id=%d) @ CurrentTime=%lu offset=%lu\n",
+          seqName, seqID, CurrentTime, startOffset);
+  Serial.write(buf);
 
   // Read first step
   SoundStep firstStep;
@@ -1380,13 +1404,38 @@ boolean AudioHandler::ServiceSoundQueue(unsigned long currentTime) {
 
   // Process only the earliest sound
   if (earliestIndex >= 0) {
-    // Diagnostic logging for pop-bumper tones
-    if (soundQueue[earliestIndex].seqID == 20) {  // SEQ_POP_BUMPER
-      char buf[96];
-      sprintf(buf, "POP_BUMPER: TONE PLAYED idx=%d tone=0x%02X @ CurrentTime=%lu\n",
-              earliestIndex, soundQueue[earliestIndex].soundIndex, currentTime);
-      Serial.write(buf);
+    // Comprehensive logging for all tones being played
+    const char* seqName = "UNKNOWN";
+    switch (soundQueue[earliestIndex].seqID) {
+      case 0: seqName = "SCORE_100"; break;
+      case 1: seqName = "SCORE_300"; break;
+      case 2: seqName = "SCORE_500"; break;
+      case 3: seqName = "SCORE_1000"; break;
+      case 4: seqName = "SCORE_3000"; break;
+      case 5: seqName = "SCORE_5000"; break;
+      case 6: seqName = "SCORE_6000"; break;
+      case 7: seqName = "SCORE_9000"; break;
+      case 8: seqName = "SCORE_10000"; break;
+      case 9: seqName = "SCORE_10"; break;
+      case 10: seqName = "ADVANCE_1"; break;
+      case 11: seqName = "ADVANCE_3"; break;
+      case 20: seqName = "POP_BUMPER"; break;
+      case 21: seqName = "TILT_WARNING"; break;
+      case 22: seqName = "TILT"; break;
+      case 23: seqName = "GAME_OVER"; break;
+      case 24: seqName = "MATCH_SPIN"; break;
+      case 25: seqName = "BONUS_COUNT"; break;
+      case 26: seqName = "STARTUP"; break;
+      case 27: seqName = "DRAIN"; break;
+      case 30: seqName = "FANFARE_ASC"; break;
+      case 31: seqName = "FANFARE_5B"; break;
+      case 0xFF: seqName = "STANDALONE"; break;
     }
+
+    char buf[96];
+    sprintf(buf, "TONE: %s (idx=%d) tone=0x%02X @ CurrentTime=%lu\n",
+            seqName, earliestIndex, soundQueue[earliestIndex].soundIndex, currentTime);
+    Serial.write(buf);
 
     PlaySound(soundQueue[earliestIndex].soundIndex, soundQueue[earliestIndex].audioType, soundQueue[earliestIndex].overrideVolume);
     soundQueue[earliestIndex].playTime = 0;
