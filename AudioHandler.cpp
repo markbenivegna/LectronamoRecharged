@@ -1094,14 +1094,19 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
   // All sequences can interrupt each other (paused/resumed via interrupt system)
   // Spinner is gated separately via protectedSoundUntilTime check in handler
 
-  // Pop-bumpers don't support pause/resume, so clear only VERY OLD pop-bumper tones
-  // (more than 100ms in the past). Never clear future tones that are about to play,
-  // as this causes the silence tone to be removed before it can stop the hardware tone.
+  // Pop-bumpers don't support pause/resume, so clear all old pop-bumper tones when queuing a new one.
+  // EXCEPTION: preserve any silence tone (0x00) that's about to play within 50ms.
+  // This prevents old pop-bumper tones from layering with new ones while preserving the
+  // current sequence's silence tone that stops the hardware from holding the laser tone.
   if (seqID == 20) {  // SEQ_POP_BUMPER
     for (int i = 0; i < SOUND_QUEUE_SIZE; i++) {
       if (soundQueue[i].seqID == 20 && soundQueue[i].playTime > 0) {
-        // Only clear tones that are 100ms in the past (definitely already played or orphaned)
-        if (soundQueue[i].playTime < (CurrentTime - 100)) {
+        // Preserve silence tones (0x00) that are about to play very soon (next 50ms)
+        // These are part of the current sequence and needed to stop the hardware tone
+        boolean isSilenceSoonToPlay = (soundQueue[i].soundIndex == 0x00 &&
+                                       soundQueue[i].playTime >= CurrentTime &&
+                                       soundQueue[i].playTime <= (CurrentTime + 50));
+        if (!isSilenceSoonToPlay) {
           soundQueue[i].playTime = 0;
           soundQueue[i].seqID = 0xFF;
         }
