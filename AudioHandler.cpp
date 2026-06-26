@@ -1032,11 +1032,13 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
   // Allow multiple sequences to be queued as long as they don't overlap in time
   // Find the latest playTime of any existing sequence to detect actual collisions
   unsigned long maxExistingPlayTime = 0;
+  byte blockingSeqID = 0xFF;
   for (int i = 0; i < SOUND_QUEUE_SIZE; i++) {
     if (soundQueue[i].playTime > 0 && soundQueue[i].playTime > CurrentTime && soundQueue[i].seqID != 0xFF) {
       // Track the latest time any existing sequence event is scheduled
       if (soundQueue[i].playTime > maxExistingPlayTime) {
         maxExistingPlayTime = soundQueue[i].playTime;
+        blockingSeqID = soundQueue[i].seqID;
       }
     }
   }
@@ -1053,8 +1055,8 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
   if (maxExistingPlayTime > 0 && newSeqStartTime <= maxExistingPlayTime) {
     if (seqID == 20) {  // SEQ_POP_BUMPER
       char buf[96];
-      sprintf(buf, "POP_BUMPER: OVERLAP REJECTED seqID=20 newSeqStart=%lu maxExistingEnd=%lu\n",
-              newSeqStartTime, maxExistingPlayTime);
+      sprintf(buf, "POP_BUMPER: OVERLAP REJECTED seqID=20 newSeqStart=%lu maxExistingEnd=%lu blockingSeqID=%d\n",
+              newSeqStartTime, maxExistingPlayTime, blockingSeqID);
       Serial.write(buf);
     }
     return false;  // True overlap - reject
