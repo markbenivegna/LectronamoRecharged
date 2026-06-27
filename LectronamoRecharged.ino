@@ -3338,7 +3338,10 @@ void HandleGamePlaySwitches(byte switchHit) {
                     lastSpinnerSoundTime = CurrentTime;
                 }
             }
-            if (spinnerHitCount[CurrentPlayer] % 4 == 0) { AddToBonus(1); }
+            if (spinnerHitCount[CurrentPlayer] % 4 == 0) {
+                AddToBonus(1);
+                PlaySoundSequence(SEQ_ADVANCE_1, 0);
+            }
             ValidateAndRegisterPlayfieldSwitch();
             break;
         }
@@ -3470,6 +3473,7 @@ void HandleGamePlaySwitches(byte switchHit) {
             QueuePendingScoreUpdate(CurrentPlayer, 300L * PlayfieldMultiplier, SEQ_SCORE_300);
             AddToBonus(1);
             PlaySoundSequence(SEQ_SCORE_300, 0);
+            PlaySoundSequence(SEQ_ADVANCE_1, 300);
             ValidateAndRegisterPlayfieldSwitch();
             break;
 
