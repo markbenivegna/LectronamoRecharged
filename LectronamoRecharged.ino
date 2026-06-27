@@ -3340,7 +3340,7 @@ void HandleGamePlaySwitches(byte switchHit) {
             }
             if (spinnerHitCount[CurrentPlayer] % 4 == 0) {
                 AddToBonus(1);
-                PlaySoundSequence(SEQ_ADVANCE_1, 0);
+                PlaySoundSequence(SEQ_ADVANCE_1, 25);
             }
             ValidateAndRegisterPlayfieldSwitch();
             break;
