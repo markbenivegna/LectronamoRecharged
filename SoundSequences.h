@@ -35,6 +35,9 @@ struct SoundStep {
 #define SEQ_ADVANCE_1          10
 #define SEQ_ADVANCE_3          11
 
+#define SEQ_SCORE_3000_WITH_ADVANCE_3    12
+#define SEQ_SCORE_5000_WITH_ADVANCE_3    13
+
 #define SEQ_POP_BUMPER         20
 #define SEQ_TILT_WARNING       21
 #define SEQ_TILT               22
