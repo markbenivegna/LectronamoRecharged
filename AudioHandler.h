@@ -35,7 +35,7 @@ struct SoundCardCommandEntry {
   unsigned long playTime;
 };
 
-#define SOUND_QUEUE_SIZE 30
+#define SOUND_QUEUE_SIZE 50
 
 struct SoundEntry {
   unsigned short soundIndex;
