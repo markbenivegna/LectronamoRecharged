@@ -299,6 +299,16 @@ struct PendingScoreUpdate {
 #define MAX_PENDING_SCORE_UPDATES 4   // One per player at a time
 PendingScoreUpdate PendingScores[MAX_PENDING_SCORE_UPDATES];
 
+// Pending bonus increments - synced with advance sound playback
+struct PendingBonusIncrement {
+  byte playerNum;
+  byte amount;                // How many to add
+  unsigned long applyTime;    // When to apply the bonus
+  boolean isActive;
+};
+#define MAX_PENDING_BONUS_INCREMENTS 2  // Usually just one, but be safe
+PendingBonusIncrement PendingBonuses[MAX_PENDING_BONUS_INCREMENTS];
+
 unsigned long BallFirstSwitchHitTime = 0;
 unsigned long BallTimeInTrough = 0;
 unsigned long GameModeStartTime = 0;
@@ -2327,6 +2337,30 @@ void AddToBonus(byte bonus) {
   }
 }
 
+// Schedule a bonus increment to happen at a future time (synced with advance sound playback)
+void ScheduleBonusIncrement(byte amount, unsigned long delayMs) {
+  for (int i = 0; i < MAX_PENDING_BONUS_INCREMENTS; i++) {
+    if (!PendingBonuses[i].isActive) {
+      PendingBonuses[i].playerNum = CurrentPlayer;
+      PendingBonuses[i].amount = amount;
+      PendingBonuses[i].applyTime = CurrentTime + delayMs;
+      PendingBonuses[i].isActive = true;
+      return;
+    }
+  }
+}
+
+// Check and apply any pending bonus increments that are due
+void CheckAndApplyPendingBonuses() {
+  for (int i = 0; i < MAX_PENDING_BONUS_INCREMENTS; i++) {
+    if (PendingBonuses[i].isActive && CurrentTime >= PendingBonuses[i].applyTime) {
+      CurrentPlayer = PendingBonuses[i].playerNum;
+      AddToBonus(PendingBonuses[i].amount);
+      PendingBonuses[i].isActive = false;
+    }
+  }
+}
+
 void PlayBonusAdvanceSound() {
   if (DEBUG_SWITCH_LOGGING) {
     Serial.write("BONUS ADVANCE SOUND PLAYED\n");
@@ -3457,7 +3491,7 @@ void HandleGamePlaySwitches(byte switchHit) {
         case SW_STANDUP_TARGET:
             isSaucerLit[CurrentPlayer] = true;
             QueuePendingScoreUpdate(CurrentPlayer, SCORE_STANDUP_TARGET * PlayfieldMultiplier, SEQ_SCORE_5000);
-            AddToBonus(1);
+            ScheduleBonusIncrement(1, 1000);  // Bonus lights when advance sound plays
             PlaySoundSequence(SEQ_SCORE_5000, 0);
             PlaySoundSequence(SEQ_ADVANCE_1, 1000);
             ValidateAndRegisterPlayfieldSwitch();
@@ -3472,7 +3506,7 @@ void HandleGamePlaySwitches(byte switchHit) {
 
         case SW_ADV_BONUS_300:
             QueuePendingScoreUpdate(CurrentPlayer, 300L * PlayfieldMultiplier, SEQ_SCORE_300);
-            AddToBonus(1);
+            ScheduleBonusIncrement(1, 550);  // Bonus lights when advance sound plays
             PlaySoundSequence(SEQ_SCORE_300, 0);
             PlaySoundSequence(SEQ_ADVANCE_1, 550);
             ValidateAndRegisterPlayfieldSwitch();
@@ -3742,8 +3776,10 @@ void loop() {
       newMachineState = RunDiagnosticsMode(MachineState, MachineStateChanged);
     } else {
       newMachineState = RunGamePlayMode(MachineState, MachineStateChanged);
+      // Check and apply any pending bonus increments (synced with advance sounds)
+      CheckAndApplyPendingBonuses();
     }
-  
+
     if (newMachineState != MachineState) {
       MachineState = newMachineState;
       MachineStateChanged = true;
