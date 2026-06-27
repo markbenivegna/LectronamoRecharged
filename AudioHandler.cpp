@@ -1157,21 +1157,21 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
   unsigned long silenceTime = playTime + silenceDuration;
   int silenceIndex = QueueSound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, silenceTime, 0xFF, 50);
 
-  // If silence tone failed to queue due to full queue, force space by clearing a future-scheduled tone
+  // If silence tone failed to queue due to full queue, force space by clearing the oldest queued tone
   // Silence tones are CRITICAL - a missing silence leaves the hardware tone locked on
-  // Clear the LATEST scheduled tone (furthest in future) to avoid disrupting imminent playback
+  // Clear the OLDEST queued tone to guarantee we free space, even if all future tones are imminent
   if (silenceIndex < 0) {
-    unsigned long latestTime = 0;
-    int latestIdx = -1;
+    unsigned long oldestTime = 999999999UL;
+    int oldestIdx = -1;
     for (int i = 0; i < SOUND_QUEUE_SIZE; i++) {
-      if (soundQueue[i].playTime > silenceTime && soundQueue[i].playTime > latestTime) {
-        latestTime = soundQueue[i].playTime;
-        latestIdx = i;
+      if (soundQueue[i].playTime > 0 && soundQueue[i].playTime < oldestTime) {
+        oldestTime = soundQueue[i].playTime;
+        oldestIdx = i;
       }
     }
-    if (latestIdx >= 0) {
-      soundQueue[latestIdx].playTime = 0;
-      soundQueue[latestIdx].seqID = 0xFF;
+    if (oldestIdx >= 0) {
+      soundQueue[oldestIdx].playTime = 0;
+      soundQueue[oldestIdx].seqID = 0xFF;
       // Retry queueing the silence tone
       silenceIndex = QueueSound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, silenceTime, 0xFF, 50);
     }
@@ -1233,19 +1233,19 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
       int silIdx = QueueSound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, toneSilenceTime, 0xFF, 50);
 
       // If silence tone failed to queue due to full queue, force space and retry
-      // Clear the LATEST scheduled tone (furthest in future) to avoid disrupting imminent playback
+      // Clear the OLDEST queued tone to guarantee we free space
       if (silIdx < 0) {
-        unsigned long latestTime = 0;
-        int latestIdx = -1;
+        unsigned long oldestTime = 999999999UL;
+        int oldestIdx = -1;
         for (int i = 0; i < SOUND_QUEUE_SIZE; i++) {
-          if (soundQueue[i].playTime > toneSilenceTime && soundQueue[i].playTime > latestTime) {
-            latestTime = soundQueue[i].playTime;
-            latestIdx = i;
+          if (soundQueue[i].playTime > 0 && soundQueue[i].playTime < oldestTime) {
+            oldestTime = soundQueue[i].playTime;
+            oldestIdx = i;
           }
         }
-        if (latestIdx >= 0) {
-          soundQueue[latestIdx].playTime = 0;
-          soundQueue[latestIdx].seqID = 0xFF;
+        if (oldestIdx >= 0) {
+          soundQueue[oldestIdx].playTime = 0;
+          soundQueue[oldestIdx].seqID = 0xFF;
           // Retry queueing the silence tone
           silIdx = QueueSound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, toneSilenceTime, 0xFF, 50);
         }
