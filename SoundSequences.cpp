@@ -107,7 +107,7 @@ const SoundStep SEQ_ADVANCE_1_Data[] PROGMEM = {
 
 const SoundStep SEQ_ADVANCE_3_Data[] PROGMEM = {
   {SND_ADD_BONUS, 0},
-  {SND_ADD_BONUS, 175},
+  {SND_ADD_BONUS, 200},
   {SND_ADD_BONUS, 400},
   {0xFF, 0}
 };
@@ -229,7 +229,7 @@ unsigned int PlaySoundSequence(byte seqID, unsigned long startOffset) {
   // Interrupts current sequence, but only clears that sequence's queued sounds
   Audio.QueueSequence(seqID, startOffset);
 
-  unsigned int silenceDuration = 60;  // Tighter timing: 60ms silences
+  unsigned int silenceDuration = 75;  // Dick's timing: 75ms silences
   unsigned int duration = maxGap + silenceDuration;
 
   // Return total duration for caller's timing reference
