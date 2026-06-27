@@ -1156,6 +1156,26 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
   }
   unsigned long silenceTime = playTime + silenceDuration;
   int silenceIndex = QueueSound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, silenceTime, 0xFF, 50);
+
+  // If silence tone failed to queue due to full queue, force space by clearing the oldest queued entry
+  // Silence tones are CRITICAL - a missing silence leaves the hardware tone locked on
+  if (silenceIndex < 0) {
+    unsigned long oldestTime = ULONG_MAX;
+    int oldestIdx = -1;
+    for (int i = 0; i < SOUND_QUEUE_SIZE; i++) {
+      if (soundQueue[i].playTime > 0 && soundQueue[i].playTime < oldestTime) {
+        oldestTime = soundQueue[i].playTime;
+        oldestIdx = i;
+      }
+    }
+    if (oldestIdx >= 0) {
+      soundQueue[oldestIdx].playTime = 0;
+      soundQueue[oldestIdx].seqID = 0xFF;
+      // Retry queueing the silence tone
+      silenceIndex = QueueSound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, silenceTime, 0xFF, 50);
+    }
+  }
+
   // Mark silence as part of this sequence too
   if (silenceIndex >= 0) {
     soundQueue[silenceIndex].seqID = seqID;
@@ -1210,6 +1230,25 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
       }
       unsigned long toneSilenceTime = tonePlayTime + silenceDuration;
       int silIdx = QueueSound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, toneSilenceTime, 0xFF, 50);
+
+      // If silence tone failed to queue due to full queue, force space and retry
+      if (silIdx < 0) {
+        unsigned long oldestTime = ULONG_MAX;
+        int oldestIdx = -1;
+        for (int i = 0; i < SOUND_QUEUE_SIZE; i++) {
+          if (soundQueue[i].playTime > 0 && soundQueue[i].playTime < oldestTime) {
+            oldestTime = soundQueue[i].playTime;
+            oldestIdx = i;
+          }
+        }
+        if (oldestIdx >= 0) {
+          soundQueue[oldestIdx].playTime = 0;
+          soundQueue[oldestIdx].seqID = 0xFF;
+          // Retry queueing the silence tone
+          silIdx = QueueSound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, toneSilenceTime, 0xFF, 50);
+        }
+      }
+
       if (silIdx >= 0) {
         soundQueue[silIdx].seqID = seqID;
       }
