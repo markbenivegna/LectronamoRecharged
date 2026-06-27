@@ -99,16 +99,17 @@ const SoundStep SEQ_SCORE_10000_Data[] PROGMEM = {
   {0xFF, 0}
 };
 
-// Advance bonus sounds — laser tone (SND_ADD_BONUS)
+// Advance bonus sounds — laser tone (SND_ADD_BONUS) — extended slightly for presence
 const SoundStep SEQ_ADVANCE_1_Data[] PROGMEM = {
   {SND_ADD_BONUS, 0},
+  {SND_ADD_BONUS, 100},
   {0xFF, 0}
 };
 
 const SoundStep SEQ_ADVANCE_3_Data[] PROGMEM = {
   {SND_ADD_BONUS, 0},
-  {SND_ADD_BONUS, 250},
-  {SND_ADD_BONUS, 500},
+  {SND_ADD_BONUS, 300},
+  {SND_ADD_BONUS, 600},
   {0xFF, 0}
 };
 
