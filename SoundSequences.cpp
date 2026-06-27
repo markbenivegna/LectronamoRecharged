@@ -107,8 +107,8 @@ const SoundStep SEQ_ADVANCE_1_Data[] PROGMEM = {
 
 const SoundStep SEQ_ADVANCE_3_Data[] PROGMEM = {
   {SND_ADD_BONUS, 0},
-  {SND_ADD_BONUS, 200},
-  {SND_ADD_BONUS, 400},
+  {SND_ADD_BONUS, 250},
+  {SND_ADD_BONUS, 500},
   {0xFF, 0}
 };
 
