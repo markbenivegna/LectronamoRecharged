@@ -112,6 +112,29 @@ const SoundStep SEQ_ADVANCE_3_Data[] PROGMEM = {
   {0xFF, 0}
 };
 
+// Combined score + advance sequences (interleaved)
+const SoundStep SEQ_SCORE_3000_WITH_ADVANCE_3_Data[] PROGMEM = {
+  {SND_1000_POINTS, 0},      // Score tone
+  {SND_ADD_BONUS, 100},      // Advance tone 1
+  {SND_1000_POINTS, 175},    // Score tone
+  {SND_ADD_BONUS, 250},      // Advance tone 2
+  {SND_1000_POINTS, 400},    // Score tone
+  {SND_ADD_BONUS, 500},      // Advance tone 3
+  {0xFF, 0}
+};
+
+const SoundStep SEQ_SCORE_5000_WITH_ADVANCE_3_Data[] PROGMEM = {
+  {SND_1000_POINTS, 0},      // Score tone 1
+  {SND_ADD_BONUS, 100},      // Advance tone 1
+  {SND_1000_POINTS, 175},    // Score tone 2
+  {SND_ADD_BONUS, 250},      // Advance tone 2
+  {SND_1000_POINTS, 400},    // Score tone 3
+  {SND_ADD_BONUS, 500},      // Advance tone 3
+  {SND_1000_POINTS, 600},    // Score tone 4
+  {SND_1000_POINTS, 800},    // Score tone 5
+  {0xFF, 0}
+};
+
 // Game event sounds
 const SoundStep SEQ_POP_BUMPER_Data[] PROGMEM = {
   {SND_POP_BUMPER, 0},
@@ -179,7 +202,9 @@ const SoundStep* const SoundSequenceTable[] PROGMEM = {
   SEQ_SCORE_10_Data,         // 9 (10-point score)
   SEQ_ADVANCE_1_Data,        // 10
   SEQ_ADVANCE_3_Data,        // 11
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, // 12-19 (unused)
+  SEQ_SCORE_3000_WITH_ADVANCE_3_Data,  // 12
+  SEQ_SCORE_5000_WITH_ADVANCE_3_Data,  // 13
+  NULL, NULL, NULL, NULL, NULL, NULL, // 14-19 (unused)
   SEQ_POP_BUMPER_Data,       // 20
   SEQ_TILT_WARNING_Data,     // 21
   SEQ_TILT_Data,             // 22
