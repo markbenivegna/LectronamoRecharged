@@ -3459,6 +3459,7 @@ void HandleGamePlaySwitches(byte switchHit) {
             QueuePendingScoreUpdate(CurrentPlayer, SCORE_STANDUP_TARGET * PlayfieldMultiplier, SEQ_SCORE_5000);
             AddToBonus(1);
             PlaySoundSequence(SEQ_SCORE_5000, 0);
+            PlaySoundSequence(SEQ_ADVANCE_1, 600);
             ValidateAndRegisterPlayfieldSwitch();
             break;
 
