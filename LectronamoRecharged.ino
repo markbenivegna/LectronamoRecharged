@@ -3373,7 +3373,7 @@ void HandleGamePlaySwitches(byte switchHit) {
                 }
             }
             if (spinnerHitCount[CurrentPlayer] % 4 == 0) {
-                AddToBonus(1);
+                ScheduleBonusIncrement(1, 25);  // Bonus lights when advance sound plays
                 PlaySoundSequence(SEQ_ADVANCE_1, 25);
             }
             ValidateAndRegisterPlayfieldSwitch();
@@ -3427,11 +3427,11 @@ void HandleGamePlaySwitches(byte switchHit) {
                 // Lit T1: always play ADVANCE_3 (3 bonus advances)
                 if (DEBUG_MESSAGES) Serial.print("T1 lit: Bonus="); Serial.print(Bonus[CurrentPlayer]); Serial.println(" → ADVANCE_3");
                 QueuePendingScoreUpdate(CurrentPlayer, 5000L * PlayfieldMultiplier, SEQ_ADVANCE_3);
+                ScheduleBonusIncrement(3, 0);  // Bonus lights when advance sound plays
                 PlaySoundSequence(SEQ_ADVANCE_3, 0);
-                AddToBonus(3);
             } else {
                 CurrentScores[CurrentPlayer] += 1000L * PlayfieldMultiplier;
-                AddToBonus(1);
+                ScheduleBonusIncrement(1, 0);  // Bonus lights when score sound plays
                 PlaySoundSequence(SEQ_SCORE_1000, 0);
             }
             ValidateAndRegisterPlayfieldSwitch();
@@ -3442,7 +3442,7 @@ void HandleGamePlaySwitches(byte switchHit) {
 
              if (isArcSurgeActive[CurrentPlayer] && arcSurgeT1Hit[CurrentPlayer]) { // Arc Surge combo complete (both T1 and saucer hit)
                 QueuePendingScoreUpdate(CurrentPlayer, SCORE_ARC_SURGE_SUPER * PlayfieldMultiplier, SEQ_FANFARE_ASCENDING, 300);
-                AddToBonus(3);
+                ScheduleBonusIncrement(3, 300);  // Bonus lights when fanfare plays
                 if (DEBUG_MESSAGES) Serial.write("ARC SURGE COMPLETE - playing fanfare\n");
                 PlaySoundSequence(SEQ_FANFARE_ASCENDING, 300);
                 isArcSurgeActive[CurrentPlayer] = false;
@@ -3455,8 +3455,8 @@ void HandleGamePlaySwitches(byte switchHit) {
                     CurrentScores[CurrentPlayer] += SCORE_SKILL_SHOT * PlayfieldMultiplier;
                     if (Bonus[CurrentPlayer] < 19) {
                       if (DEBUG_MESSAGES) Serial.print("Saucer (Arc no T1): Bonus="); Serial.print(Bonus[CurrentPlayer]); Serial.println(" < 19 → ADVANCE");
+                      ScheduleBonusIncrement(3, 0);  // Bonus lights when advance sound plays
                       PlaySoundSequence(SEQ_ADVANCE_3, 0);
-                      AddToBonus(3);
                     } else {
                       if (DEBUG_MESSAGES) Serial.print("Saucer (Arc no T1): Bonus="); Serial.print(Bonus[CurrentPlayer]); Serial.println(" >= 19 → SCORE");
                       PlaySoundSequence(SEQ_SCORE_5000, 0);
@@ -3464,24 +3464,24 @@ void HandleGamePlaySwitches(byte switchHit) {
                     if (!SaucerLightPersists) isSaucerLit[CurrentPlayer] = false;
                 } else {
                     QueuePendingScoreUpdate(CurrentPlayer, 500L * PlayfieldMultiplier, SEQ_SCORE_500);
-                    AddToBonus(1);
+                    ScheduleBonusIncrement(1, 0);  // Bonus lights when score sound plays
                     PlaySoundSequence(SEQ_SCORE_500, 0);
                 }
              } else if (!firstHitMade[CurrentPlayer] && !CollectBonusViaKicker) { // Skill shot (not during bonus collect)
                  QueuePendingScoreUpdate(CurrentPlayer, SCORE_SKILL_SHOT * PlayfieldMultiplier, SEQ_FANFARE_ASCENDING, 300);
-                 AddToBonus(3);
+                 ScheduleBonusIncrement(3, 300);  // Bonus lights when fanfare plays
                  PlaySoundSequence(SEQ_FANFARE_ASCENDING, 300);
                  SkillShotAnimationStart = CurrentTime;
             } else if (isSaucerLit[CurrentPlayer]) {
                  // Lit saucer: always play ADVANCE_3 (3 bonus advances)
                  if (DEBUG_MESSAGES) Serial.print("Saucer (lit): Bonus="); Serial.print(Bonus[CurrentPlayer]); Serial.println(" → ADVANCE_3");
                  QueuePendingScoreUpdate(CurrentPlayer, SCORE_SKILL_SHOT * PlayfieldMultiplier, SEQ_ADVANCE_3);
+                 ScheduleBonusIncrement(3, 0);  // Bonus lights when advance sound plays
                  PlaySoundSequence(SEQ_ADVANCE_3, 0);
-                 AddToBonus(3);
                  if (!SaucerLightPersists) isSaucerLit[CurrentPlayer] = false;
             } else {
                  QueuePendingScoreUpdate(CurrentPlayer, 500L * PlayfieldMultiplier, SEQ_SCORE_500);
-                 AddToBonus(1);
+                 ScheduleBonusIncrement(1, 0);  // Bonus lights when score sound plays
                  PlaySoundSequence(SEQ_SCORE_500, 0);
             }
             RPU_PushToTimedSolenoidStack(SOL_SAUCER, SaucerSolenoidStrength, CurrentTime + 500, false);
@@ -3521,7 +3521,7 @@ void HandleGamePlaySwitches(byte switchHit) {
         case SW_RIGHT_OUTLANE:
         case SW_LEFT_OUTLANE: {
             QueuePendingScoreUpdate(CurrentPlayer, SCORE_OUTLANE * PlayfieldMultiplier, SEQ_SCORE_3000);
-            AddToBonus(3);
+            ScheduleBonusIncrement(3, 0);  // Bonus lights when advance sound plays
             ValidateAndRegisterPlayfieldSwitch();
             // Only play sounds during normal gameplay
             if (MachineState == MACHINE_STATE_NORMAL_GAMEPLAY) {
