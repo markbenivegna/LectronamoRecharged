@@ -1160,7 +1160,7 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
   // If silence tone failed to queue due to full queue, force space by clearing the oldest queued entry
   // Silence tones are CRITICAL - a missing silence leaves the hardware tone locked on
   if (silenceIndex < 0) {
-    unsigned long oldestTime = ULONG_MAX;
+    unsigned long oldestTime = 999999999UL;
     int oldestIdx = -1;
     for (int i = 0; i < SOUND_QUEUE_SIZE; i++) {
       if (soundQueue[i].playTime > 0 && soundQueue[i].playTime < oldestTime) {
