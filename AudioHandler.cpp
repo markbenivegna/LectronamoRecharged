@@ -1161,6 +1161,10 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
   // Silence tones are CRITICAL - a missing silence leaves the hardware tone locked on
   // Only clear tones scheduled >500ms in future to avoid disrupting imminent playback
   if (silenceIndex < 0) {
+    char buf[80];
+    sprintf(buf, "SILENCE FAIL: seqID=%d @ %lu, force-clearing...\n", seqID, CurrentTime);
+    Serial.write(buf);
+
     unsigned long futureThreshold = CurrentTime + 500;
     unsigned long latestFutureTime = 0;
     int latestFutureIdx = -1;
@@ -1175,6 +1179,13 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
       soundQueue[latestFutureIdx].seqID = 0xFF;
       // Retry queueing the silence tone
       silenceIndex = QueueSound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, silenceTime, 0xFF, 50);
+      if (silenceIndex >= 0) {
+        Serial.write("  -> retry succeeded\n");
+      } else {
+        Serial.write("  -> RETRY FAILED!\n");
+      }
+    } else {
+      Serial.write("  -> no future tones to clear\n");
     }
   }
 
@@ -1236,6 +1247,10 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
       // If silence tone failed to queue due to full queue, force space and retry
       // Only clear tones scheduled >500ms in future to avoid disrupting imminent playback
       if (silIdx < 0) {
+        char buf[80];
+        sprintf(buf, "SILENCE FAIL(loop): seqID=%d tone#%d @ %lu\n", seqID, currentToneIdx, CurrentTime);
+        Serial.write(buf);
+
         unsigned long futureThreshold = CurrentTime + 500;
         unsigned long latestFutureTime = 0;
         int latestFutureIdx = -1;
@@ -1250,6 +1265,13 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
           soundQueue[latestFutureIdx].seqID = 0xFF;
           // Retry queueing the silence tone
           silIdx = QueueSound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, toneSilenceTime, 0xFF, 50);
+          if (silIdx >= 0) {
+            Serial.write("  -> retry OK\n");
+          } else {
+            Serial.write("  -> RETRY FAILED!\n");
+          }
+        } else {
+          Serial.write("  -> no future tones\n");
         }
       }
 
