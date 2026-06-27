@@ -3459,7 +3459,7 @@ void HandleGamePlaySwitches(byte switchHit) {
             QueuePendingScoreUpdate(CurrentPlayer, SCORE_STANDUP_TARGET * PlayfieldMultiplier, SEQ_SCORE_5000);
             AddToBonus(1);
             PlaySoundSequence(SEQ_SCORE_5000, 0);
-            PlaySoundSequence(SEQ_ADVANCE_1, 600);
+            PlaySoundSequence(SEQ_ADVANCE_1, 1000);
             ValidateAndRegisterPlayfieldSwitch();
             break;
 
@@ -3474,7 +3474,7 @@ void HandleGamePlaySwitches(byte switchHit) {
             QueuePendingScoreUpdate(CurrentPlayer, 300L * PlayfieldMultiplier, SEQ_SCORE_300);
             AddToBonus(1);
             PlaySoundSequence(SEQ_SCORE_300, 0);
-            PlaySoundSequence(SEQ_ADVANCE_1, 300);
+            PlaySoundSequence(SEQ_ADVANCE_1, 550);
             ValidateAndRegisterPlayfieldSwitch();
             break;
 
