@@ -21,9 +21,9 @@ extern unsigned long CurrentTime;
 // Sequence definitions (PROGMEM - each step is {tone, gap_ms})
 // Sentinel: {0xFF, 0}
 
-// Score sequences — each plays the appropriate tone(s) with 175ms base spacing
-// Silence automatically inserted after each tone at gap_ms + 60ms (tighter timing)
-// Note: 175ms gap ensures tones don't queue until previous silence (60ms) finishes
+// Score sequences — each plays the appropriate tone(s) with 150ms base spacing
+// Silence automatically inserted after each tone at gap_ms + 75ms
+// Note: 150ms gap ensures tones don't queue until previous silence (75ms) finishes
 const SoundStep SEQ_SCORE_10_Data[] PROGMEM = {
   {SND_10_POINTS, 0},
   {0xFF, 0}
@@ -36,14 +36,14 @@ const SoundStep SEQ_SCORE_100_Data[] PROGMEM = {
 
 const SoundStep SEQ_SCORE_300_Data[] PROGMEM = {
   {SND_100_POINTS, 0},
-  {SND_100_POINTS, 175},
+  {SND_100_POINTS, 150},
   {SND_100_POINTS, 400},
   {0xFF, 0}
 };
 
 const SoundStep SEQ_SCORE_500_Data[] PROGMEM = {
   {SND_100_POINTS, 0},
-  {SND_100_POINTS, 175},
+  {SND_100_POINTS, 150},
   {SND_100_POINTS, 400},
   {SND_100_POINTS, 600},
   {SND_100_POINTS, 800},
@@ -57,14 +57,14 @@ const SoundStep SEQ_SCORE_1000_Data[] PROGMEM = {
 
 const SoundStep SEQ_SCORE_3000_Data[] PROGMEM = {
   {SND_1000_POINTS, 0},
-  {SND_1000_POINTS, 175},
+  {SND_1000_POINTS, 150},
   {SND_1000_POINTS, 400},
   {0xFF, 0}
 };
 
 const SoundStep SEQ_SCORE_5000_Data[] PROGMEM = {
   {SND_1000_POINTS, 0},
-  {SND_1000_POINTS, 175},
+  {SND_1000_POINTS, 150},
   {SND_1000_POINTS, 400},
   {SND_1000_POINTS, 600},
   {SND_1000_POINTS, 800},
@@ -73,7 +73,7 @@ const SoundStep SEQ_SCORE_5000_Data[] PROGMEM = {
 
 const SoundStep SEQ_SCORE_6000_Data[] PROGMEM = {
   {SND_1000_POINTS, 0},
-  {SND_1000_POINTS, 175},
+  {SND_1000_POINTS, 150},
   {SND_1000_POINTS, 400},
   {SND_1000_POINTS, 600},
   {SND_1000_POINTS, 800},
@@ -83,7 +83,7 @@ const SoundStep SEQ_SCORE_6000_Data[] PROGMEM = {
 
 const SoundStep SEQ_SCORE_9000_Data[] PROGMEM = {
   {SND_1000_POINTS, 0},
-  {SND_1000_POINTS, 175},
+  {SND_1000_POINTS, 150},
   {SND_1000_POINTS, 400},
   {SND_1000_POINTS, 600},
   {SND_1000_POINTS, 800},
@@ -116,7 +116,7 @@ const SoundStep SEQ_ADVANCE_3_Data[] PROGMEM = {
 const SoundStep SEQ_SCORE_3000_WITH_ADVANCE_3_Data[] PROGMEM = {
   {SND_1000_POINTS, 0},      // Score tone
   {SND_ADD_BONUS, 100},      // Advance tone 1
-  {SND_1000_POINTS, 175},    // Score tone
+  {SND_1000_POINTS, 150},    // Score tone
   {SND_ADD_BONUS, 250},      // Advance tone 2
   {SND_1000_POINTS, 400},    // Score tone
   {SND_ADD_BONUS, 500},      // Advance tone 3
@@ -126,7 +126,7 @@ const SoundStep SEQ_SCORE_3000_WITH_ADVANCE_3_Data[] PROGMEM = {
 const SoundStep SEQ_SCORE_5000_WITH_ADVANCE_3_Data[] PROGMEM = {
   {SND_1000_POINTS, 0},      // Score tone 1
   {SND_ADD_BONUS, 100},      // Advance tone 1
-  {SND_1000_POINTS, 175},    // Score tone 2
+  {SND_1000_POINTS, 150},    // Score tone 2
   {SND_ADD_BONUS, 250},      // Advance tone 2
   {SND_1000_POINTS, 400},    // Score tone 3
   {SND_ADD_BONUS, 500},      // Advance tone 3
@@ -166,7 +166,7 @@ const SoundStep SEQ_BONUS_COUNT_Data[] PROGMEM = {
 // Drain sound — 3-tone dramatic warning (fast mid, mid, then deep)
 const SoundStep SEQ_DRAIN_Data[] PROGMEM = {
   {SND_1000_POINTS, 0},
-  {SND_1000_POINTS, 175},
+  {SND_1000_POINTS, 150},
   {SND_10000_POINTS, 700},
   {0xFF, 0}
 };
