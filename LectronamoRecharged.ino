@@ -23,8 +23,12 @@
 
 #define GAME_MAJOR_VERSION  2026
 #define GAME_MINOR_VERSION  1
-#define DEBUG_MESSAGES  1
-#define DEBUG_SWITCH_LOGGING  1
+// Phantom sound investigation (2026-07-07): set to 0 to test whether blocking serial
+// I/O during rapid-fire sequences (esp. bonus countdown) contributes to loop stalls.
+// Companion to AUDIO_DEBUG_LOGGING in AudioHandler.cpp - flip both back to 1 together
+// to restore full diagnostic logging for register-write logging work.
+#define DEBUG_MESSAGES  0
+#define DEBUG_SWITCH_LOGGING  0
 
 #if (DEBUG_MESSAGES==1)
 #define DEBUG_SHOW_LOOPS_PER_SECOND
@@ -2819,6 +2823,15 @@ int ManageGameMode() {
 
   }
 
+  // Spinner streak reset: once the spinner has been idle past the same 1500ms window
+  // used for the credit-display spin count, clear the hit counter so the next streak
+  // starts fresh - progress toward the every-4th-spin bonus advance doesn't carry
+  // across separate streaks.
+  if (spinnerHitCount[CurrentPlayer] != 0 && LastSpinnerHitTime > 0 &&
+      (CurrentTime - LastSpinnerHitTime) >= 1500) {
+    spinnerHitCount[CurrentPlayer] = 0;
+  }
+
   if ( !statusRunning && !specialAnimationRunning && NumTiltWarnings <= MaxTiltWarnings ) {
     ShowBonusLamps();
     ShowBonusXLamps();
@@ -3312,7 +3325,13 @@ void HandleGamePlaySwitches(byte switchHit) {
 
     switch (switchHit) {
         case SW_KICKER:
-            if (!KickerBonusCollect) {
+            // Ignore closures inside the eject lockout window: they're bounces/chatter
+            // from the ball leaving during the post-collect eject, not a new ball
+            // landing. Without this guard, chatter re-arms KickerBonusCollect and
+            // re-runs the whole collect->eject cycle = intermittent double-fire
+            // after bonus collect.
+            if (!KickerBonusCollect &&
+                (KickerEjectTime == 0 || (CurrentTime - KickerEjectTime) >= KICKER_EJECT_LOCKOUT_MS)) {
                 isArcSurgeActive[CurrentPlayer] = false;
                 arcSurgeT1Hit[CurrentPlayer] = false;
                 KickerBonusCollect = true;
@@ -3425,7 +3444,7 @@ void HandleGamePlaySwitches(byte switchHit) {
                 // Arc Surge stays active - saucer completes the combo
             } else if (isSaucerLit[CurrentPlayer]) {
                 // Lit T1: always play ADVANCE_3 (3 bonus advances)
-                if (DEBUG_MESSAGES) Serial.print("T1 lit: Bonus="); Serial.print(Bonus[CurrentPlayer]); Serial.println(" → ADVANCE_3");
+                if (DEBUG_MESSAGES) { Serial.print("T1 lit: Bonus="); Serial.print(Bonus[CurrentPlayer]); Serial.println(" → ADVANCE_3"); }
                 QueuePendingScoreUpdate(CurrentPlayer, 5000L * PlayfieldMultiplier, SEQ_SCORE_5000_WITH_ADVANCE_3);
                 ScheduleBonusIncrement(3, 0);  // Bonus lights when advance sound plays
                 PlaySoundSequence(SEQ_SCORE_5000_WITH_ADVANCE_3, 0);
@@ -3454,11 +3473,11 @@ void HandleGamePlaySwitches(byte switchHit) {
                 if (isSaucerLit[CurrentPlayer]) {
                     CurrentScores[CurrentPlayer] += SCORE_SKILL_SHOT * PlayfieldMultiplier;
                     if (Bonus[CurrentPlayer] < 19) {
-                      if (DEBUG_MESSAGES) Serial.print("Saucer (Arc no T1): Bonus="); Serial.print(Bonus[CurrentPlayer]); Serial.println(" < 19 → ADVANCE");
+                      if (DEBUG_MESSAGES) { Serial.print("Saucer (Arc no T1): Bonus="); Serial.print(Bonus[CurrentPlayer]); Serial.println(" < 19 → ADVANCE"); }
                       ScheduleBonusIncrement(3, 0);  // Bonus lights when advance sound plays
                       PlaySoundSequence(SEQ_SCORE_5000_WITH_ADVANCE_3, 0);
                     } else {
-                      if (DEBUG_MESSAGES) Serial.print("Saucer (Arc no T1): Bonus="); Serial.print(Bonus[CurrentPlayer]); Serial.println(" >= 19 → SCORE");
+                      if (DEBUG_MESSAGES) { Serial.print("Saucer (Arc no T1): Bonus="); Serial.print(Bonus[CurrentPlayer]); Serial.println(" >= 19 → SCORE"); }
                       PlaySoundSequence(SEQ_SCORE_5000, 0);
                     }
                     if (!SaucerLightPersists) isSaucerLit[CurrentPlayer] = false;
@@ -3474,7 +3493,7 @@ void HandleGamePlaySwitches(byte switchHit) {
                  SkillShotAnimationStart = CurrentTime;
             } else if (isSaucerLit[CurrentPlayer]) {
                  // Lit saucer: always play ADVANCE_3 (3 bonus advances)
-                 if (DEBUG_MESSAGES) Serial.print("Saucer (lit): Bonus="); Serial.print(Bonus[CurrentPlayer]); Serial.println(" → ADVANCE_3");
+                 if (DEBUG_MESSAGES) { Serial.print("Saucer (lit): Bonus="); Serial.print(Bonus[CurrentPlayer]); Serial.println(" → ADVANCE_3"); }
                  QueuePendingScoreUpdate(CurrentPlayer, SCORE_SKILL_SHOT * PlayfieldMultiplier, SEQ_SCORE_5000_WITH_ADVANCE_3);
                  ScheduleBonusIncrement(3, 0);  // Bonus lights when advance sound plays
                  PlaySoundSequence(SEQ_SCORE_5000_WITH_ADVANCE_3, 0);
@@ -3526,7 +3545,7 @@ void HandleGamePlaySwitches(byte switchHit) {
             // Only play sounds during normal gameplay
             if (MachineState == MACHINE_STATE_NORMAL_GAMEPLAY) {
               // Always: advance +3, then drain (unless ball saved)
-              if (DEBUG_MESSAGES) Serial.print("Outlane: Bonus="); Serial.print(Bonus[CurrentPlayer]); Serial.println(" → ADVANCE + DRAIN");
+              if (DEBUG_MESSAGES) { Serial.print("Outlane: Bonus="); Serial.print(Bonus[CurrentPlayer]); Serial.println(" → ADVANCE + DRAIN"); }
               unsigned int advanceDuration = PlaySoundSequence(SEQ_SCORE_3000_WITH_ADVANCE_3, 0);
               // Don't play drain sound if ball save is active (check from first switch hit, now set by ValidateAndRegisterPlayfieldSwitch)
               boolean isBallSaveActive = (BallFirstSwitchHitTime != 0 &&
@@ -3743,12 +3762,15 @@ void loop() {
   CurrentTime = millis();
   int newMachineState = MachineState;
 
-  // Debug: send 'G' for game over, 'S' for startup, 'D' for drain
+  // Debug: send 'G' for game over, 'S' for startup, 'D' for drain, 'L' to dump the
+  // phantom-sound tone write log (see Audio.DumpToneWriteLog() - safe to send anytime,
+  // e.g. right after hearing a phantom, to see what was written leading up to it)
   if (Serial.available()) {
     char cmd = Serial.read();
     if (cmd == 'G') PlaySoundSequence(23);
     else if (cmd == 'S') PlaySoundSequence(26);
     else if (cmd == 'D') PlaySoundSequence(27);
+    else if (cmd == 'L') Audio.DumpToneWriteLog();
   }
 
 #ifdef DEBUG_SHOW_LOOPS_PER_SECOND

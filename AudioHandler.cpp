@@ -49,6 +49,14 @@
 
 extern unsigned long CurrentTime;
 
+// Phantom sound investigation (2026-07-03): the debug logging below in
+// QueueSequence()/ServiceSoundQueue() is unconditional (fires on every queue/play
+// event, not gated by DEBUG_MESSAGES) and runs on 115200 baud Serial, which blocks
+// once the 64-byte HW TX buffer fills. During rapid-fire sequences (e.g. bonus
+// countdown, ~every 175ms) this could stall the main loop long enough for queued
+// tones to back up and fire in rapid bursts. Set to 1 to re-enable for diagnosis.
+#define AUDIO_DEBUG_LOGGING 0
+
 
 #if defined(RPU_OS_USE_WAV_TRIGGER) || defined(RPU_OS_USE_WAV_TRIGGER_1p3)
 // **************************************************************
@@ -919,10 +927,22 @@ void AudioHandler::ClearSoundQueue() {
   activeSequence.pausedIsProtected = false;
   activeSequence.pausedStartTime = 0;
   activeSequence.pausedStartOffset = 0;
+
+  // Tone lock-on fix (2026-07-08, captured in tone write log): wiping the queue can
+  // delete a silence that was already owed to a tone currently latched on the SB-100
+  // (e.g. bonus-collect end cleared mid-SCORE_500, leaving 0x02 latched for >1s).
+  // The queue is empty now, so nothing will silence the hardware unless we do it here.
+  // Gated on sb100ToneLatched: stays a no-op at constructor time (before the bus is
+  // initialized) and whenever the hardware is already silent.
+#ifdef RPU_OS_USE_SB100
+  if (sb100ToneLatched) {
+    PlaySound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS);
+  }
+#endif
 }
 
 
-boolean AudioHandler::PlaySound(unsigned short soundIndex, byte audioType, byte overrideVolume) {
+boolean AudioHandler::PlaySound(unsigned short soundIndex, byte audioType, byte overrideVolume, byte seqID) {
 
   boolean soundPlayed = false;
   int gain = soundFXGain;
@@ -947,7 +967,18 @@ boolean AudioHandler::PlaySound(unsigned short soundIndex, byte audioType, byte 
     soundPlayed = true;
 #endif
 #ifdef RPU_OS_USE_SB100
+    // Phantom sound investigation: passive log only, no Serial call here.
+    toneWriteLog[toneWriteLogIndex].timestamp = CurrentTime;
+    toneWriteLog[toneWriteLogIndex].value = (byte)soundIndex;
+    toneWriteLog[toneWriteLogIndex].seqID = seqID;
+    toneWriteLogIndex++;
+    if (toneWriteLogIndex >= TONE_WRITE_LOG_SIZE) {
+      toneWriteLogIndex = 0;
+      toneWriteLogWrapped = true;
+    }
+
     RPU_PlaySB100((byte)soundIndex);
+    sb100ToneLatched = (soundIndex != 0);
     soundPlayed = true;
 #endif
   } else if (audioType==AUDIO_PLAY_TYPE_WAV_TRIGGER) {
@@ -964,7 +995,26 @@ boolean AudioHandler::PlaySound(unsigned short soundIndex, byte audioType, byte 
   (void)gain;
   (void)soundIndex;
 
-  return soundPlayed;  
+  return soundPlayed;
+}
+
+
+// Phantom sound investigation (2026-07-07): dump the tone write log to Serial.
+// Call this on demand (e.g. via a serial command) AFTER hearing a phantom, never
+// during active gameplay - this is the only place in this logging system that
+// touches Serial, deliberately kept out of the hot path.
+void AudioHandler::DumpToneWriteLog() {
+  Serial.write("=== TONE WRITE LOG ===\n");
+  byte startIdx = toneWriteLogWrapped ? toneWriteLogIndex : 0;
+  byte count = toneWriteLogWrapped ? TONE_WRITE_LOG_SIZE : toneWriteLogIndex;
+  for (byte i = 0; i < count; i++) {
+    byte idx = (startIdx + i) % TONE_WRITE_LOG_SIZE;
+    char buf[48];
+    sprintf(buf, "%lu  val=0x%02X  seq=%d\n",
+            toneWriteLog[idx].timestamp, toneWriteLog[idx].value, toneWriteLog[idx].seqID);
+    Serial.write(buf);
+  }
+  Serial.write("=== END LOG ===\n");
 }
 
 
@@ -1014,6 +1064,7 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
     return false;
   }
 
+#if AUDIO_DEBUG_LOGGING
   // Comprehensive sequence logging for ALL sequences (not just pop-bumpers)
   const char* seqName = "UNKNOWN";
   switch (seqID) {
@@ -1045,6 +1096,7 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
   sprintf(buf, "SEQ: QUEUE %s (id=%d) @ CurrentTime=%lu offset=%lu\n",
           seqName, seqID, CurrentTime, startOffset);
   Serial.write(buf);
+#endif
 
   // Read first step
   SoundStep firstStep;
@@ -1093,12 +1145,14 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
           clearedCount++;
         }
       }
+#if AUDIO_DEBUG_LOGGING
       if (clearedCount > 0) {
         char buf[96];
         sprintf(buf, "POP_BUMPER: CLEARED BLOCKING seqID=%d (cleared %d tones) @ CurrentTime=%lu\n",
                 blockingSeqID, clearedCount, CurrentTime);
         Serial.write(buf);
       }
+#endif
       // Pop-bumper proceeds (not rejected)
     } else if (blockingSeqID == activeSequence.pausedSeqID) {
       // For other sequences: if blocking sequence is paused, clear it
@@ -1137,6 +1191,28 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
 
   // Start this sequence as active
   unsigned long playTime = CurrentTime + startOffset + firstStep.gap_ms;
+
+  // Phantom sound investigation (2026-07-07, revised): the narrower "clear only the
+  // identified blockingSeqID" approach above missed cases where the interrupted
+  // sequence's OWN still-pending trailing silence wasn't the one flagged as
+  // blocking (confirmed via tone write log: a SCORE_500 sequence's own silence fired
+  // 59ms late, landing inside what should have been a clean Pop Bumper tone window).
+  // Fix: for Pop Bumper specifically, unconditionally sweep and clear ANY queue entry
+  // (any seqID) scheduled to land between now and when Pop Bumper's own silence will
+  // fire, then always force an immediate silence first. In the normal, no-collision
+  // case this finds nothing to clear and just adds one harmless extra silence write.
+  if (seqID == 20) {
+    unsigned long popBumperWindowEnd = CurrentTime + 76;  // covers tone + its own 75ms silence
+    for (int i = 0; i < SOUND_QUEUE_SIZE; i++) {
+      if (soundQueue[i].playTime > CurrentTime && soundQueue[i].playTime <= popBumperWindowEnd) {
+        soundQueue[i].playTime = 0;
+        soundQueue[i].seqID = 0xFF;
+      }
+    }
+    QueueSound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, CurrentTime, 0xFF, 50);
+    if (playTime <= CurrentTime) playTime = CurrentTime + 1;
+  }
+
   int toneIndex = QueueSound(firstStep.tone, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, playTime, 0xFF, 50);
   if (toneIndex < 0) {
     return false;
@@ -1161,9 +1237,11 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
   // Silence tones are CRITICAL - a missing silence leaves the hardware tone locked on
   // Only clear tones scheduled >500ms in future to avoid disrupting imminent playback
   if (silenceIndex < 0) {
+#if AUDIO_DEBUG_LOGGING
     char buf[80];
     sprintf(buf, "SILENCE FAIL: seqID=%d @ %lu, force-clearing...\n", seqID, CurrentTime);
     Serial.write(buf);
+#endif
 
     unsigned long futureThreshold = CurrentTime + 500;
     unsigned long latestFutureTime = 0;
@@ -1179,13 +1257,17 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
       soundQueue[latestFutureIdx].seqID = 0xFF;
       // Retry queueing the silence tone
       silenceIndex = QueueSound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, silenceTime, 0xFF, 50);
+#if AUDIO_DEBUG_LOGGING
       if (silenceIndex >= 0) {
         Serial.write("  -> retry succeeded\n");
       } else {
         Serial.write("  -> RETRY FAILED!\n");
       }
+#endif
     } else {
+#if AUDIO_DEBUG_LOGGING
       Serial.write("  -> no future tones to clear\n");
+#endif
     }
   }
 
@@ -1224,12 +1306,14 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
       int idx = QueueSound(step.tone, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, tonePlayTime, 0xFF, 50);
       if (idx >= 0) {
         soundQueue[idx].seqID = seqID;
+#if AUDIO_DEBUG_LOGGING
         if (seqID == 20) {  // SEQ_POP_BUMPER
           char buf[96];
           sprintf(buf, "POP_BUMPER: TONE QUEUED idx=%d tone=0x%02X playTime=%lu\n",
                   idx, step.tone, tonePlayTime);
           Serial.write(buf);
         }
+#endif
       }
 
       // Queue silence after this tone
@@ -1247,9 +1331,11 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
       // If silence tone failed to queue due to full queue, force space and retry
       // Only clear tones scheduled >500ms in future to avoid disrupting imminent playback
       if (silIdx < 0) {
+#if AUDIO_DEBUG_LOGGING
         char buf[80];
         sprintf(buf, "SILENCE FAIL(loop): seqID=%d tone#%d @ %lu\n", seqID, currentToneIdx, CurrentTime);
         Serial.write(buf);
+#endif
 
         unsigned long futureThreshold = CurrentTime + 500;
         unsigned long latestFutureTime = 0;
@@ -1265,13 +1351,17 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
           soundQueue[latestFutureIdx].seqID = 0xFF;
           // Retry queueing the silence tone
           silIdx = QueueSound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, toneSilenceTime, 0xFF, 50);
+#if AUDIO_DEBUG_LOGGING
           if (silIdx >= 0) {
             Serial.write("  -> retry OK\n");
           } else {
             Serial.write("  -> RETRY FAILED!\n");
           }
+#endif
         } else {
+#if AUDIO_DEBUG_LOGGING
           Serial.write("  -> no future tones\n");
+#endif
         }
       }
 
@@ -1452,12 +1542,14 @@ boolean AudioHandler::ServiceSoundQueue(unsigned long currentTime) {
       popBumperCount++;
     }
   }
+#if AUDIO_DEBUG_LOGGING
   if (popBumperCount > 1) {
     char buf[96];
     sprintf(buf, "POP_BUMPER: WARNING - %d tones in queue (potential phantom layering) @ CurrentTime=%lu\n",
             popBumperCount, currentTime);
     Serial.write(buf);
   }
+#endif
 
   // Find the earliest ready sound to play
   int earliestIndex = -1;
@@ -1473,6 +1565,7 @@ boolean AudioHandler::ServiceSoundQueue(unsigned long currentTime) {
 
   // Process only the earliest sound
   if (earliestIndex >= 0) {
+#if AUDIO_DEBUG_LOGGING
     // Comprehensive logging for all tones being played
     const char* seqName = "UNKNOWN";
     switch (soundQueue[earliestIndex].seqID) {
@@ -1505,8 +1598,9 @@ boolean AudioHandler::ServiceSoundQueue(unsigned long currentTime) {
     sprintf(buf, "TONE: %s (idx=%d) tone=0x%02X @ CurrentTime=%lu\n",
             seqName, earliestIndex, soundQueue[earliestIndex].soundIndex, currentTime);
     Serial.write(buf);
+#endif
 
-    PlaySound(soundQueue[earliestIndex].soundIndex, soundQueue[earliestIndex].audioType, soundQueue[earliestIndex].overrideVolume);
+    PlaySound(soundQueue[earliestIndex].soundIndex, soundQueue[earliestIndex].audioType, soundQueue[earliestIndex].overrideVolume, soundQueue[earliestIndex].seqID);
     soundQueue[earliestIndex].playTime = 0;
     soundQueue[earliestIndex].priority = 0;
     soundCommandSent = true;
