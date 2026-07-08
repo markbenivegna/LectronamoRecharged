@@ -3021,6 +3021,12 @@ int CountdownBonus(boolean curStateChanged) {
       // Arm lockout at the moment solenoid fires (250ms from now) so it blocks bounces
       // when switch closes ~120ms later. This prevents stuck-ball detector from double-firing.
       KickerSwitchReleaseTime = CurrentTime + 250;
+      // A long countdown (high multiplier) leaves LastSwitchHitTime >25s stale because
+      // the ball sat motionless in the kicker the whole time - without this refresh,
+      // ball search fires (saucer first) on the first loop back in normal gameplay,
+      // before the kicker eject at +250ms even happens. Fresh window: the ejected
+      // ball will hit real switches within a couple of seconds.
+      LastSwitchHitTime = CurrentTime;
       Audio.ClearSoundQueue();  // Clear bonus countdown tones before resuming normal play
       return MACHINE_STATE_NORMAL_GAMEPLAY;
     }
