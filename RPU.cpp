@@ -2303,7 +2303,19 @@ void RPU_PlaySB100(byte soundByte) {
   PORTB = PORTB | 0x20;
 #endif
 
+  // Phantom sound fix (2026-07-08, approved by Mark): make the SB-100 sound write
+  // atomic against ISR(TIMER1_COMPA_vect). The ~965Hz display/lamp/switch ISR calls
+  // RPU_DataWrite on the same shared data/address pins; if it fires mid-transaction
+  // here, the sound board's latch can capture display/lamp data bits, producing a
+  // multi-bit sound byte = multiple tone generators at once (the "layered tones"
+  // phantom). Scope: this function has exactly ONE caller (AudioHandler::PlaySound,
+  // sound path only - verified) and fires at most ~once per 75ms, so interrupts are
+  // off for a few microseconds a dozen times per second. Solenoid, display, and
+  // switch writes do NOT pass through here and are unaffected - unlike the rejected
+  // 2026-07-07 change that wrapped the shared RPU_DataWrite for all callers.
+  noInterrupts();
   RPU_DataWrite(ADDRESS_SB100, soundByte);
+  interrupts();
 
 #if (RPU_OS_HARDWARE_REV==1)
   PORTB = PORTB & 0xDF;
