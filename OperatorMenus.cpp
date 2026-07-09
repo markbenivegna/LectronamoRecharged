@@ -498,13 +498,19 @@ int OperatorMenus::UpdateMenu(unsigned long currentTime) {
       ParameterChanged = false;
       if (TopLevel!=OPERATOR_MENU_RETURN_TO_GAME) {
 
-        if (NextSpeedyValueChange>1 && 
+        if (NextSpeedyValueChange>1 &&
             ( AdjustmentType==OPERATOR_MENU_ADJ_TYPE_SCORE || AdjustmentType==OPERATOR_MENU_ADJ_TYPE_SCORE_WITH_DEFAULT ||
               AdjustmentType==OPERATOR_MENU_ADJ_TYPE_SCORE_NO_DEFAULT ) ) {
-          if (CurrentAdjustmentUL && *CurrentAdjustmentUL>50000) *CurrentAdjustmentUL -= 50000;
+          if (CurrentAdjustmentUL && *CurrentAdjustmentUL>50000) {
+            *CurrentAdjustmentUL -= 50000;
+            // Persist like the enter-button paths do - without this the change only
+            // lives in RAM and silently reverts on the next parameter reload/boot
+            if (CurrentAdjustmentStorageByte) RPU_WriteULToEEProm(CurrentAdjustmentStorageByte, *CurrentAdjustmentUL);
+            ParameterChanged = true;
+          }
           NextSpeedyValueChange = 1;
           ShowParameterValue();
-        } else {                
+        } else {
           if (SubLevel==OPERATOR_MENU_NOT_ACTIVE) StartSubMenu(currentTime);
           else AdvanceSubMenu(RPU_GetUpDownSwitchState(), true, currentTime);
         }
@@ -514,13 +520,20 @@ int OperatorMenus::UpdateMenu(unsigned long currentTime) {
       ParameterChanged = false;
       if (TopLevel!=OPERATOR_MENU_RETURN_TO_GAME) {
 
-        if (NextSpeedyValueChange>1 && 
+        if (NextSpeedyValueChange>1 &&
             ( AdjustmentType==OPERATOR_MENU_ADJ_TYPE_SCORE || AdjustmentType==OPERATOR_MENU_ADJ_TYPE_SCORE_WITH_DEFAULT ||
               AdjustmentType==OPERATOR_MENU_ADJ_TYPE_SCORE_NO_DEFAULT ) ) {
-          if (CurrentAdjustmentUL) *CurrentAdjustmentUL = 0;
+          if (CurrentAdjustmentUL) {
+            *CurrentAdjustmentUL = 0;
+            // Persist the reset - this is the "hold enter + press back = zero the
+            // value" gesture (e.g. resetting High Score To Date). Previously the
+            // zero was never written to EEPROM, so it reverted on next boot.
+            if (CurrentAdjustmentStorageByte) RPU_WriteULToEEProm(CurrentAdjustmentStorageByte, 0);
+            ParameterChanged = true;
+          }
           NextSpeedyValueChange = 1;
           ShowParameterValue();
-        } else {                
+        } else {
           if (SubLevel==OPERATOR_MENU_NOT_ACTIVE) StartSubMenu(currentTime);
           else AdvanceSubMenu(RPU_GetUpDownSwitchState(), true, currentTime);
         }
