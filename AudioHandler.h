@@ -37,12 +37,11 @@ struct SoundCardCommandEntry {
 
 #define SOUND_QUEUE_SIZE 100
 
-// Phantom sound investigation (2026-07-07): passive, in-RAM circular log of every
-// actual hardware tone write. NO Serial calls happen during gameplay - entries are
-// only written to this array. Dump on demand via serial command after hearing a
-// phantom, to see exactly what was written and when leading up to it. Deliberately
-// avoids live Serial.write() during play, since that was already shown to affect
-// timing this session.
+// Passive, in-RAM circular log of every actual hardware tone write. NO Serial calls
+// happen during gameplay - entries are only written to this array; dump on demand
+// via the 'L' serial command to see exactly what was written and when. Live
+// Serial.write() during play is deliberately avoided because blocking serial output
+// perturbs main-loop timing.
 #define TONE_WRITE_LOG_SIZE 200
 struct ToneWriteLogEntry {
   unsigned long timestamp;

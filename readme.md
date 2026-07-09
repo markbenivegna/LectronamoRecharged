@@ -82,7 +82,7 @@ The project is currently in the **Lite Version** stage. All core game rules, sco
 
 Accessible via the self-test/operator switch on the machine. Adjustments are stored in EEPROM and persist across power cycles.
 
-Press the **self-test switch** (inside coin door) repeatedly to advance through top-level menus. The display shows the menu number. Use the **credit button** to step through sub-adjustments within a menu. The **coin door button** increments the value; hold to change faster.
+Two buttons drive the menus: the **self-test switch** (inside coin door) and the **Start button**. The self-test switch advances through top-level menus (menu number shows in the credit display). Press Start to enter a menu, then the self-test switch steps through its items (item number shows in the ball-in-play display, starting at 1). Start changes the current value — press repeatedly or hold for faster changes. On score-valued adjustments Start can only increase the value; **double-click Start to reset a score adjustment to zero** (e.g. High Score To Date).
 
 ### Top-Level Menus
 
@@ -98,27 +98,30 @@ Press the **self-test switch** (inside coin door) repeatedly to advance through 
 
 ### Basic Adjustments (Menu 3)
 
+Item numbers below match the ball-in-play display.
+
 | # | Adjustment | Options | Default | Notes |
 |---|------------|---------|---------|-------|
-| 0 | Free Play | 0=Off / 1=On | 0 | Disables coin requirement when On |
-| 1 | Ball Save | 0 / 5 / 10 / 15 / 20 sec | 15 | Timer starts on first playfield switch |
-| 2 | Tilt Warnings | 0–2 | 2 | Warnings before tilt penalty |
-| 3 | Music Volume | 0–10 | 10 | |
-| 4 | Sound FX Volume | 0–10 | 10 | |
-| 5 | Callouts Volume | 0–10 | 10 | |
-| 6 | Balls Per Game | 3–10 | 3 | |
-| 7 | Tournament Mode | 0=Off / 1=On | 0 | Converts replays/specials to score |
-| 8 | Extra Ball Value | Score (tournament mode only) | 20,000 | Points awarded instead of extra ball |
-| 9 | Special Value | Score (tournament mode only) | 40,000 | Points awarded instead of special |
-| 10 | Reset During Game | 0 / 1 / 2 / 3 / 99 sec | 2 | Hold time for credit button to reset game; 99=disabled |
-| 11 | Score Award Level 1 | Score | 1,000,000 | First score threshold for replay |
-| 12 | Score Award Level 2 | Score | 3,000,000 | Second score threshold for replay |
-| 13 | Score Award Level 3 | Score | 5,000,000 | Third score threshold for replay |
-| 14 | Score Awards | 0–7 bitmask | 7 | Which score levels are active |
-| 15 | Scrolling Scores | 0=Off / 1=On | 1 | Scroll all scores during attract mode |
-| 16 | High Score To Date | Score | 10,000 | Adjust ±1,000 with the enter button; **hold enter + press Back to reset to 0** (hold enter + Forward subtracts 50,000) |
-| 17 | Credits | 0–40 | 4 | Current credit count |
-| 21 | Match Feature | 0=Off / 1=On | 1 | End-of-game match digit for free ball |
+| 1 | Free Play | 0=Off / 1=On | 0 | Disables coin requirement when On |
+| 2 | Ball Save | 0 / 5 / 10 / 15 / 20 sec | 15 | Timer starts on first playfield switch |
+| 3 | Tilt Warnings | 0–2 | 2 | Warnings before tilt penalty |
+| 4 | Music Volume | 0–10 | 10 | |
+| 5 | Sound FX Volume | 0–10 | 10 | |
+| 6 | Callouts Volume | 0–10 | 10 | |
+| 7 | Balls Per Game | 3–10 | 3 | |
+| 8 | Tournament Mode | 0=Off / 1=On | 0 | Converts replays/specials to score |
+| 9 | Extra Ball Value | Score (tournament mode only) | 20,000 | Points awarded instead of extra ball |
+| 10 | Special Value | Score (tournament mode only) | 40,000 | Points awarded instead of special |
+| 11 | Reset During Game | 0 / 1 / 2 / 3 / 99 sec | 2 | Hold time for credit button to reset game; 99=disabled |
+| 12 | Score Award Level 1 | Score | 1,000,000 | First score threshold for replay |
+| 13 | Score Award Level 2 | Score | 3,000,000 | Second score threshold for replay |
+| 14 | Score Award Level 3 | Score | 5,000,000 | Third score threshold for replay |
+| 15 | Score Awards | 0–7 bitmask | 7 | Which score levels are active |
+| 16 | Scrolling Scores | 0=Off / 1=On | 1 | Scroll all scores during attract mode |
+| 17 | High Score To Date | Score | 10,000 | Start adds 1,000 (hold for faster); **double-click Start to reset to 0** |
+| 18 | Credits | 0–40 | 4 | Current credit count |
+| 19–21 | (unused) | — | — | Reserved coins-per-credit slots; no effect |
+| 22 | Match Feature | 0=Off / 1=On | 1 | End-of-game match digit for free ball |
 
 ---
 
@@ -134,18 +137,20 @@ Press the **self-test switch** (inside coin door) repeatedly to advance through 
 
 ### Game Adjustments (Menu 5)
 
+Item numbers below match the ball-in-play display.
+
 | # | Adjustment | Options | Default | Notes |
 |---|------------|---------|---------|-------|
-| 0 | Trough Eject Strength | 2 / 3 / 4 / 5 / 6 / 7 / 8 | — | Ball serve solenoid power; tune until ball reliably reaches shooter lane |
-| 1 | Saucer Eject Strength | 5–15 | — | Saucer ejection solenoid power |
-| 2 | Slingshot Strength | 4–8 | — | Applied to both left and right slingshots |
-| 3 | Pop Bumper Strength | 4–8 | — | Applied to all three pop bumpers |
-| 4 | Saucer Light Persistence | 0=Off after scored / 1=Stays lit whole ball | 1 | Original SW14: when 0, saucer lamp extinguishes after being collected once |
-| 5 | High Game Free Games | 0=Novelty / 1 / 2 / 3 | 3 | Original SW15–16: free games awarded for new high score; 0 = novelty (no award) |
-| 6 | Special Open-Ended | 0=1 per ball / 1=Open-ended | 0 | Original SW22: when 1, Special can be collected repeatedly each ball |
-| 7 | Bonus Countdown Mode | 0=Flat 1,000/step / 1=Multiplied | 0 | Original SW24: when 1, each countdown step scores 1,000 × bonus multiplier |
-| 8 | Extra Ball Lane | 0=Bypass / 1=Award | 1 | Original SW26: when 0, 2nd 5-bank completion does not light or award extra ball |
-| 9 | Special Award Type | 0=100K pts / 1=Free Ball / 2=Free Game / 3=Both | 2 | Original SW31–32: what is awarded when Special is collected |
+| 1 | Trough Eject Strength | 2 / 3 / 4 / 5 / 6 / 7 / 8 | — | Ball serve solenoid power; tune until ball reliably reaches shooter lane |
+| 2 | Saucer Eject Strength | 5–15 | — | Saucer ejection solenoid power |
+| 3 | Slingshot Strength | 4–8 | — | Applied to both left and right slingshots |
+| 4 | Pop Bumper Strength | 4–8 | — | Applied to all three pop bumpers |
+| 5 | Saucer Light Persistence | 0=Off after scored / 1=Stays lit whole ball | 1 | Original SW14: when 0, saucer lamp extinguishes after being collected once |
+| 6 | High Game Free Games | 0=Novelty / 1 / 2 / 3 | 3 | Original SW15–16: free games awarded for new high score; 0 = novelty (no award) |
+| 7 | Special Open-Ended | 0=1 per ball / 1=Open-ended | 0 | Original SW22: when 1, Special can be collected repeatedly each ball |
+| 8 | Bonus Countdown Mode | 0=Flat 1,000/step / 1=Multiplied | 0 | Original SW24: when 1, each countdown step scores 1,000 × bonus multiplier |
+| 9 | Extra Ball Lane | 0=Bypass / 1=Award | 1 | Original SW26: when 0, 2nd 5-bank completion does not light or award extra ball |
+| 10 | Special Award Type | 0=100K pts / 1=Free Ball / 2=Free Game / 3=Both | 2 | Original SW31–32: what is awarded when Special is collected |
 
 ---
 

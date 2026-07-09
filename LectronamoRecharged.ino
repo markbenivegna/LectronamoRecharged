@@ -23,10 +23,10 @@
 
 #define GAME_MAJOR_VERSION  2026
 #define GAME_MINOR_VERSION  1
-// Phantom sound investigation (2026-07-07): set to 0 to test whether blocking serial
-// I/O during rapid-fire sequences (esp. bonus countdown) contributes to loop stalls.
-// Companion to AUDIO_DEBUG_LOGGING in AudioHandler.cpp - flip both back to 1 together
-// to restore full diagnostic logging for register-write logging work.
+// Keep at 0 during normal play - blocking serial I/O during rapid-fire sequences
+// (esp. bonus countdown) can contribute to main-loop stalls. Companion flag:
+// AUDIO_DEBUG_LOGGING in AudioHandler.cpp; flip both to 1 together to restore full
+// diagnostic logging.
 #define DEBUG_MESSAGES  0
 #define DEBUG_SWITCH_LOGGING  0
 
@@ -352,10 +352,6 @@ unsigned long KickerSwitchReleaseTime = 0;
 const uint16_t TIME_MATCH_SEQUENCE_MS = 3000;
 const uint16_t TIME_BALL_SAVE_DURATION_MS = 15000;
 const uint16_t TIME_ARC_SURGE_COMBO_MS = 8000;
-
-const byte ATTRACT_PHASE_1_CLASSIC_FLOW = 1;
-const byte ATTRACT_PHASE_2_ARC_SURGE = 2;
-const byte ATTRACT_PHASE_3_WAVE = 3;
 
 byte ExtraBallsAvailable[RPU_NUMBER_OF_PLAYERS_ALLOWED];
 byte GameRulesSelection;
@@ -2240,13 +2236,20 @@ int RunAttractMode(int curState, boolean curStateChanged) {
     AttractLastHeadMode = 3;
   }
 
-  byte attractPlayfieldPhase = ((CurrentTime / 5000) % 6);
+  // Playfield rotation: one full Classic Flow cycle, then the four generated
+  // animations at 5 seconds each. Anchored to attract entry so Classic Flow
+  // always plays first, from the top of its cycle.
+  unsigned long attractRotation = (CurrentTime - AttractModeStartTime) % (CLASSIC_FLOW_CYCLE_MS + 4UL * 5000UL);
+  byte attractPlayfieldPhase;
+  if (attractRotation < CLASSIC_FLOW_CYCLE_MS) attractPlayfieldPhase = 0;
+  else attractPlayfieldPhase = 1 + (byte)((attractRotation - CLASSIC_FLOW_CYCLE_MS) / 5000);
 
   if (attractPlayfieldPhase != AttractLastPlayfieldPhase) {
     RPU_TurnOffAllLamps();
     AttractLastPlayfieldPhase = attractPlayfieldPhase;
   }
-  ShowLampAnimation(attractPlayfieldPhase, 75, CurrentTime, 18, false, false);
+  if (attractPlayfieldPhase == 0) ShowClassicFlowAttract(attractRotation);
+  else ShowLampAnimation(attractPlayfieldPhase - 1, 75, CurrentTime, 18, false, false);
 
   byte switchHit;
   while ( (switchHit = RPU_PullFirstFromSwitchStack()) != SWITCH_STACK_EMPTY ) {
@@ -3021,11 +3024,9 @@ int CountdownBonus(boolean curStateChanged) {
       // Arm lockout at the moment solenoid fires (250ms from now) so it blocks bounces
       // when switch closes ~120ms later. This prevents stuck-ball detector from double-firing.
       KickerSwitchReleaseTime = CurrentTime + 250;
-      // A long countdown (high multiplier) leaves LastSwitchHitTime >25s stale because
-      // the ball sat motionless in the kicker the whole time - without this refresh,
-      // ball search fires (saucer first) on the first loop back in normal gameplay,
-      // before the kicker eject at +250ms even happens. Fresh window: the ejected
-      // ball will hit real switches within a couple of seconds.
+      // A long countdown leaves LastSwitchHitTime stale (ball sits motionless in the
+      // kicker), which would trigger ball search immediately on return to normal play,
+      // ahead of the delayed kicker eject. Refresh so search gets a full window.
       LastSwitchHitTime = CurrentTime;
       Audio.ClearSoundQueue();  // Clear bonus countdown tones before resuming normal play
       return MACHINE_STATE_NORMAL_GAMEPLAY;
@@ -3331,11 +3332,9 @@ void HandleGamePlaySwitches(byte switchHit) {
 
     switch (switchHit) {
         case SW_KICKER:
-            // Ignore closures inside the eject lockout window: they're bounces/chatter
+            // Ignore closures inside the eject lockout window - they're bounces/chatter
             // from the ball leaving during the post-collect eject, not a new ball
-            // landing. Without this guard, chatter re-arms KickerBonusCollect and
-            // re-runs the whole collect->eject cycle = intermittent double-fire
-            // after bonus collect.
+            // landing, and would otherwise restart the collect->eject cycle.
             if (!KickerBonusCollect &&
                 (KickerEjectTime == 0 || (CurrentTime - KickerEjectTime) >= KICKER_EJECT_LOCKOUT_MS)) {
                 isArcSurgeActive[CurrentPlayer] = false;
@@ -3768,9 +3767,8 @@ void loop() {
   CurrentTime = millis();
   int newMachineState = MachineState;
 
-  // Debug: send 'G' for game over, 'S' for startup, 'D' for drain, 'L' to dump the
-  // phantom-sound tone write log (see Audio.DumpToneWriteLog() - safe to send anytime,
-  // e.g. right after hearing a phantom, to see what was written leading up to it)
+  // Debug serial commands: 'G' game over, 'S' startup, 'D' drain, 'L' dump the tone
+  // write log (safe to send anytime; shows the most recent SB-100 writes)
   if (Serial.available()) {
     char cmd = Serial.read();
     if (cmd == 'G') PlaySoundSequence(23);

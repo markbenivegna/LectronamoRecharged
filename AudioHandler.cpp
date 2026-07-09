@@ -49,12 +49,11 @@
 
 extern unsigned long CurrentTime;
 
-// Phantom sound investigation (2026-07-03): the debug logging below in
-// QueueSequence()/ServiceSoundQueue() is unconditional (fires on every queue/play
-// event, not gated by DEBUG_MESSAGES) and runs on 115200 baud Serial, which blocks
-// once the 64-byte HW TX buffer fills. During rapid-fire sequences (e.g. bonus
-// countdown, ~every 175ms) this could stall the main loop long enough for queued
-// tones to back up and fire in rapid bursts. Set to 1 to re-enable for diagnosis.
+// Gates the verbose Serial debug logging in QueueSequence()/ServiceSoundQueue().
+// Keep at 0 during normal play: Serial.write blocks once the 64-byte HW TX buffer
+// fills, and during rapid-fire sequences (e.g. bonus countdown ticks every 175ms)
+// that can stall the main loop long enough for queued tones to back up and fire in
+// rapid bursts. Set to 1 only when actively diagnosing audio queue behavior.
 #define AUDIO_DEBUG_LOGGING 0
 
 
@@ -928,12 +927,12 @@ void AudioHandler::ClearSoundQueue() {
   activeSequence.pausedStartTime = 0;
   activeSequence.pausedStartOffset = 0;
 
-  // Tone lock-on fix (2026-07-08, captured in tone write log): wiping the queue can
-  // delete a silence that was already owed to a tone currently latched on the SB-100
-  // (e.g. bonus-collect end cleared mid-SCORE_500, leaving 0x02 latched for >1s).
-  // The queue is empty now, so nothing will silence the hardware unless we do it here.
-  // Gated on sb100ToneLatched: stays a no-op at constructor time (before the bus is
-  // initialized) and whenever the hardware is already silent.
+  // Wiping the queue can delete a silence that was already owed to a tone currently
+  // latched on the SB-100 (e.g. clearing mid-sequence at bonus-collect end), which
+  // would leave that tone locked on. The queue is empty now, so nothing will silence
+  // the hardware unless we do it here. Gated on sb100ToneLatched: stays a no-op at
+  // constructor time (before the bus is initialized) and whenever the hardware is
+  // already silent.
 #ifdef RPU_OS_USE_SB100
   if (sb100ToneLatched) {
     PlaySound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS);
@@ -967,7 +966,7 @@ boolean AudioHandler::PlaySound(unsigned short soundIndex, byte audioType, byte 
     soundPlayed = true;
 #endif
 #ifdef RPU_OS_USE_SB100
-    // Phantom sound investigation: passive log only, no Serial call here.
+    // Record every SB-100 write in the tone log. Passive only - no Serial here.
     toneWriteLog[toneWriteLogIndex].timestamp = CurrentTime;
     toneWriteLog[toneWriteLogIndex].value = (byte)soundIndex;
     toneWriteLog[toneWriteLogIndex].seqID = seqID;
@@ -999,9 +998,8 @@ boolean AudioHandler::PlaySound(unsigned short soundIndex, byte audioType, byte 
 }
 
 
-// Phantom sound investigation (2026-07-07): dump the tone write log to Serial.
-// Call this on demand (e.g. via a serial command) AFTER hearing a phantom, never
-// during active gameplay - this is the only place in this logging system that
+// Dump the tone write log to Serial. Call on demand (via the 'L' serial command),
+// never during active gameplay - this is the only place in the logging system that
 // touches Serial, deliberately kept out of the hot path.
 void AudioHandler::DumpToneWriteLog() {
   Serial.write("=== TONE WRITE LOG ===\n");
@@ -1192,15 +1190,16 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
   // Start this sequence as active
   unsigned long playTime = CurrentTime + startOffset + firstStep.gap_ms;
 
-  // Phantom sound investigation (2026-07-07, revised): the narrower "clear only the
-  // identified blockingSeqID" approach above missed cases where the interrupted
-  // sequence's OWN still-pending trailing silence wasn't the one flagged as
-  // blocking (confirmed via tone write log: a SCORE_500 sequence's own silence fired
-  // 59ms late, landing inside what should have been a clean Pop Bumper tone window).
-  // Fix: for Pop Bumper specifically, unconditionally sweep and clear ANY queue entry
-  // (any seqID) scheduled to land between now and when Pop Bumper's own silence will
-  // fire, then always force an immediate silence first. In the normal, no-collision
-  // case this finds nothing to clear and just adds one harmless extra silence write.
+  // Pop Bumper is unblockable, so any other sequence's still-pending entries (tones
+  // OR their trailing silences) can land inside its tone+silence window and either
+  // cut the pop short or leave a tone without its silence. Sweep and clear ANY queue
+  // entry (any seqID) scheduled between now and when Pop Bumper's own silence will
+  // fire, then always force an immediate silence so the hardware sees a clean reset
+  // before the new tone. In the normal, no-collision case the sweep finds nothing and
+  // this just adds one harmless extra silence write. Note: clearing only the
+  // identified blockingSeqID (as the overlap handler above does) is NOT sufficient
+  // here - the interrupted sequence's own trailing silence isn't always the entry
+  // flagged as blocking.
   if (seqID == 20) {
     unsigned long popBumperWindowEnd = CurrentTime + 76;  // covers tone + its own 75ms silence
     for (int i = 0; i < SOUND_QUEUE_SIZE; i++) {
