@@ -11,7 +11,8 @@
  *
  * Uses interrupt-and-mute: one active sequence, one muted sequence.
  * New sound interrupts active (if no large offset), active resumes when new finishes.
- * Timing: 75ms silences, 200ms spacing between tones (matches original SB-100).
+ * Timing: tones sit on a uniform grid (175ms for score runs); each tone holds
+ * 5/7 of the way to the next (capped at 125ms), leaving a short audible gap.
  */
 
 // Sound sequence entry (stored in PROGMEM)

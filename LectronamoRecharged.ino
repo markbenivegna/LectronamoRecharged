@@ -286,6 +286,7 @@ boolean SaucerLightPersists = true;
 boolean SpecialOpenEnded = false;
 boolean BonusCountdownMultipleSteps = false;
 unsigned long BonusCollectionEndTime = 0;
+unsigned long DrainSoundEndTime = 0;  // when the drain melody finishes; bonus countdown holds until then
 boolean ExtraBallLaneEnabled = true;
 byte SpecialAwardType = 2;
 
@@ -388,6 +389,7 @@ boolean firstHitMade[RPU_NUMBER_OF_PLAYERS_ALLOWED];
 byte threeBankCompleteCount[RPU_NUMBER_OF_PLAYERS_ALLOWED];
 byte fiveBankCompleteCount[RPU_NUMBER_OF_PLAYERS_ALLOWED];
 byte spinnerHitCount[RPU_NUMBER_OF_PLAYERS_ALLOWED];
+byte spinnerChasePos[RPU_NUMBER_OF_PLAYERS_ALLOWED];  // advance lamp chase position (0-3); persists across spinner idle, resets only on new ball/game
 unsigned long arcSurgeTimerStart[RPU_NUMBER_OF_PLAYERS_ALLOWED];
 unsigned long arcSurgeCompleteTime = 0;
 unsigned long threeBankSweepStartTime[RPU_NUMBER_OF_PLAYERS_ALLOWED];
@@ -897,18 +899,19 @@ void setup() {
   CurrentTime = millis();
 
   // 4-note ascending chime x2 on boot (with audio update to ensure sounds play)
+  // Notes run 120ms each, back to back - continuous melody, no gaps
   for (byte rep = 0; rep < 2; rep++) {
     Audio.PlaySound(SND_10000_POINTS, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS);
-    for (int i = 0; i < 15; i++) { Audio.Update(millis()); delay(10); }
+    for (int i = 0; i < 12; i++) { Audio.Update(millis()); delay(10); }
 
     Audio.PlaySound(SND_1000_POINTS, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS);
-    for (int i = 0; i < 15; i++) { Audio.Update(millis()); delay(10); }
+    for (int i = 0; i < 12; i++) { Audio.Update(millis()); delay(10); }
 
     Audio.PlaySound(SND_100_POINTS, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS);
-    for (int i = 0; i < 15; i++) { Audio.Update(millis()); delay(10); }
+    for (int i = 0; i < 12; i++) { Audio.Update(millis()); delay(10); }
 
     Audio.PlaySound(SND_10_POINTS, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS);
-    for (int i = 0; i < 15; i++) { Audio.Update(millis()); delay(10); }
+    for (int i = 0; i < 12; i++) { Audio.Update(millis()); delay(10); }
   }
   Audio.PlaySound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS);
   OperatorSwitchPressStarted = 0;
@@ -1143,8 +1146,9 @@ void ShowGameplayLamps() {
   // LAMP_EXTRA_BALL_LANE (46): physically near 5-bank, lights on 1st completion
   RPU_SetLampState(LAMP_EXTRA_BALL_LANE, (ExtraBallLaneEnabled && fiveBankCompleteCount[CurrentPlayer] == 1) ? 1 : 0);
 
-  // Advance bonus lamps: one lamp cycles per spin, 4 spins = bonus advance
-  byte spinnerProgress = spinnerHitCount[CurrentPlayer] % 4;
+  // Advance bonus lamps: one lamp cycles per spin, 4 spins = bonus advance.
+  // The chase holds its last position while the spinner is idle.
+  byte spinnerProgress = spinnerChasePos[CurrentPlayer];
   for (byte i = 0; i < 4; i++) {
     RPU_SetLampState(SpinnerAdvanceLamps[i], i == spinnerProgress ? 1 : 0);
   }
@@ -1192,10 +1196,10 @@ boolean AddPlayer(boolean resetNumPlayers = false) {
   if (CurrentNumPlayers > 1) {
     // 4-note ascending chime x2
     for (byte rep = 0; rep < 2; rep++) {
-      Audio.PlaySound(SND_10000_POINTS, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS); delay(200);
-      Audio.PlaySound(SND_1000_POINTS,  AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS); delay(200);
-      Audio.PlaySound(SND_100_POINTS,   AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS); delay(200);
-      Audio.PlaySound(SND_10_POINTS,    AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS); delay(200);
+      Audio.PlaySound(SND_10000_POINTS, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS); delay(120);
+      Audio.PlaySound(SND_1000_POINTS,  AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS); delay(120);
+      Audio.PlaySound(SND_100_POINTS,   AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS); delay(120);
+      Audio.PlaySound(SND_10_POINTS,    AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS); delay(120);
     }
     Audio.PlaySound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS);
   }
@@ -2438,6 +2442,7 @@ int InitGamePlay(boolean curStateChanged) {
       ExtraBallCollectedThisBall[p] = false;
       ExtraBallLaneAvailable[p] = false;
       spinnerHitCount[p] = 0;
+      spinnerChasePos[p] = 0;
       arcSurgeTimerStart[p] = 0;
       threeBankSweepStartTime[p] = 0;
       threeBankSweepAnimationStart[p] = 0;
@@ -2541,6 +2546,8 @@ int InitNewBall(bool curStateChanged) {
     firstHitMade[CurrentPlayer] = false;
     arcSurgeTimerStart[CurrentPlayer] = 0;
     spinnerHitCount[CurrentPlayer] = 0;
+    spinnerChasePos[CurrentPlayer] = 0;
+    DrainSoundEndTime = 0;
     threeBankSweepStartTime[CurrentPlayer] = 0;
     threeBankSweepAnimationStart[CurrentPlayer] = 0;
     // Stagger drop target resets to avoid simultaneous solenoid firing
@@ -2673,12 +2680,12 @@ int ManageGameMode() {
   ProcessPendingScoreUpdates();
 
   // Game start melody: 4-note ascending chime played twice while ball is in shooter lane (ball 1, player 1 only)
-  // Matches boot melody timing (150ms spacing)
+  // Matches boot melody timing (120ms per note, continuous)
   if (CurrentBallInPlay == 1 && CurrentPlayer == 0 &&
       GameStartMelodyStep < 9 && BallFirstSwitchHitTime == 0 &&
       GameStartNotificationTime > 0) {
     unsigned long elapsed = CurrentTime - GameStartNotificationTime;
-    byte targetStep = (byte)(elapsed / 150);
+    byte targetStep = (byte)(elapsed / 120);
     if (targetStep > 9) targetStep = 9;
     while (GameStartMelodyStep < targetStep) {
       if (GameStartMelodyStep < 8) {
@@ -2953,6 +2960,12 @@ int CountdownBonus(boolean curStateChanged) {
 
     CountdownStartTime = CurrentTime;
     LastCountdownReportTime = CurrentTime;
+    if (DrainSoundEndTime != 0) {
+      // A drain melody preceded this countdown: hold the first tick until the
+      // melody has finished plus a clear pause, so the two don't run together
+      LastCountdownReportTime = ((DrainSoundEndTime > CurrentTime) ? DrainSoundEndTime : CurrentTime) + 400;
+      DrainSoundEndTime = 0;
+    }
     CollectBonusViaKicker = true;
     BonusCollectionEndTime = CurrentTime + 35000; // Disable ball search for 35 seconds (covers full bonus countdown including multiplier levels)
     ShowBonusLamps();
@@ -2975,7 +2988,9 @@ int CountdownBonus(boolean curStateChanged) {
   unsigned long countdownDelayTime = (unsigned long)(CountDownDelayTimes[IncrementingBonusXCounter - 1]);
   if (CountdownBonusHurryUp && countdownDelayTime > ((unsigned long)CountDownDelayTimes[9])) countdownDelayTime = CountDownDelayTimes[9];
 
-  if ((CurrentTime - LastCountdownReportTime) > countdownDelayTime) {
+  // LastCountdownReportTime can be in the future (drain melody hold);
+  // unsigned subtraction would wrap, so require CurrentTime past it first
+  if (CurrentTime > LastCountdownReportTime && (CurrentTime - LastCountdownReportTime) > countdownDelayTime) {
 
     if (DecrementingBonusCounter) {
 
@@ -3101,16 +3116,16 @@ int ShowMatchSequence(boolean curStateChanged) {
     GameOverMelodyPlayed = true;
     for (byte rep = 0; rep < 2; rep++) {
       Audio.PlaySound(SND_10_POINTS, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS);
-      for (int i = 0; i < 15; i++) { Audio.Update(millis()); delay(10); }
+      for (int i = 0; i < 12; i++) { Audio.Update(millis()); delay(10); }
 
       Audio.PlaySound(SND_100_POINTS, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS);
-      for (int i = 0; i < 15; i++) { Audio.Update(millis()); delay(10); }
+      for (int i = 0; i < 12; i++) { Audio.Update(millis()); delay(10); }
 
       Audio.PlaySound(SND_1000_POINTS, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS);
-      for (int i = 0; i < 15; i++) { Audio.Update(millis()); delay(10); }
+      for (int i = 0; i < 12; i++) { Audio.Update(millis()); delay(10); }
 
       Audio.PlaySound(SND_10000_POINTS, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS);
-      for (int i = 0; i < 15; i++) { Audio.Update(millis()); delay(10); }
+      for (int i = 0; i < 12; i++) { Audio.Update(millis()); delay(10); }
     }
     Audio.PlaySound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS);
   }
@@ -3282,8 +3297,8 @@ void Handle3BankCompletion() {
     } else {
         if (DEBUG_MESSAGES) Serial.write("Regular 3-bank completion - playing scoring sounds!\n");
         QueuePendingScoreUpdate(CurrentPlayer, SCORE_3BANK_COMPLETION * PlayfieldMultiplier, SEQ_SCORE_6000, 975);
-        // SCORE_500 duration: 800ms (max gap) + 75ms (Dick's silence) = 875ms
-        // Queue SCORE_6000 after SCORE_500 completes with buffer
+        // SCORE_500 runs 825ms (700ms max gap + 125ms final tone hold);
+        // queue SCORE_6000 after it completes with a 150ms buffer
         PlaySoundSequence(SEQ_SCORE_6000, 975);
     }
 }
@@ -3294,9 +3309,9 @@ void Handle5BankCompletion() {
 
     fiveBankCompleteCount[CurrentPlayer]++;
 
-    // SCORE_500 duration: 800ms (max gap) + 75ms (Dick's silence) = 875ms
-    // Queue completion sound with buffer after SCORE_500 finishes
-    unsigned int score500Offset = 875 + 100;  // duration + 100ms buffer
+    // SCORE_500 runs 825ms (700ms max gap + 125ms final tone hold)
+    unsigned int score500Offset = 825 + 150;   // score sounds chain tightly
+    unsigned int fanfareOffset = 825 + 450;    // melodies get a clear pause first
 
     if (fiveBankCompleteCount[CurrentPlayer] == 1) {
         // 1st: score and reset
@@ -3316,7 +3331,7 @@ void Handle5BankCompletion() {
         }
         fiveBankCompleteCount[CurrentPlayer] = 0;
         if (specialAwarded) {
-            PlaySoundSequence(SEQ_FANFARE_5BANK, score500Offset);
+            PlaySoundSequence(SEQ_FANFARE_5BANK, fanfareOffset);
         } else {
             PlaySoundSequence(SEQ_BONUS_COUNT, score500Offset);
         }
@@ -3385,6 +3400,7 @@ void HandleGamePlaySwitches(byte switchHit) {
         case SW_SPINNER: {
             static unsigned long lastSpinnerSoundTime = 0;
             spinnerHitCount[CurrentPlayer]++;
+            spinnerChasePos[CurrentPlayer] = (spinnerChasePos[CurrentPlayer] + 1) % 4;
             LastSpinnerHitTime = CurrentTime;
             int spinnerScore = (Bonus[CurrentPlayer] >= 10) ? SCORE_SPINNER_LIT : SCORE_SPINNER_BASE;
             CurrentScores[CurrentPlayer] += spinnerScore * PlayfieldMultiplier;
@@ -3396,9 +3412,13 @@ void HandleGamePlaySwitches(byte switchHit) {
                     lastSpinnerSoundTime = CurrentTime;
                 }
             }
-            if (spinnerHitCount[CurrentPlayer] % 4 == 0) {
-                ScheduleBonusIncrement(1, 25);  // Bonus lights when advance sound plays
-                PlaySoundSequence(SEQ_ADVANCE_1, 25);
+            if (spinnerChasePos[CurrentPlayer] == 3) {
+                // This spin lights the red (4th) advance lamp, so the
+                // advance fires with it.
+                // Offset must clear the spinner score tone's trailing silence
+                // (+125ms) or QueueSequence rejects the advance as a collision
+                ScheduleBonusIncrement(1, 175);  // Bonus lights when advance sound plays
+                PlaySoundSequence(SEQ_ADVANCE_1, 175);
             }
             ValidateAndRegisterPlayfieldSwitch();
             break;
@@ -3431,7 +3451,7 @@ void HandleGamePlaySwitches(byte switchHit) {
                 Serial.write(buf);
             }
             if (ExtraBallLaneAvailable[CurrentPlayer] && !ExtraBallCollectedThisBall[CurrentPlayer] && !CollectBonusViaKicker) {
-                PlaySoundSequence(SEQ_FANFARE_ASCENDING, 600);
+                PlaySoundSequence(SEQ_FANFARE_ASCENDING, 900);
                 AwardExtraBall();
                 ExtraBallCollectedThisBall[CurrentPlayer] = true;
                 ExtraBallLaneAvailable[CurrentPlayer] = false;
@@ -3455,8 +3475,9 @@ void HandleGamePlaySwitches(byte switchHit) {
                 PlaySoundSequence(SEQ_SCORE_5000_WITH_ADVANCE_3, 0);
             } else {
                 CurrentScores[CurrentPlayer] += 1000L * PlayfieldMultiplier;
-                ScheduleBonusIncrement(1, 0);  // Bonus lights when score sound plays
+                ScheduleBonusIncrement(1, 300);  // Bonus lights when advance sound plays
                 PlaySoundSequence(SEQ_SCORE_1000, 0);
+                PlaySoundSequence(SEQ_ADVANCE_1, 300);
             }
             ValidateAndRegisterPlayfieldSwitch();
             break;
@@ -3465,10 +3486,10 @@ void HandleGamePlaySwitches(byte switchHit) {
              if (MachineState != MACHINE_STATE_NORMAL_GAMEPLAY) break;  // Only handle during normal gameplay
 
              if (isArcSurgeActive[CurrentPlayer] && arcSurgeT1Hit[CurrentPlayer]) { // Arc Surge combo complete (both T1 and saucer hit)
-                QueuePendingScoreUpdate(CurrentPlayer, SCORE_ARC_SURGE_SUPER * PlayfieldMultiplier, SEQ_FANFARE_ASCENDING, 300);
-                ScheduleBonusIncrement(3, 300);  // Bonus lights when fanfare plays
+                QueuePendingScoreUpdate(CurrentPlayer, SCORE_ARC_SURGE_SUPER * PlayfieldMultiplier, SEQ_FANFARE_ASCENDING, 500);
+                ScheduleBonusIncrement(3, 500);  // Bonus lights when fanfare plays
                 if (DEBUG_MESSAGES) Serial.write("ARC SURGE COMPLETE - playing fanfare\n");
-                PlaySoundSequence(SEQ_FANFARE_ASCENDING, 300);
+                PlaySoundSequence(SEQ_FANFARE_ASCENDING, 500);
                 isArcSurgeActive[CurrentPlayer] = false;
                 arcSurgeT1Hit[CurrentPlayer] = false;
                 arcSurgeCompleteTime = CurrentTime;
@@ -3488,13 +3509,14 @@ void HandleGamePlaySwitches(byte switchHit) {
                     if (!SaucerLightPersists) isSaucerLit[CurrentPlayer] = false;
                 } else {
                     QueuePendingScoreUpdate(CurrentPlayer, 500L * PlayfieldMultiplier, SEQ_SCORE_500);
-                    ScheduleBonusIncrement(1, 0);  // Bonus lights when score sound plays
+                    ScheduleBonusIncrement(1, 1000);  // Bonus lights when advance sound plays
                     PlaySoundSequence(SEQ_SCORE_500, 0);
+                    PlaySoundSequence(SEQ_ADVANCE_1, 1000);
                 }
              } else if (!firstHitMade[CurrentPlayer] && !CollectBonusViaKicker) { // Skill shot (not during bonus collect)
-                 QueuePendingScoreUpdate(CurrentPlayer, SCORE_SKILL_SHOT * PlayfieldMultiplier, SEQ_FANFARE_ASCENDING, 300);
-                 ScheduleBonusIncrement(3, 300);  // Bonus lights when fanfare plays
-                 PlaySoundSequence(SEQ_FANFARE_ASCENDING, 300);
+                 QueuePendingScoreUpdate(CurrentPlayer, SCORE_SKILL_SHOT * PlayfieldMultiplier, SEQ_FANFARE_ASCENDING, 500);
+                 ScheduleBonusIncrement(3, 500);  // Bonus lights when fanfare plays
+                 PlaySoundSequence(SEQ_FANFARE_ASCENDING, 500);
                  SkillShotAnimationStart = CurrentTime;
             } else if (isSaucerLit[CurrentPlayer]) {
                  // Lit saucer: always play ADVANCE_3 (3 bonus advances)
@@ -3505,8 +3527,9 @@ void HandleGamePlaySwitches(byte switchHit) {
                  if (!SaucerLightPersists) isSaucerLit[CurrentPlayer] = false;
             } else {
                  QueuePendingScoreUpdate(CurrentPlayer, 500L * PlayfieldMultiplier, SEQ_SCORE_500);
-                 ScheduleBonusIncrement(1, 0);  // Bonus lights when score sound plays
+                 ScheduleBonusIncrement(1, 1000);  // Bonus lights when advance sound plays
                  PlaySoundSequence(SEQ_SCORE_500, 0);
+                 PlaySoundSequence(SEQ_ADVANCE_1, 1000);
             }
             RPU_PushToTimedSolenoidStack(SOL_SAUCER, SaucerSolenoidStrength, CurrentTime + 500, false);
             ValidateAndRegisterPlayfieldSwitch();
@@ -3556,7 +3579,10 @@ void HandleGamePlaySwitches(byte switchHit) {
               boolean isBallSaveActive = (BallFirstSwitchHitTime != 0 &&
                                           CurrentTime < (BallFirstSwitchHitTime + ((unsigned long)BallSaveNumSeconds * 1000) + BALL_SAVE_GRACE_PERIOD));
               if (!isBallSaveActive) {
-                unsigned int drainDuration = PlaySoundSequence(SEQ_DRAIN, advanceDuration + 200);
+                unsigned int drainDuration = PlaySoundSequence(SEQ_DRAIN, advanceDuration + 500);
+                // Final drain tone rings 400ms past the nominal duration; the
+                // bonus countdown holds its first tick until this passes
+                DrainSoundEndTime = CurrentTime + advanceDuration + 500 + drainDuration + 275;
               }
             }
             break;
