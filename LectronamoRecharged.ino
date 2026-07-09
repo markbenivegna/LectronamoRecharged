@@ -3486,10 +3486,10 @@ void HandleGamePlaySwitches(byte switchHit) {
              if (MachineState != MACHINE_STATE_NORMAL_GAMEPLAY) break;  // Only handle during normal gameplay
 
              if (isArcSurgeActive[CurrentPlayer] && arcSurgeT1Hit[CurrentPlayer]) { // Arc Surge combo complete (both T1 and saucer hit)
-                QueuePendingScoreUpdate(CurrentPlayer, SCORE_ARC_SURGE_SUPER * PlayfieldMultiplier, SEQ_FANFARE_ASCENDING, 500);
-                ScheduleBonusIncrement(3, 500);  // Bonus lights when fanfare plays
+                QueuePendingScoreUpdate(CurrentPlayer, SCORE_ARC_SURGE_SUPER * PlayfieldMultiplier, SEQ_FANFARE_ASCENDING, 300);
+                ScheduleBonusIncrement(3, 300);  // Bonus lights when fanfare plays
                 if (DEBUG_MESSAGES) Serial.write("ARC SURGE COMPLETE - playing fanfare\n");
-                PlaySoundSequence(SEQ_FANFARE_ASCENDING, 500);
+                PlaySoundSequence(SEQ_FANFARE_ASCENDING, 300);
                 isArcSurgeActive[CurrentPlayer] = false;
                 arcSurgeT1Hit[CurrentPlayer] = false;
                 arcSurgeCompleteTime = CurrentTime;
@@ -3514,9 +3514,9 @@ void HandleGamePlaySwitches(byte switchHit) {
                     PlaySoundSequence(SEQ_ADVANCE_1, 1000);
                 }
              } else if (!firstHitMade[CurrentPlayer] && !CollectBonusViaKicker) { // Skill shot (not during bonus collect)
-                 QueuePendingScoreUpdate(CurrentPlayer, SCORE_SKILL_SHOT * PlayfieldMultiplier, SEQ_FANFARE_ASCENDING, 500);
-                 ScheduleBonusIncrement(3, 500);  // Bonus lights when fanfare plays
-                 PlaySoundSequence(SEQ_FANFARE_ASCENDING, 500);
+                 QueuePendingScoreUpdate(CurrentPlayer, SCORE_SKILL_SHOT * PlayfieldMultiplier, SEQ_FANFARE_ASCENDING, 300);
+                 ScheduleBonusIncrement(3, 300);  // Bonus lights when fanfare plays
+                 PlaySoundSequence(SEQ_FANFARE_ASCENDING, 300);
                  SkillShotAnimationStart = CurrentTime;
             } else if (isSaucerLit[CurrentPlayer]) {
                  // Lit saucer: always play ADVANCE_3 (3 bonus advances)
