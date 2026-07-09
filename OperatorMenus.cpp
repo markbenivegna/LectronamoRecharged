@@ -501,10 +501,9 @@ int OperatorMenus::UpdateMenu(unsigned long currentTime) {
         if (NextSpeedyValueChange>1 &&
             ( AdjustmentType==OPERATOR_MENU_ADJ_TYPE_SCORE || AdjustmentType==OPERATOR_MENU_ADJ_TYPE_SCORE_WITH_DEFAULT ||
               AdjustmentType==OPERATOR_MENU_ADJ_TYPE_SCORE_NO_DEFAULT ) ) {
+          // Hold enter + forward: subtract 50,000 (persisted, like the enter-button paths)
           if (CurrentAdjustmentUL && *CurrentAdjustmentUL>50000) {
             *CurrentAdjustmentUL -= 50000;
-            // Persist like the enter-button paths do - without this the change only
-            // lives in RAM and silently reverts on the next parameter reload/boot
             if (CurrentAdjustmentStorageByte) RPU_WriteULToEEProm(CurrentAdjustmentStorageByte, *CurrentAdjustmentUL);
             ParameterChanged = true;
           }
@@ -523,11 +522,9 @@ int OperatorMenus::UpdateMenu(unsigned long currentTime) {
         if (NextSpeedyValueChange>1 &&
             ( AdjustmentType==OPERATOR_MENU_ADJ_TYPE_SCORE || AdjustmentType==OPERATOR_MENU_ADJ_TYPE_SCORE_WITH_DEFAULT ||
               AdjustmentType==OPERATOR_MENU_ADJ_TYPE_SCORE_NO_DEFAULT ) ) {
+          // Hold enter + back: reset the value to 0 (persisted, e.g. High Score To Date)
           if (CurrentAdjustmentUL) {
             *CurrentAdjustmentUL = 0;
-            // Persist the reset - this is the "hold enter + press back = zero the
-            // value" gesture (e.g. resetting High Score To Date). Previously the
-            // zero was never written to EEPROM, so it reverted on next boot.
             if (CurrentAdjustmentStorageByte) RPU_WriteULToEEProm(CurrentAdjustmentStorageByte, 0);
             ParameterChanged = true;
           }
@@ -715,7 +712,16 @@ void OperatorMenus::HandleEnterButton(boolean doubleClick, boolean resetHeld, bo
       unsigned long changeVal = 10000;
       if (NumSpeedyChanges>6) changeVal = 25000;
 
-      if (speedyChange) {
+      if (doubleClick) {
+        // Double-click enter resets the score to 0 (e.g. High Score To Date).
+        // On machines with no forward/back buttons this is the only way down:
+        // without an up/down switch, single presses can only increase the value.
+        curVal = 0;
+        if (AdjustmentType == OPERATOR_MENU_ADJ_TYPE_SCORE_NO_DEFAULT) curVal = 1000;
+        *CurrentAdjustmentUL = curVal;
+        ParameterChanged = true;
+        if (CurrentAdjustmentStorageByte) RPU_WriteULToEEProm(CurrentAdjustmentStorageByte, curVal);
+      } else if (speedyChange) {
         if (RPU_GetUpDownSwitchState()) curVal += changeVal;
         else if (curVal >= changeVal) curVal -= changeVal;
         if (AdjustmentType == OPERATOR_MENU_ADJ_TYPE_SCORE_NO_DEFAULT && curVal == 0) curVal = 1000;
@@ -734,8 +740,6 @@ void OperatorMenus::HandleEnterButton(boolean doubleClick, boolean resetHeld, bo
 
     ShowParameterValue();
   }
-
-  (void)doubleClick;
 }
 
 
