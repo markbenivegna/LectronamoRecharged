@@ -1132,7 +1132,11 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
 
   // Handle overlap: if blocking sequence is paused, clear it to prevent orphaned tones from blocking forever
   if (maxExistingPlayTime > 0 && newSeqStartTime <= maxExistingPlayTime) {
-    // Pop-bumpers are unblockable - clear whatever is in the way instead of rejecting
+    // Pop-bumpers are unblockable - clear whatever is in the way instead of rejecting.
+    // Exception: fanfares play through in full; the pop sound is dropped instead.
+    if (seqID == 20 && (blockingSeqID == 30 || blockingSeqID == 31)) {
+      return false;
+    }
     if (seqID == 20) {  // SEQ_POP_BUMPER
       // Clear all tones from the blocking sequence to make room for this pop-bumper
       int clearedCount = 0;
@@ -1203,6 +1207,7 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
   if (seqID == 20) {
     unsigned long popBumperWindowEnd = CurrentTime + 126;  // covers tone + its own 125ms hold
     for (int i = 0; i < SOUND_QUEUE_SIZE; i++) {
+      if (soundQueue[i].seqID == 30 || soundQueue[i].seqID == 31) continue;  // fanfares play through
       if (soundQueue[i].playTime > CurrentTime && soundQueue[i].playTime <= popBumperWindowEnd) {
         soundQueue[i].playTime = 0;
         soundQueue[i].seqID = 0xFF;
