@@ -20,7 +20,7 @@ https://www.pinballrefresh.com/retro-pin-upgrade-rpu
 
 ## Development Status: Lite Version
 
-The project is currently in the **Lite Version** stage. All core game rules, scoring, lamp states, and state transitions for a complete four-player game are implemented and ready for physical hardware testing.
+The project is currently in the **Lite Version** stage. All core game rules, scoring, lamp states, and state transitions for a complete four-player game are implemented and running stably on the physical machine (see the `baseline` tag for the current known-good build).
 
 ### Project Files
 
@@ -36,32 +36,7 @@ The project is currently in the **Lite Version** stage. All core game rules, sco
 | `DisplayHandler.h / .cpp` | Display management layer |
 | `OperatorMenus.h / .cpp` | Operator adjustment and diagnostics menus |
 | `DropTargets.h` | Drop target bank management |
-
-### Audio System: PlaySoundSequence
-
-The game uses a **unified sound sequencing architecture** to handle all audio on the Stern SB-100 sound board (single-tone-at-a-time, 6-tone bitmask).
-
-**Core Concept:**
-- `PlaySoundSequence(seqID)` — queues a named sequence of tones with precise millisecond timing
-- All tones in a sequence are queued upfront to prevent interruption during critical gameplay moments
-- Sequences are defined in `SoundSequences.cpp` with PROGMEM storage (conserves RAM)
-
-**Sequence Types:**
-| Sequence | Purpose | Tones | Spacing |
-|----------|---------|-------|---------|
-| Score (100, 300, 500, 1000, etc.) | Hit scoring | 1–9 tones | 200ms gaps |
-| Advance Bonus (1, 3) | Bonus multiplier advance | 1–3 tones | 200ms gaps |
-| Game Over | End-of-ball melody | 8 tones (10→100→1K→10K×2) | 150ms gaps |
-| Match Spin | Match digit animation audio | 1 tone | Per-spin |
-| Drain / Fanfare | Dramatic events | 3–4 tones | Varied |
-
-**Why This Matters:**
-- Prevents tones from overlapping or cutting each other off
-- Eliminates "phantom sounds" from orphaned audio events
-- Ensures accurate timing for synchronized lamp animations
-- Single point of control for all game audio
-
----
+| `ALB-Communication.h / .cpp` | Auxiliary lamp board / display communication |
 
 ---
 
@@ -71,7 +46,8 @@ The game uses a **unified sound sequencing architecture** to handle all audio on
 
 | Feature | Rule |
 |---------|------|
-| Pop Bumpers & Slingshots | 100 points |
+| Pop Bumpers | 1,000 points on 3-ball / 100 points on 5-ball (per original rules) |
+| Slingshots | 100 points |
 | Rebound Rubber | 300 points, +1 bonus advance |
 | Outlanes | 3,000 points, +3 bonus advances |
 | Turnaround Rollover | 100 points, lights Left Return Lane (9,000 when collected) |
@@ -140,7 +116,7 @@ Press the **self-test switch** (inside coin door) repeatedly to advance through 
 | 13 | Score Award Level 3 | Score | 5,000,000 | Third score threshold for replay |
 | 14 | Score Awards | 0–7 bitmask | 7 | Which score levels are active |
 | 15 | Scrolling Scores | 0=Off / 1=On | 1 | Scroll all scores during attract mode |
-| 16 | High Score | Score | 10,000 | Resets only on first EEPROM initialization |
+| 16 | High Score To Date | Score | 10,000 | Adjust ±1,000 with the enter button; **hold enter + press Back to reset to 0** (hold enter + Forward subtracts 50,000) |
 | 17 | Credits | 0–40 | 4 | Current credit count |
 | 21 | Match Feature | 0=Off / 1=On | 1 | End-of-game match digit for free ball |
 
