@@ -1201,7 +1201,7 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
   // here - the interrupted sequence's own trailing silence isn't always the entry
   // flagged as blocking.
   if (seqID == 20) {
-    unsigned long popBumperWindowEnd = CurrentTime + 76;  // covers tone + its own 75ms silence
+    unsigned long popBumperWindowEnd = CurrentTime + 126;  // covers tone + its own 125ms hold
     for (int i = 0; i < SOUND_QUEUE_SIZE; i++) {
       if (soundQueue[i].playTime > CurrentTime && soundQueue[i].playTime <= popBumperWindowEnd) {
         soundQueue[i].playTime = 0;
@@ -1219,17 +1219,22 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
   // Mark this sound as part of this sequence immediately
   soundQueue[toneIndex].seqID = seqID;
 
-  // Auto-insert silence after this tone (Dick's timing: 75ms)
-  unsigned int silenceDuration = 75;
-  if (seqID == 27) {  // SEQ_DRAIN special case
-    // Check if this is the last tone
-    SoundStep nextStep;
-    memcpy_P(&nextStep, &seqPtr[1], sizeof(SoundStep));
-    if (nextStep.tone == 0xFF) {
-      silenceDuration = 400;
+  // Auto-insert silence after this tone. Same hold rule as ResumeActiveSequence:
+  // 5/7 of the spacing to the next tone, capped at 125ms.
+  unsigned int toneHold = 125;
+  SoundStep secondStep;
+  memcpy_P(&secondStep, &seqPtr[1], sizeof(SoundStep));
+  if (secondStep.tone != 0xFF) {
+    unsigned long nextPlayTime = CurrentTime + startOffset + secondStep.gap_ms;
+    if (nextPlayTime > playTime) {
+      unsigned long hold = ((nextPlayTime - playTime) * 5) / 7;
+      if (hold < toneHold) toneHold = (unsigned int)hold;
     }
+  } else if (seqID == 27) {
+    // SEQ_DRAIN: let the final deep tone ring out
+    toneHold = 400;
   }
-  unsigned long silenceTime = playTime + silenceDuration;
+  unsigned long silenceTime = playTime + toneHold;
   int silenceIndex = QueueSound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, silenceTime, 0xFF, 50);
 
   // If silence tone failed to queue due to full queue, force space by clearing a future tone
@@ -1315,16 +1320,21 @@ boolean AudioHandler::QueueSequence(byte seqID, unsigned long startOffset) {
 #endif
       }
 
-      // Queue silence after this tone
-      silenceDuration = 75;
-      if (seqID == 27) {  // SEQ_DRAIN: check if next is sentinel
-        SoundStep nextStep;
-        memcpy_P(&nextStep, &seqPtr[currentToneIdx + 1], sizeof(SoundStep));
-        if (nextStep.tone == 0xFF) {
-          silenceDuration = 400;
+      // Queue silence after this tone - same hold rule as the first tone:
+      // 5/7 of the spacing to the next tone, capped at 125ms
+      unsigned int loopToneHold = 125;
+      SoundStep nextStep;
+      memcpy_P(&nextStep, &seqPtr[currentToneIdx + 1], sizeof(SoundStep));
+      if (nextStep.tone != 0xFF) {
+        if (nextStep.gap_ms > step.gap_ms) {
+          unsigned long hold = (((unsigned long)nextStep.gap_ms - step.gap_ms) * 5) / 7;
+          if (hold < loopToneHold) loopToneHold = (unsigned int)hold;
         }
+      } else if (seqID == 27) {
+        // SEQ_DRAIN: let the final deep tone ring out
+        loopToneHold = 400;
       }
-      unsigned long toneSilenceTime = tonePlayTime + silenceDuration;
+      unsigned long toneSilenceTime = tonePlayTime + loopToneHold;
       int silIdx = QueueSound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, toneSilenceTime, 0xFF, 50);
 
       // If silence tone failed to queue due to full queue, force space and retry
@@ -1443,17 +1453,23 @@ void AudioHandler::ResumeActiveSequence(unsigned long currentTime) {
     // Mark this sound as part of this sequence immediately
     soundQueue[toneIndex].seqID = activeSequence.seqID;
 
-    // Auto-insert silence after this tone (Dick's timing: 75ms)
-    unsigned int silenceDuration = 75;
-    if (activeSequence.seqID == 27) {  // SEQ_DRAIN special case
-      // Check if this is the last tone
-      SoundStep nextStep;
-      memcpy_P(&nextStep, &seqPtr[activeSequence.currentToneIndex + 1], sizeof(SoundStep));
-      if (nextStep.tone == 0xFF) {
-        silenceDuration = 400;
+    // Auto-insert silence after this tone. Tones hold most of the way to the
+    // next tone (5/7 of the spacing, capped at 125ms) so sequences play as
+    // long tones with short audible gaps, matching the original ROM's feel.
+    unsigned int toneHold = 125;
+    SoundStep nextStep;
+    memcpy_P(&nextStep, &seqPtr[activeSequence.currentToneIndex + 1], sizeof(SoundStep));
+    if (nextStep.tone != 0xFF) {
+      unsigned long nextPlayTime = activeSequence.startTime + activeSequence.startOffset + nextStep.gap_ms;
+      if (nextPlayTime > playTime) {
+        unsigned long hold = ((nextPlayTime - playTime) * 5) / 7;
+        if (hold < toneHold) toneHold = (unsigned int)hold;
       }
+    } else if (activeSequence.seqID == 27) {
+      // SEQ_DRAIN: let the final deep tone ring out
+      toneHold = 400;
     }
-    unsigned long silenceTime = playTime + silenceDuration;
+    unsigned long silenceTime = playTime + toneHold;
     int silenceIndex = QueueSound(0, AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS, silenceTime, 0xFF, 50);
     // Mark silence as part of this sequence too
     if (silenceIndex >= 0) {

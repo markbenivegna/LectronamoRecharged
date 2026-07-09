@@ -21,9 +21,9 @@ extern unsigned long CurrentTime;
 // Sequence definitions (PROGMEM - each step is {tone, gap_ms})
 // Sentinel: {0xFF, 0}
 
-// Score sequences — each plays the appropriate tone(s) with 175ms base spacing
-// Silence automatically inserted after each tone at gap_ms + 75ms
-// Note: 175ms gap ensures tones don't queue until previous silence (75ms) finishes
+// Score sequences — tones on a uniform 175ms grid. The sequence player holds
+// each tone 125ms, leaving a 50ms audible gap between tones (long-tone,
+// short-gap, matching the original ROM's feel).
 const SoundStep SEQ_SCORE_10_Data[] PROGMEM = {
   {SND_10_POINTS, 0},
   {0xFF, 0}
@@ -37,16 +37,16 @@ const SoundStep SEQ_SCORE_100_Data[] PROGMEM = {
 const SoundStep SEQ_SCORE_300_Data[] PROGMEM = {
   {SND_100_POINTS, 0},
   {SND_100_POINTS, 175},
-  {SND_100_POINTS, 400},
+  {SND_100_POINTS, 350},
   {0xFF, 0}
 };
 
 const SoundStep SEQ_SCORE_500_Data[] PROGMEM = {
   {SND_100_POINTS, 0},
   {SND_100_POINTS, 175},
-  {SND_100_POINTS, 400},
-  {SND_100_POINTS, 600},
-  {SND_100_POINTS, 800},
+  {SND_100_POINTS, 350},
+  {SND_100_POINTS, 525},
+  {SND_100_POINTS, 700},
   {0xFF, 0}
 };
 
@@ -58,39 +58,39 @@ const SoundStep SEQ_SCORE_1000_Data[] PROGMEM = {
 const SoundStep SEQ_SCORE_3000_Data[] PROGMEM = {
   {SND_1000_POINTS, 0},
   {SND_1000_POINTS, 175},
-  {SND_1000_POINTS, 400},
+  {SND_1000_POINTS, 350},
   {0xFF, 0}
 };
 
 const SoundStep SEQ_SCORE_5000_Data[] PROGMEM = {
   {SND_1000_POINTS, 0},
   {SND_1000_POINTS, 175},
-  {SND_1000_POINTS, 400},
-  {SND_1000_POINTS, 600},
-  {SND_1000_POINTS, 800},
+  {SND_1000_POINTS, 350},
+  {SND_1000_POINTS, 525},
+  {SND_1000_POINTS, 700},
   {0xFF, 0}
 };
 
 const SoundStep SEQ_SCORE_6000_Data[] PROGMEM = {
   {SND_1000_POINTS, 0},
   {SND_1000_POINTS, 175},
-  {SND_1000_POINTS, 400},
-  {SND_1000_POINTS, 600},
-  {SND_1000_POINTS, 800},
-  {SND_1000_POINTS, 1000},
+  {SND_1000_POINTS, 350},
+  {SND_1000_POINTS, 525},
+  {SND_1000_POINTS, 700},
+  {SND_1000_POINTS, 875},
   {0xFF, 0}
 };
 
 const SoundStep SEQ_SCORE_9000_Data[] PROGMEM = {
   {SND_1000_POINTS, 0},
   {SND_1000_POINTS, 175},
-  {SND_1000_POINTS, 400},
-  {SND_1000_POINTS, 600},
-  {SND_1000_POINTS, 800},
-  {SND_1000_POINTS, 1000},
-  {SND_1000_POINTS, 1200},
+  {SND_1000_POINTS, 350},
+  {SND_1000_POINTS, 525},
+  {SND_1000_POINTS, 700},
+  {SND_1000_POINTS, 875},
+  {SND_1000_POINTS, 1050},
+  {SND_1000_POINTS, 1225},
   {SND_1000_POINTS, 1400},
-  {SND_1000_POINTS, 1600},
   {0xFF, 0}
 };
 
@@ -112,26 +112,27 @@ const SoundStep SEQ_ADVANCE_3_Data[] PROGMEM = {
   {0xFF, 0}
 };
 
-// Combined score + advance sequences (interleaved)
+// Combined score + advance sequences, interleaved on a uniform 120ms grid.
+// Both open with a single score tone followed by an advance.
 const SoundStep SEQ_SCORE_3000_WITH_ADVANCE_3_Data[] PROGMEM = {
-  {SND_1000_POINTS, 0},      // Score tone
-  {SND_ADD_BONUS, 100},      // Advance tone 1
-  {SND_1000_POINTS, 175},    // Score tone
-  {SND_ADD_BONUS, 250},      // Advance tone 2
-  {SND_1000_POINTS, 400},    // Score tone
-  {SND_ADD_BONUS, 500},      // Advance tone 3
+  {SND_1000_POINTS, 0},      // Score tone 1
+  {SND_ADD_BONUS, 120},      // Advance tone 1
+  {SND_1000_POINTS, 240},    // Score tone 2
+  {SND_ADD_BONUS, 360},      // Advance tone 2
+  {SND_1000_POINTS, 480},    // Score tone 3
+  {SND_ADD_BONUS, 600},      // Advance tone 3
   {0xFF, 0}
 };
 
 const SoundStep SEQ_SCORE_5000_WITH_ADVANCE_3_Data[] PROGMEM = {
   {SND_1000_POINTS, 0},      // Score tone 1
-  {SND_ADD_BONUS, 100},      // Advance tone 1
-  {SND_1000_POINTS, 175},    // Score tone 2
-  {SND_ADD_BONUS, 250},      // Advance tone 2
-  {SND_1000_POINTS, 400},    // Score tone 3
-  {SND_ADD_BONUS, 500},      // Advance tone 3
+  {SND_ADD_BONUS, 120},      // Advance tone 1
+  {SND_1000_POINTS, 240},    // Score tone 2
+  {SND_1000_POINTS, 360},    // Score tone 3
+  {SND_ADD_BONUS, 480},      // Advance tone 2
   {SND_1000_POINTS, 600},    // Score tone 4
-  {SND_1000_POINTS, 800},    // Score tone 5
+  {SND_1000_POINTS, 720},    // Score tone 5
+  {SND_ADD_BONUS, 840},      // Advance tone 3
   {0xFF, 0}
 };
 
@@ -254,8 +255,8 @@ unsigned int PlaySoundSequence(byte seqID, unsigned long startOffset) {
   // Interrupts current sequence, but only clears that sequence's queued sounds
   Audio.QueueSequence(seqID, startOffset);
 
-  unsigned int silenceDuration = 75;  // Dick's timing: 75ms silences
-  unsigned int duration = maxGap + silenceDuration;
+  unsigned int lastToneHold = 125;  // matches the sequence player's final-tone hold
+  unsigned int duration = maxGap + lastToneHold;
 
   // Return total duration for caller's timing reference
   return duration;
