@@ -287,6 +287,7 @@ boolean SpecialOpenEnded = false;
 boolean BonusCountdownMultipleSteps = false;
 unsigned long BonusCollectionEndTime = 0;
 unsigned long DrainSoundEndTime = 0;  // when the drain melody finishes; bonus countdown holds until then
+unsigned long LastSaucerHitTime = 0;  // debounce: saucer switch chatters while the ball sits in it
 boolean ExtraBallLaneEnabled = true;
 byte SpecialAwardType = 2;
 
@@ -348,10 +349,10 @@ unsigned long KickerSwitchReleaseTime = 0;
 #define SCORE_OUTLANE           3000
 #define SCORE_ARC_SURGE_T1      10000
 #define SCORE_ARC_SURGE_SUPER   50000
+#define SCORE_SPECIAL_POINTS    100000
 #define SCORE_SKILL_SHOT        5000
 
 const uint16_t TIME_MATCH_SEQUENCE_MS = 3000;
-const uint16_t TIME_BALL_SAVE_DURATION_MS = 15000;
 const uint16_t TIME_ARC_SURGE_COMBO_MS = 8000;
 
 byte ExtraBallsAvailable[RPU_NUMBER_OF_PLAYERS_ALLOWED];
@@ -418,7 +419,7 @@ void SetAllParameterDefaults() {
   HighScore = 10000;
   Credits = 4;
   FreePlayMode = false;
-  BallSaveNumSeconds = 5;
+  BallSaveNumSeconds = 15;
   MusicVolume = 10;
   SoundEffectsVolume = 10;
   CalloutsVolume = 10;
@@ -452,12 +453,12 @@ void SetAllParameterDefaults() {
 
 boolean LoadRuleDefaults(byte ruleLevel) {
   if (ruleLevel==GAME_RULES_EASY) {
-    BallSaveNumSeconds = 10;
+    BallSaveNumSeconds = 20;
     ExtraBallLaneEnabled = true;
     SpecialOpenEnded = true;
     SpecialAwardType = 0;        // points (home use)
   } else if (ruleLevel==GAME_RULES_MEDIUM) {
-    BallSaveNumSeconds = 5;
+    BallSaveNumSeconds = 10;
     ExtraBallLaneEnabled = true;
     SpecialOpenEnded = false;
     SpecialAwardType = 0;        // points (home use)
@@ -578,7 +579,7 @@ void ReadStoredParameters() {
     // Read game rules
     GameRulesSelection = ReadSetting(EEPROM_GAME_RULES_SELECTION, GAME_RULES_MEDIUM, GAME_RULES_CUSTOM);
 
-    BallSaveNumSeconds = ReadSetting(EEPROM_BALL_SAVE_BYTE, 5, 20);
+    BallSaveNumSeconds = ReadSetting(EEPROM_BALL_SAVE_BYTE, 15, 25);
     MaxTiltWarnings = ReadSetting(EEPROM_TILT_WARNING_BYTE, 2, 3);
     TempSlingStrength = ReadSetting(EEPROM_SLINGSHOT_STRENGTH, 4, 8);
     TempPopStrength = ReadSetting(EEPROM_POP_BUMPER_STRENGTH, 4, 8);
@@ -1305,7 +1306,7 @@ void AwardSpecial(boolean overrideSpecialCollected = false) {
     CurrentScores[CurrentPlayer] += SpecialValue * PlayfieldMultiplier;
   } else {
     if (SpecialAwardType == 0) {
-      CurrentScores[CurrentPlayer] += SpecialValue;
+      CurrentScores[CurrentPlayer] += (unsigned long)SCORE_SPECIAL_POINTS * PlayfieldMultiplier;
     } else if (SpecialAwardType == 1) {
       AwardExtraBall();
     } else if (SpecialAwardType == 2) {
@@ -1577,10 +1578,10 @@ void RunOperatorMenu() {
         case OM_BASIC_ADJ_IDS_BALL_SAVE:
           adjustmentType = OPERATOR_MENU_ADJ_TYPE_LIST;
           numAdjustmentValues = 5;
-          adjustmentValues[1] = 5;
-          adjustmentValues[2] = 10;
-          adjustmentValues[3] = 15;
-          adjustmentValues[4] = 20;
+          adjustmentValues[1] = 10;
+          adjustmentValues[2] = 15;
+          adjustmentValues[3] = 20;
+          adjustmentValues[4] = 25;
           currentAdjustmentByte = &BallSaveNumSeconds;
           currentAdjustmentStorageByte = EEPROM_BALL_SAVE_BYTE;
           break;
@@ -1681,7 +1682,6 @@ void RunOperatorMenu() {
           currentAdjustmentByte = &Credits;
           currentAdjustmentStorageByte = RPU_CREDITS_EEPROM_BYTE;
           break;
-/*
         case OM_BASIC_ADJ_IDS_CPC_1:
           adjustmentType = OPERATOR_MENU_ADJ_TYPE_CPC;
           adjustmentValues[0] = 0;
@@ -1706,7 +1706,6 @@ void RunOperatorMenu() {
           currentAdjustmentStorageByte = RPU_CPC_CHUTE_3_SELECTION_BYTE;
           parameterCallout = SOUND_EFFECT_OM_CPC_VALUES;
           break;
-*/
         case OM_BASIC_ADJ_IDS_MATCH_FEATURE:
           currentAdjustmentByte = (byte *)&MatchFeature;
           currentAdjustmentStorageByte = EEPROM_MATCH_FEATURE_BYTE;
@@ -2165,7 +2164,7 @@ int RunDiagnosticsMode(int curState, boolean curStateChanged) {
 ////////////////////////////////////////////////////////////////////////////
 byte AttractLastHeadMode = 255;
 byte AttractLastPlayfieldPhase = 255;
-boolean AttractCheckedForTrappedBall;
+unsigned long AttractLastStuckBallCheckTime;
 unsigned long AttractModeStartTime;
 
 int RunAttractMode(int curState, boolean curStateChanged) {
@@ -2185,17 +2184,24 @@ int RunAttractMode(int curState, boolean curStateChanged) {
     RPU_SetDisplayCredits(Credits, !FreePlayMode);
     Display_ClearOverride(0xFF);
     Display_UpdateDisplays(0xFF);
-    AttractCheckedForTrappedBall = false;
+    AttractLastStuckBallCheckTime = CurrentTime - 5000;
     AttractModeStartTime = CurrentTime;
     RPU_SetLampState(LAMP_GAME_OVER, 1);
     RPU_SetLampState(LAMP_BALL_IN_PLAY, 0);
 
   }
 
-  if (CurrentTime > (AttractModeStartTime + 5000) && !AttractCheckedForTrappedBall) {
-    AttractCheckedForTrappedBall = true;
+  // Stuck ball scan: if a ball is resting in the saucer or kicker lane during
+  // attract, eject it so a new game always starts with all balls in the trough
+  // (first check 5s after attract entry, then every 10s)
+  if (CurrentTime > (AttractLastStuckBallCheckTime + 10000)) {
+    AttractLastStuckBallCheckTime = CurrentTime;
     if (RPU_ReadSingleSwitchState(SW_SAUCER)) {
       RPU_PushToSolenoidStack(SOL_SAUCER, SaucerSolenoidStrength, true);
+    }
+    if (RPU_ReadSingleSwitchState(SW_KICKER)) {
+      // Staggered so both never fire in the same instant
+      RPU_PushToTimedSolenoidStack(SOL_KICKER, 16, CurrentTime + 750, true);
     }
   }
 
@@ -2915,7 +2921,9 @@ int ManageGameMode() {
             NumberOfBallsInPlay -= 1;
             if (NumberOfBallsInPlay == 0) {
               Display_ClearOverride(0xFF);
-              Audio.StopAllAudio();
+              // Don't clear a drain melody still playing - the bonus countdown
+              // holds its first tick until DrainSoundEndTime passes
+              if (CurrentTime >= DrainSoundEndTime) Audio.StopAllAudio();
               returnState = MACHINE_STATE_COUNTDOWN_BONUS;
             }
           }
@@ -3484,6 +3492,10 @@ void HandleGamePlaySwitches(byte switchHit) {
 
         case SW_SAUCER: // Saucer / Eject Pocket
              if (MachineState != MACHINE_STATE_NORMAL_GAMEPLAY) break;  // Only handle during normal gameplay
+             // Debounce: the switch can chatter while the ball rests in the
+             // pocket and during the eject kick - one award per visit
+             if (LastSaucerHitTime != 0 && (CurrentTime - LastSaucerHitTime) < 2000) break;
+             LastSaucerHitTime = CurrentTime;
 
              if (isArcSurgeActive[CurrentPlayer] && arcSurgeT1Hit[CurrentPlayer]) { // Arc Surge combo complete (both T1 and saucer hit)
                 QueuePendingScoreUpdate(CurrentPlayer, SCORE_ARC_SURGE_SUPER * PlayfieldMultiplier, SEQ_FANFARE_ASCENDING, 300);
@@ -3612,11 +3624,17 @@ void HandleGamePlaySwitches(byte switchHit) {
         firstHitMade[CurrentPlayer] = true;
     }
 
-    // Cancel Arc Surge if any switch other than the combo targets is hit
+    // Cancel Arc Surge if a switch other than the combo targets is hit.
+    // Slingshots are exempt - they're uncontrollable rattle near the flippers
+    // and shouldn't kill a combo that just started; the 8-second timer still
+    // bounds the window. Rebound rubbers DO cancel (they mean the side lane
+    // shot missed).
     if (isArcSurgeActive[CurrentPlayer] &&
         switchHit != SW_RIGHT_INLANE &&
         switchHit != SW_SAUCER &&
-        switchHit != SW_ADV_BONUS_1000) {
+        switchHit != SW_ADV_BONUS_1000 &&
+        switchHit != SW_LEFT_SLINGSHOT &&
+        switchHit != SW_RIGHT_SLINGSHOT) {
         isArcSurgeActive[CurrentPlayer] = false;
         arcSurgeT1Hit[CurrentPlayer] = false;
     }

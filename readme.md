@@ -103,7 +103,7 @@ Item numbers below match the ball-in-play display.
 | # | Adjustment | Options | Default | Notes |
 |---|------------|---------|---------|-------|
 | 1 | Free Play | 0=Off / 1=On | 0 | Disables coin requirement when On |
-| 2 | Ball Save | 0 / 5 / 10 / 15 / 20 sec | 15 | Timer starts on first playfield switch |
+| 2 | Ball Save | 0 / 10 / 15 / 20 / 25 sec | 15 | Timer starts on first playfield switch |
 | 3 | Tilt Warnings | 0–2 | 2 | Warnings before tilt penalty |
 | 4 | Music Volume | 0–10 | 10 | |
 | 5 | Sound FX Volume | 0–10 | 10 | |
@@ -113,14 +113,16 @@ Item numbers below match the ball-in-play display.
 | 9 | Extra Ball Value | Score (tournament mode only) | 20,000 | Points awarded instead of extra ball |
 | 10 | Special Value | Score (tournament mode only) | 40,000 | Points awarded instead of special |
 | 11 | Reset During Game | 0 / 1 / 2 / 3 / 99 sec | 2 | Hold time for credit button to reset game; 99=disabled |
-| 12 | Score Award Level 1 | Score | 1,000,000 | First score threshold for replay |
-| 13 | Score Award Level 2 | Score | 3,000,000 | Second score threshold for replay |
-| 14 | Score Award Level 3 | Score | 5,000,000 | Third score threshold for replay |
+| 12 | Score Award Level 1 | Score | 100,000 | First score threshold for replay |
+| 13 | Score Award Level 2 | Score | 200,000 | Second score threshold for replay |
+| 14 | Score Award Level 3 | Score | 350,000 | Third score threshold for replay |
 | 15 | Score Awards | 0–7 bitmask | 7 | Which score levels are active |
 | 16 | Scrolling Scores | 0=Off / 1=On | 1 | Scroll all scores during attract mode |
 | 17 | High Score To Date | Score | 10,000 | Start adds 1,000 (hold for faster); **double-click Start to reset to 0** |
 | 18 | Credits | 0–40 | 4 | Current credit count |
-| 19–21 | (unused) | — | — | Reserved coins-per-credit slots; no effect |
+| 19 | Coins Per Credit (Chute 1) | 9 coin:credit pairs | 1:1 | Coin-to-credit conversion for chute 1 |
+| 20 | Coins Per Credit (Chute 2) | 9 coin:credit pairs | 1:1 | Coin-to-credit conversion for chute 2 |
+| 21 | Coins Per Credit (Chute 3) | 9 coin:credit pairs | 1:1 | Coin-to-credit conversion for chute 3 |
 | 22 | Match Feature | 0=Off / 1=On | 1 | End-of-game match digit for free ball |
 
 ---
@@ -129,9 +131,11 @@ Item numbers below match the ball-in-play display.
 
 | Display # | Rule Set | Ball Save | Notes |
 |-----------|----------|-----------|-------|
-| 1 | Easy | 20 sec | Longer ball save |
+| 1 | Easy | 20 sec | Longer ball save; Special open-ended |
 | 2 | Medium | 10 sec | Default |
-| 3 | Hard | 0 sec | No ball save |
+| 3 | Hard | 0 sec | No ball save; Extra Ball Lane disabled |
+
+Installing a rule set overwrites Ball Save (menu 3), Special Open-Ended, Extra Ball Lane, and Special Award Type (menu 5) with the preset's values — re-check those adjustments after changing rule sets. All presets set Special Award Type to points.
 
 ---
 
