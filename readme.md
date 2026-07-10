@@ -56,7 +56,7 @@ The project is currently in the **Lite Version** stage. All core game rules, sco
 | Stationary Target | 5,000 points, +1 bonus advance, lights Saucer |
 | Saucer (lit) | 5,000 points, +3 bonus advances |
 | Saucer (unlit) | 500 points, +1 bonus advance |
-| 3-Bank Completion | 6,000 points; advances bonus multiplier (2X → 3X → 5X → 7X → 8X → 10X) |
+| 3-Bank Completion | 6,000 points; advances bonus multiplier (2X → 3X → 5X) |
 | 5-Bank Completion (1st) | 10,000 points |
 | 5-Bank Completion (2nd) | Lights Extra Ball Lane (collect via Right Inlane) |
 | 5-Bank Completion (3rd+) | Special |
