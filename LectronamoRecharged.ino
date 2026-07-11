@@ -24,9 +24,7 @@
 #define GAME_MAJOR_VERSION  2026
 #define GAME_MINOR_VERSION  1
 // Keep at 0 during normal play - blocking serial I/O during rapid-fire sequences
-// (esp. bonus countdown) can contribute to main-loop stalls. Companion flag:
-// AUDIO_DEBUG_LOGGING in AudioHandler.cpp; flip both to 1 together to restore full
-// diagnostic logging.
+// (esp. bonus countdown) can contribute to main-loop stalls.
 #define DEBUG_MESSAGES  0
 #define DEBUG_SWITCH_LOGGING  0
 
@@ -3812,14 +3810,12 @@ void loop() {
   CurrentTime = millis();
   int newMachineState = MachineState;
 
-  // Debug serial commands: 'G' game over, 'S' startup, 'D' drain, 'L' dump the tone
-  // write log (safe to send anytime; shows the most recent SB-100 writes)
+  // Debug serial commands: 'G' game over, 'S' startup, 'D' drain
   if (Serial.available()) {
     char cmd = Serial.read();
     if (cmd == 'G') PlaySoundSequence(23);
     else if (cmd == 'S') PlaySoundSequence(26);
     else if (cmd == 'D') PlaySoundSequence(27);
-    else if (cmd == 'L') Audio.DumpToneWriteLog();
   }
 
 #ifdef DEBUG_SHOW_LOOPS_PER_SECOND

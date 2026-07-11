@@ -8,16 +8,6 @@
 extern AudioHandler Audio;
 extern unsigned long CurrentTime;
 
-/*
-  DEBUG OUTPUT FORMAT:
-  SEQ[id]: START @ time ms (offset +offset ms)     - sequence queued
-    SEQ[id] TONE[i]: tone=N @ time ms (gap +X ms)  - tone queued at absolute timestamp
-    SEQ[id] SLEN[i]: silence @ time ms              - silence queued
-  SEQ[id]: END duration=D ms                         - sequence complete
-
-  Use this to identify sound collisions: overlapping tone timestamps = collision
-*/
-
 // Sequence definitions (PROGMEM - each step is {tone, gap_ms})
 // Sentinel: {0xFF, 0}
 
