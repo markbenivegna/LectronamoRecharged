@@ -70,7 +70,7 @@ The project is currently in the **Lite Version** stage. All core game rules, sco
 |---------|------|
 | Free Play | Operator-adjustable via EEPROM; disables coin requirement |
 | Ball Save | Configurable timer begins after first playfield switch; pulsing Shoot Again lamp |
-| Skill Shot | First plunge to Saucer awards 5,000 points + 3 bonus advances |
+| Skill Shot | First plunge to Saucer awards 25,000 points + 3 bonus advances |
 | Arc Surge Combo | Right Inlane starts 8-second timed combo; hitting Saucer during combo awards 50,000 + 3 bonus advances |
 | 3-Bank Sweep | All 3 targets cleared within 1.5 seconds: +10,000 bonus points + 1.5-second lamp flash on the bank targets |
 | Extended Multiplier | Bonus multiplier extends beyond 5X to 7X, 8X, 10X (max). 3-Bank target lamps show next multiplier; go dark at 10X (max reached) |
