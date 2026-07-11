@@ -350,7 +350,8 @@ unsigned long KickerSwitchReleaseTime = 0;
 #define SCORE_ARC_SURGE_T1      10000
 #define SCORE_ARC_SURGE_SUPER   50000
 #define SCORE_SPECIAL_POINTS    100000
-#define SCORE_SKILL_SHOT        5000
+#define SCORE_SKILL_SHOT        25000
+#define SCORE_SAUCER_LIT        5000
 
 const uint16_t TIME_MATCH_SEQUENCE_MS = 3000;
 const uint16_t TIME_ARC_SURGE_COMBO_MS = 8000;
@@ -3509,7 +3510,7 @@ void HandleGamePlaySwitches(byte switchHit) {
                 isArcSurgeActive[CurrentPlayer] = false;
                 arcSurgeT1Hit[CurrentPlayer] = false;
                 if (isSaucerLit[CurrentPlayer]) {
-                    CurrentScores[CurrentPlayer] += SCORE_SKILL_SHOT * PlayfieldMultiplier;
+                    CurrentScores[CurrentPlayer] += SCORE_SAUCER_LIT * PlayfieldMultiplier;
                     if (Bonus[CurrentPlayer] < 19) {
                       if (DEBUG_MESSAGES) { Serial.print("Saucer (Arc no T1): Bonus="); Serial.print(Bonus[CurrentPlayer]); Serial.println(" < 19 → ADVANCE"); }
                       ScheduleBonusIncrement(3, 0);  // Bonus lights when advance sound plays
@@ -3533,7 +3534,7 @@ void HandleGamePlaySwitches(byte switchHit) {
             } else if (isSaucerLit[CurrentPlayer]) {
                  // Lit saucer: always play ADVANCE_3 (3 bonus advances)
                  if (DEBUG_MESSAGES) { Serial.print("Saucer (lit): Bonus="); Serial.print(Bonus[CurrentPlayer]); Serial.println(" → ADVANCE_3"); }
-                 QueuePendingScoreUpdate(CurrentPlayer, SCORE_SKILL_SHOT * PlayfieldMultiplier, SEQ_SCORE_5000_WITH_ADVANCE_3);
+                 QueuePendingScoreUpdate(CurrentPlayer, SCORE_SAUCER_LIT * PlayfieldMultiplier, SEQ_SCORE_5000_WITH_ADVANCE_3);
                  ScheduleBonusIncrement(3, 0);  // Bonus lights when advance sound plays
                  PlaySoundSequence(SEQ_SCORE_5000_WITH_ADVANCE_3, 0);
                  if (!SaucerLightPersists) isSaucerLit[CurrentPlayer] = false;
