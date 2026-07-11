@@ -37,18 +37,6 @@ struct SoundCardCommandEntry {
 
 #define SOUND_QUEUE_SIZE 100
 
-// Passive, in-RAM circular log of every actual hardware tone write. NO Serial calls
-// happen during gameplay - entries are only written to this array; dump on demand
-// via the 'L' serial command to see exactly what was written and when. Live
-// Serial.write() during play is deliberately avoided because blocking serial output
-// perturbs main-loop timing.
-#define TONE_WRITE_LOG_SIZE 200
-struct ToneWriteLogEntry {
-  unsigned long timestamp;
-  byte value;   // actual byte written to the SB-100 (soundIndex)
-  byte seqID;   // which sequence this came from, 0xFF = direct/standalone call
-};
-
 struct SoundEntry {
   unsigned short soundIndex;
   byte audioType;
@@ -207,8 +195,7 @@ class AudioHandler
       return currentBackgroundTrack; 
     }
 
-    boolean PlaySound(unsigned short soundIndex, byte audioType, byte overrideVolume=0xFF, byte seqID=0xFF);
-    void DumpToneWriteLog();  // print the tone write log to Serial (on-demand only, safe to call between plays)
+    boolean PlaySound(unsigned short soundIndex, byte audioType, byte overrideVolume=0xFF);
     boolean FadeSound(unsigned short soundIndex, int fadeGain, int numMilliseconds, boolean stopTrack);
     int QueueSound(unsigned short soundIndex, byte audioType, unsigned long timeToPlay, byte overrideVolume=0xFF, byte priority=10);  // returns queue index, or -1 if failed
     boolean QueueSequence(byte seqID, unsigned long startOffset);  // queue sequence; interrupts current, clears only interrupted sequence's sounds
@@ -258,9 +245,6 @@ class AudioHandler
     SoundEntry soundQueue[SOUND_QUEUE_SIZE];
     ActiveSequence activeSequence;  // currently playing sequence and state
 
-    ToneWriteLogEntry toneWriteLog[TONE_WRITE_LOG_SIZE];  // circular buffer, no Serial during writes
-    byte toneWriteLogIndex = 0;
-    boolean toneWriteLogWrapped = false;
     boolean sb100ToneLatched = false;  // true when the last byte written to the SB-100 was a tone (not 0x00)
 
 #if defined(RPU_OS_USE_WTYPE_1_SOUND) || defined(RPU_OS_USE_WTYPE_2_SOUND)
