@@ -3492,8 +3492,10 @@ void HandleGamePlaySwitches(byte switchHit) {
         case SW_SAUCER: // Saucer / Eject Pocket
              if (MachineState != MACHINE_STATE_NORMAL_GAMEPLAY) break;  // Only handle during normal gameplay
              // Debounce: the switch can chatter while the ball rests in the
-             // pocket and during the eject kick - one award per visit
-             if (LastSaucerHitTime != 0 && (CurrentTime - LastSaucerHitTime) < 2000) break;
+             // pocket and during the eject kick (which fires 500ms after this
+             // hit) - one award per visit. Window only needs to cover that,
+             // not block genuine fast re-visits from the pops below.
+             if (LastSaucerHitTime != 0 && (CurrentTime - LastSaucerHitTime) < 650) break;
              LastSaucerHitTime = CurrentTime;
 
              if (isArcSurgeActive[CurrentPlayer] && arcSurgeT1Hit[CurrentPlayer]) { // Arc Surge combo complete (both T1 and saucer hit)
